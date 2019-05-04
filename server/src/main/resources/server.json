@@ -1,0 +1,10 @@
+[
+  {
+    "name": "default",
+    "port": 2020,
+    "max-client": 10,
+    "encrtpt": "RSA256",
+    "auth-type": "simple",
+    "password": "abc123lzf"
+  }
+]

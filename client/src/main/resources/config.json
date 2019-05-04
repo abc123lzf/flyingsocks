@@ -1,0 +1,15 @@
+{
+  "server": [
+    {
+      "host": "127.0.0.1",
+      "port": 2020,
+      "auth": "simple",
+      "auth-arg": {
+        "password": "abc123lzf"
+      },
+      "jks-path": "classpath://flyingsocks-cli.jks",
+      "jks-pass": "flyingsocks",
+      "state": "false"
+    }
+  ]
+}

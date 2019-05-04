@@ -1,0 +1,14 @@
+[
+  {
+    "group": "default",
+    "user": [
+      {
+        "user": "lzf",
+        "pass": "abc123"
+      }, {
+        "user": "4399",
+        "pass": "123456"
+      }
+    ]
+  }
+]
