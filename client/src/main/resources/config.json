@@ -9,6 +9,17 @@
       },
       "jks-path": "classpath://flyingsocks-cli.jks",
       "jks-pass": "flyingsocks",
+      "state": "true"
+    }, {
+      "host": "149.3.61.3",
+      "port": 320,
+      "auth": "user",
+      "auth-arg": {
+        "user": "root",
+        "pass": "abc123lzf"
+      },
+      "jks-path": "classpath://flyingsocks-cli.jks",
+      "jks-pass": "flyingsocks",
       "state": "false"
     }
   ]

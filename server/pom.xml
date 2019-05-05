@@ -11,5 +11,12 @@
 
     <artifactId>flyingsocks-server</artifactId>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.lzf</groupId>
+            <artifactId>flyingsocks</artifactId>
+            <version>1.0</version>
+        </dependency>
+    </dependencies>
 
 </project>

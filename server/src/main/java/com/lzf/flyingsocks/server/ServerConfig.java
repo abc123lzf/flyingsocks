@@ -4,10 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
-import com.lzf.flyingsocks.AbstractConfig;
-import com.lzf.flyingsocks.Config;
-import com.lzf.flyingsocks.ConfigInitializationException;
-import com.lzf.flyingsocks.ConfigManager;
+import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.protocol.AuthMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,9 +25,15 @@ public class ServerConfig extends AbstractConfig implements Config {
 
     @Override
     protected void initInternal() throws ConfigInitializationException {
+        try {
+            Class.forName("com.lzf.flyingsocks.url.ClasspathURLHandlerFactory");
+        } catch (ClassNotFoundException e) {
+            throw new ComponentException(e);
+        }
+
         InputStream is;
         try {
-            is = configManager.loadResource("/server.json");
+            is = configManager.loadResource("classpath://server.json");
         } catch (IOException e) {
             if(log.isErrorEnabled())
                 log.error("server.json doesn't exists.", e);
@@ -66,7 +69,7 @@ public class ServerConfig extends AbstractConfig implements Config {
             int client = obj.getIntValue("max-client");
 
             EncrtptType encrtptType = EncrtptType.valueOf(obj.getString("encrtpt").toUpperCase());
-            AuthType authType = AuthType.valueOf(obj.getString("auth").toUpperCase());
+            AuthType authType = AuthType.valueOf(obj.getString("auth-type").toUpperCase());
 
             Node n = new Node(name, port, client, authType, encrtptType);
 

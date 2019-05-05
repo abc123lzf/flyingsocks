@@ -42,7 +42,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
     protected void initInternal() {
         try {
             KeyStore ks = KeyStore.getInstance("JKS");
-            InputStream in = getParentComponent().getParentComponent().loadResource("/flyingsocks.jks");
+            InputStream in = getParentComponent().getParentComponent().loadResource("classpath://flyingsocks.jks");
             ks.load(in, "flyingsocks".toCharArray());
             KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
             kmf.init(ks, "flyingsocks".toCharArray());
@@ -67,7 +67,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                     ChannelPipeline cp = ch.pipeline();
                     cp.addLast(new SslHandler(sslEngine));
                     cp.addLast(getParentComponent().clientSessionHandler());
-                    cp.addLast(new FixedLengthFrameDecoder(16));
+                    cp.addLast(new FixedLengthFrameDecoder(DelimiterMessage.DEFAULT_SIZE));
                     cp.addLast(new InitialHandler());
                 }
             });
@@ -95,21 +95,23 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) {
-            byte[] key = new byte[16];
+            if(log.isTraceEnabled())
+                log.trace("Receiver DelimiterMessage from client.");
+            byte[] key = new byte[DelimiterMessage.DEFAULT_SIZE];
             msg.readBytes(key);
-
-            ByteBuf keyBuf = Unpooled.buffer(DelimiterMessage.DEFAULT_SIZE);
-            keyBuf.writeBytes(key);
 
             ClientSession state = getParentComponent().getClientSession(ctx.channel());
             state.setDelimiterKey(key);
 
             ChannelPipeline cp = ctx.pipeline();
             cp.remove(this).remove(FixedLengthFrameDecoder.class);
-            cp.addLast(new DelimiterBasedFrameDecoder(1024, keyBuf));
-            cp.addLast(new AuthHandler(state));
 
+            ByteBuf keyBuf = Unpooled.buffer(DelimiterMessage.DEFAULT_SIZE);
+            keyBuf.writeBytes(key);
             ctx.writeAndFlush(keyBuf.copy());
+
+            cp.addLast(new DelimiterBasedFrameDecoder(102400, keyBuf));
+            cp.addLast(new AuthHandler(state));
         }
 
     }
@@ -141,6 +143,10 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                     log.trace("Auth failure, from client {}", ((SocketChannel)ctx.channel()).remoteAddress().getHostName());
                 ctx.close();
                 return;
+            } else {
+                if(log.isTraceEnabled()) {
+                    log.trace("Auth success, from client {}", ((SocketChannel)ctx.channel()).remoteAddress().getHostName());
+                }
             }
 
             ClientSession cs = getParentComponent().localClientMap.get().get(ctx.channel());

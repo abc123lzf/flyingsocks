@@ -154,9 +154,18 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent<?>> {
         if(active)
             throw new IllegalStateException("This component has been connect.");
 
+        String host = config.getHost();
+        int port = config.getPort();
+
+        if(log.isTraceEnabled())
+            log.trace("Connect to flyingsocks server {}:{}...", host, port);
+
         Bootstrap b = bootstrap.clone();
-        ChannelFuture f = b.connect(config.getHost(), config.getPort()).addListener(future -> {
+        ChannelFuture f = b.connect(host, port).addListener(future -> {
             if (future.isSuccess()) {
+                if(log.isTraceEnabled())
+                    log.trace("connect success to flyingsocks server {}:{}", host, port);
+
                 active = true;
                 for(int i = 0; i < DEFAULT_PROCESSOR_THREAD; i++) {
                     clientMessageProcessor.submit(new ClientMessageTransferTask());
@@ -182,6 +191,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent<?>> {
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
+            if(log.isTraceEnabled())
+                log.trace("Start flyingsocks server connection initialize");
             ProxyServerSession session = new ProxyServerSession((SocketChannel) ctx.channel());
 
             Random random = new Random();
@@ -193,13 +204,20 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent<?>> {
             session.setDelimiter(delimiter);
             ProxyServerComponent.this.proxyServerSession = session;
 
-            ctx.writeAndFlush(msg);
-            ctx.fireChannelActive();
+            try {
+                ctx.writeAndFlush(msg.serialize());
+                ctx.fireChannelActive();
+            } catch (SerializationException e) {
+                log.error("Serialize DelimiterMessage occur a exception", e);
+                ctx.close();
+            }
         }
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object buf) {
             if(buf instanceof ByteBuf) {
+                if(log.isTraceEnabled())
+                    log.trace("Receiver flyingsocks delimiter message");
                 ByteBuf msg = (ByteBuf) buf;
                 try {
                     DelimiterMessage dmsg = new DelimiterMessage(msg);
@@ -221,6 +239,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent<?>> {
                             .addLast(new DelimiterOutboundHandler()).addLast(new ProxyHandler());
 
                 } catch (SerializationException e) {
+                    if(log.isWarnEnabled())
+                        log.warn("DelimiterMessage serialization error", e);
                     ctx.close();
                 }
             } else {
@@ -229,11 +249,13 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent<?>> {
         }
 
         @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             if(log.isWarnEnabled())
                 log.warn("ProxyServerComponent occur a error" , cause);
             ctx.close();
         }
+
+
     }
 
     private final class DelimiterOutboundHandler extends ChannelOutboundHandlerAdapter {
@@ -326,7 +348,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent<?>> {
                     if(isWrite)
                         sendToProxyServer(req, buf);
                 }
-
 
                 ProxyRequest request;
 

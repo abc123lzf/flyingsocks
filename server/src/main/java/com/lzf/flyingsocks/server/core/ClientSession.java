@@ -8,6 +8,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.socket.SocketChannel;
 
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -36,9 +37,9 @@ public class ClientSession extends AbstractSession implements Session {
 
 
     public void setDelimiterKey(byte[] key) {
-        if(delimiterKey != null) {
+        if(delimiterKey == null) {
             if(key.length == DelimiterMessage.DEFAULT_SIZE)
-                delimiterKey = key;
+                delimiterKey = Arrays.copyOf(key, DelimiterMessage.DEFAULT_SIZE);
             else
                 throw new IllegalArgumentException(String.format("delimiter key only can set %d bytes",
                         DelimiterMessage.DEFAULT_SIZE));
