@@ -22,8 +22,6 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
 
     @Override
     protected void initInternal() {
-        log.info("Netty socks server init...");
-
         socksReceiveGroup = new NioEventLoopGroup(1);
 
         ServerBootstrap boot = new ServerBootstrap();
@@ -69,6 +67,9 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
         super.stopInternal();
     }
 
+    /**
+     * 负责接收Socks请求
+     */
     private class SocksRequestHandler extends SimpleChannelInboundHandler<SocksRequest> {
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, SocksRequest request) {
@@ -90,7 +91,8 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                 case CMD: {
                     SocksCmdRequest req = (SocksCmdRequest) request;
                     if(req.cmdType() != SocksCmdType.CONNECT) {
-                        log.info("Socks command request is not connect.");
+                        if(log.isInfoEnabled())
+                            log.info("Socks command request is not connect.");
                         ctx.close();
                         return;
                     }
@@ -99,14 +101,17 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                     break;
                 }
                 case UNKNOWN: {
-                    if(log.isTraceEnabled())
-                        log.trace("Unknow socks command, from ip: {}", ctx.channel().localAddress().toString());
+                    if(log.isInfoEnabled())
+                        log.info("Unknow socks command, from ip: {}", ctx.channel().localAddress().toString());
                     ctx.close();
                 }
             }
         }
     }
 
+    /**
+     * 负责接收Socks命令
+     */
     private class SocksCommandRequestHandler extends SimpleChannelInboundHandler<SocksCmdRequest> {
 
         @Override
@@ -124,6 +129,9 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
         }
     }
 
+    /**
+     * 负责接收客户端要求代理的数据
+     */
     private class ProxyMessageHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
         private final SocksProxyRequest proxyRequest;
@@ -131,12 +139,12 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
         private ProxyMessageHandler(SocksProxyRequest request) {
             super(false);
             this.proxyRequest = request;
-            getParentComponent().pushProxyRequest(proxyRequest);
+            getParentComponent().publish(request);
         }
 
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) {
-            getParentComponent().pushProxyMessage(proxyRequest, msg);
+            proxyRequest.getMessageQueue().offer(msg);
         }
 
         @Override

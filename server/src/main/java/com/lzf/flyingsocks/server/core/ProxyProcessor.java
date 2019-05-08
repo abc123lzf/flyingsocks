@@ -142,8 +142,9 @@ public class ProxyProcessor extends AbstractComponent<Server> {
         return serverConfig;
     }
 
-
-
+    /**
+     * 用于管理客户端连接(ClientSession)
+     */
     @ChannelHandler.Sharable
     private final class ClientSessionHandler extends ChannelInboundHandlerAdapter {
 
@@ -175,7 +176,6 @@ public class ProxyProcessor extends AbstractComponent<Server> {
         public void channelInactive(ChannelHandlerContext ctx) {
             localClientMap.get().remove(ctx.channel());
             removeClientSession(ctx.channel());
-
             ctx.fireChannelInactive();
         }
     }

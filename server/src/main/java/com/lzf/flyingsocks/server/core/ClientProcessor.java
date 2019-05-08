@@ -40,9 +40,8 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
     @Override
     protected void initInternal() {
-        try {
+        try(InputStream in = getParentComponent().getParentComponent().loadResource("classpath://flyingsocks.jks")) {
             KeyStore ks = KeyStore.getInstance("JKS");
-            InputStream in = getParentComponent().getParentComponent().loadResource("classpath://flyingsocks.jks");
             ks.load(in, "flyingsocks".toCharArray());
             KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
             kmf.init(ks, "flyingsocks".toCharArray());

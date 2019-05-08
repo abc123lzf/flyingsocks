@@ -15,10 +15,18 @@ public interface ConfigManager<T extends Component<?>> extends Module<T>, Enviro
     void updateConfig(Config config);
 
     /**
-     *
-     * @param config
+     * 删除配置
+     * @param config 配置对象
      */
     void removeConfig(Config config);
+
+    /**
+     * 保存配置
+     * @param config 配置对象
+     * @return 是否成功
+     */
+    boolean saveConfig(Config config);
+
 
     /**
      * 获取配置
@@ -44,7 +52,7 @@ public interface ConfigManager<T extends Component<?>> extends Module<T>, Enviro
 
     /**
      * 删除配置事件监听器
-     * @param listener
+     * @param listener 监听器对象
      */
     void removeConfigEventListener(ConfigEventListener listener);
 

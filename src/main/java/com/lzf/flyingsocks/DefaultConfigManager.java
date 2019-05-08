@@ -69,6 +69,16 @@ public class DefaultConfigManager<T extends Component<?> & Environment> extends 
     }
 
     @Override
+    public boolean saveConfig(Config config) {
+        if(config.canSave()) {
+            config.save();
+            return true;
+        }
+
+        return false;
+    }
+
+    @Override
     public Config getConfig(String name) {
         return configMap.get(name);
     }

@@ -1,13 +1,14 @@
 package com.lzf.flyingsocks.client.view;
 
-import com.lzf.flyingsocks.AbstractModule;
-import com.lzf.flyingsocks.Config;
-import com.lzf.flyingsocks.ConfigManager;
+import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.PlainDocument;
 import java.awt.*;
 import java.awt.event.ItemEvent;
 import java.awt.event.WindowAdapter;
@@ -63,19 +64,40 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
         jList.setVisibleRowCount(8);
 
         JScrollPane jListPane = new JScrollPane(jList);
-        jListPane.setBounds(10, 50, 350, 600);
+        jListPane.setBounds(10, 50, 300, 600);
         sf.add(jListPane);
 
 
         JTextField host = new JTextField();
-        JLabel hostl = new JLabel("服务器IP/域名：");
+        JLabel hostl = new JLabel("服务器IP / 域名");
         hostl.setBounds(0, 0, 100, 30);
         host.setBounds(105, 0, 335, 30);
 
         JTextField port = new JTextField();
-        JLabel portl = new JLabel("端口(1~65535)：");
+        JLabel portl = new JLabel("端口 (1~65535)");
         portl.setBounds(0, 40, 100, 30);
         port.setBounds(105, 40, 335, 30);
+
+        port.setDocument(new PlainDocument() {
+            @Override
+            public void insertString(int offs, String str, AttributeSet a) throws BadLocationException {
+                if(str == null)
+                    return;
+                int val;
+                try {
+                    val = Integer.valueOf(str);
+                } catch (NumberFormatException e) {
+                    super.insertString(offs, "1", a);
+                    return;
+                }
+
+                if(val >= 1 && val <= 65535) {
+                    super.insertString(offs, str, a);
+                } else {
+                    super.insertString(offs, "1", a);
+                }
+            }
+        });
 
         JTextField jksPath = new JTextField();
         JLabel jksPl = new JLabel("JKS证书路径");
@@ -91,8 +113,8 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
         JLabel authl = new JLabel("认证方式");
         DefaultComboBoxModel<String> authModel = new DefaultComboBoxModel<>();
         authModel.addElement("选择认证方式");
-        authModel.addElement("简单认证");
-        authModel.addElement("用户认证");
+        authModel.addElement("简单认证(SIMPLE)");
+        authModel.addElement("用户认证(USER)");
         auth.setModel(authModel);
         auth.setSelectedIndex(0);
         authl.setBounds(0, 160, 100, 30);
@@ -113,6 +135,12 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
         upl.setBounds(0, 240, 100, 30);
         userPass.setBounds(105, 240, 335, 30);
 
+        JButton enter = new JButton("新建配置");
+        enter.setBounds(0, 280, 140, 30);
+        JButton save = new JButton("保存");
+        save.setBounds(145, 280, 140, 30);
+        JButton delete = new JButton("删除");
+        delete.setBounds(290, 280, 140, 30);
 
         JPanel panel = new JPanel();
         panel.setLayout(null);
@@ -126,6 +154,13 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
         panel.add(jksPl);
         panel.add(auth);
         panel.add(authl);
+        panel.add(enter);
+        panel.add(delete);
+        panel.add(save);
+
+        enter.addActionListener(e -> {
+
+        });
 
         auth.addItemListener(e -> {
             if(e.getStateChange() == ItemEvent.SELECTED) {
@@ -168,7 +203,7 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
             }
         });
 
-        panel.setBounds(365, 50, 445, 600);
+        panel.setBounds(315, 50, 480, 600);
         sf.add(panel);
 
         return sf;
@@ -178,11 +213,15 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
         ConfigManager<?> manager = getComponent().getParentComponent().getConfigManager();
         ProxyServerConfig cfg = (ProxyServerConfig) manager.getConfig(ProxyServerConfig.DEFAULT_NAME);
         if(cfg == null) {
-            manager.registerConfigEventListener(e -> {
-                if(e.getEvent().equals(Config.REGISTER_EVENT) && e.getSource() instanceof ProxyServerConfig) {
-                    ProxyServerConfig psc = (ProxyServerConfig) e.getSource();
-                    this.serverConfig = psc;
-                    initServerNode(psc.getProxyServerConfig());
+            manager.registerConfigEventListener(new ConfigEventListener() {
+                @Override
+                public void configEvent(ConfigEvent e) {
+                    if(e.getEvent().equals(Config.REGISTER_EVENT) && e.getSource() instanceof ProxyServerConfig) {
+                        ProxyServerConfig psc = (ProxyServerConfig) e.getSource();
+                        ServerSettingModule.this.serverConfig = psc;
+                        initServerNode(psc.getProxyServerConfig());
+                        manager.removeConfigEventListener(this);
+                    }
                 }
             });
         } else {
@@ -204,5 +243,7 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
         frame.setVisible(visible);
     }
 
+    private void updateServerNode(String host, String pass) {
 
+    }
 }

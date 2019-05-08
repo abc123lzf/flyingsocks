@@ -3,16 +3,30 @@ package com.lzf.flyingsocks.client.proxy;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 
-public abstract class ProxyRequest implements Comparable<ProxyRequest> {
+/**
+ * 代理请求
+ */
+public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneable {
 
+    /**
+     * 目标服务器
+     */
     protected String host;
 
+    /**
+     * 目标服务器端口
+     */
     protected int port;
 
+    /**
+     * 客户端Channel通道
+     */
     protected Channel clientChannel;
 
-    protected boolean proxy;
 
+    /**
+     * hashCode缓存
+     */
     private int hashCode;
 
     protected ProxyRequest() {
@@ -32,13 +46,6 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest> {
         return port;
     }
 
-    public boolean needProxy() {
-        return proxy;
-    }
-
-    protected void setProxy(boolean proxy) {
-        this.proxy = proxy;
-    }
 
     protected Channel getClientChannel() {
         return clientChannel;
@@ -88,5 +95,12 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest> {
             return 1;
         else
             return -1;
+    }
+
+    @Override
+    protected Object clone() throws CloneNotSupportedException {
+        ProxyRequest req = (ProxyRequest) super.clone();
+        req.clientChannel = this.clientChannel;
+        return req;
     }
 }

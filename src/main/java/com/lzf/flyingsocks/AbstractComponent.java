@@ -1,6 +1,6 @@
 package com.lzf.flyingsocks;
 
-
+import com.lzf.flyingsocks.util.LifecycleLoggerListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,26 +16,30 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
 
     protected String name;
 
-    protected final Map<String, Module<?>> moduleMap = new ConcurrentHashMap<>();
+    private final Map<String, Module<?>> moduleMap = new ConcurrentHashMap<>();
 
-    protected final Map<String, Component<?>> componentMap = new ConcurrentSkipListMap<>();
+    private final Map<String, Component<?>> componentMap = new ConcurrentSkipListMap<>();
 
     protected AbstractComponent() {
         super();
         this.parent = null;
         this.name = getClass().getName();
-    }
 
-    protected AbstractComponent(String name) {
-        super();
-        this.parent = null;
-        this.name = name;
+        if(LifecycleLoggerListener.INSTANCE != null)
+            addLifecycleEventListener(LifecycleLoggerListener.INSTANCE);
     }
 
     protected AbstractComponent(String name, T parent) {
         super();
         this.name = Objects.requireNonNull(name);
         this.parent = parent;
+
+        if(LifecycleLoggerListener.INSTANCE != null)
+            addLifecycleEventListener(LifecycleLoggerListener.INSTANCE);
+    }
+
+    protected AbstractComponent(String name) {
+        this(name, null);
     }
 
     @Override
@@ -75,6 +79,10 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
         moduleMap.put(name, module);
     }
 
+    /**
+     * 添加子组件
+     * @param component 组件对象
+     */
     protected synchronized void addComponent(Component<?> component) {
         LifecycleState state = getState();
         if(state.after(LifecycleState.INITIALIZED))
@@ -89,6 +97,11 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
         componentMap.put(name, component);
     }
 
+    /**
+     * 根据组件名称获取组件
+     * @param name 组件名
+     * @return 组件，若没有找到返回null
+     */
     protected Component<?> getComponentByName(String name) {
         return componentMap.get(name);
     }
@@ -103,6 +116,14 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
             throw new ComponentException(new ClassCastException(String.format("Component [%s] is not type of %s.", getName(), requireType.getName())));
 
         return (V)c;
+    }
+
+    /**
+     * 移除组件
+     * @param name 组件名
+     */
+    protected void removeComponentByName(String name) {
+        componentMap.remove(name);
     }
 
 

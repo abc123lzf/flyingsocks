@@ -4,6 +4,9 @@ import io.netty.channel.socket.SocketChannel;
 
 import java.net.InetSocketAddress;
 
+/**
+ * 用来保存网络连接中的会话
+ */
 public interface Session {
 
     /**

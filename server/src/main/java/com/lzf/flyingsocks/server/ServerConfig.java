@@ -68,7 +68,7 @@ public class ServerConfig extends AbstractConfig implements Config {
             int port = obj.getIntValue("port");
             int client = obj.getIntValue("max-client");
 
-            EncrtptType encrtptType = EncrtptType.valueOf(obj.getString("encrtpt").toUpperCase());
+            EncrtptType encrtptType = EncrtptType.valueOf(obj.getString("encrypt").toUpperCase());
             AuthType authType = AuthType.valueOf(obj.getString("auth-type").toUpperCase());
 
             Node n = new Node(name, port, client, authType, encrtptType);

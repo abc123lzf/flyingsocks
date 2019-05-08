@@ -13,9 +13,9 @@ public abstract class LifecycleBase implements Lifecycle {
         if(state.after(LifecycleState.INITIALIZED))
             throw new LifecycleException();
         state = LifecycleState.INITIALIZING;
-        fireLifecycleEvent(BEFORE_INIT_EVENT, null);
+        fireLifecycleEvent(BEFORE_INIT_EVENT, this);
         initInternal();
-        fireLifecycleEvent(AFTER_INIT_EVENT, null);
+        fireLifecycleEvent(AFTER_INIT_EVENT, this);
         state = LifecycleState.INITIALIZED;
     }
 
@@ -26,9 +26,9 @@ public abstract class LifecycleBase implements Lifecycle {
         if(state.after(LifecycleState.STARTING))
             throw new LifecycleException();
         state = LifecycleState.STARTING;
-        fireLifecycleEvent(BEFORE_START_EVENT, null);
+        fireLifecycleEvent(BEFORE_START_EVENT, this);
         startInternal();
-        fireLifecycleEvent(AFTER_START_EVENT, null);
+        fireLifecycleEvent(AFTER_START_EVENT, this);
         state = LifecycleState.STARTED;
     }
 
@@ -41,10 +41,10 @@ public abstract class LifecycleBase implements Lifecycle {
     public synchronized final void stop() throws LifecycleException {
         if(state.after(LifecycleState.STOPING))
             throw new LifecycleException();
-        state = LifecycleState.STARTING;
-        fireLifecycleEvent(BEFORE_STOP_EVENT, null);
+        state = LifecycleState.STOPING;
+        fireLifecycleEvent(BEFORE_STOP_EVENT, this);
         stopInternal();
-        fireLifecycleEvent(AFTER_STOP_EVENT, null);
+        fireLifecycleEvent(AFTER_STOP_EVENT, this);
         listeners.clear();
     }
 
@@ -56,9 +56,9 @@ public abstract class LifecycleBase implements Lifecycle {
     @Override
     public synchronized final void restart() throws LifecycleException {
         state = LifecycleState.RESTARTING;
-        fireLifecycleEvent(BEFORE_RESTART_EVENT, null);
+        fireLifecycleEvent(BEFORE_RESTART_EVENT, this);
         restartInternal();
-        fireLifecycleEvent(AFTER_RESTART_EVENT, null);
+        fireLifecycleEvent(AFTER_RESTART_EVENT, this);
     }
 
     /**

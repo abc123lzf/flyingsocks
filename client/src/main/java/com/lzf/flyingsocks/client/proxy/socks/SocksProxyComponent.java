@@ -3,6 +3,7 @@ package com.lzf.flyingsocks.client.proxy.socks;
 import com.lzf.flyingsocks.client.Client;
 import com.lzf.flyingsocks.client.proxy.ProxyComponent;
 
+import com.lzf.flyingsocks.client.proxy.ProxyRequest;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
@@ -12,17 +13,17 @@ import io.netty.util.ReferenceCountUtil;
 import java.util.*;
 import java.util.concurrent.*;
 
-public class SocksProxyComponent extends ProxyComponent<SocksProxyRequest> {
-
-    public SocksProxyComponent(Client client) {
-        super(client);
-    }
+public class SocksProxyComponent extends ProxyComponent {
 
     private EventLoopGroup nettyWorkerLoopGroup;
 
     private List<ClientMessageTransferTask> transferTaskList = new CopyOnWriteArrayList<>();
 
     private ExecutorService clientMessageProcessor;
+
+    public SocksProxyComponent(Client client) {
+        super(client);
+    }
 
     @Override
     protected void initInternal() {
@@ -63,25 +64,22 @@ public class SocksProxyComponent extends ProxyComponent<SocksProxyRequest> {
 
     /**
      * 将代理请求放入组件
+     * 这里重写了父类的pushProxyRequest方法，是为了将代理请求转发给ClientMessageTransferTask
      * @param request 代理请求
      */
     @Override
-    public void pushProxyRequest(SocksProxyRequest request) {
-        ClientMessageTransferTask task = transferTaskList.get(request.hashCode() % transferTaskList.size());
-        task.pushProxyRequest(request);
-        super.pushProxyRequest(request);
+    public void publish(ProxyRequest request) {
+        super.publish(request);
+        if(!super.needProxy(request.getHost())) {
+            ClientMessageTransferTask task = transferTaskList.get(request.hashCode() % transferTaskList.size());
+            task.pushProxyRequest((SocksProxyRequest) request);
+        }
     }
 
     /**
-     * 将代理消息放入组件
-     * @param request 代理请求
-     * @param buf 代理消息(代理内容)
-     * @return 是否添加成功
+     * 这个任务会不断地接收无需进行代理的代理请求(即直连模式)
+     * 并获取来自客户端的消息(ByteBuf对象)，然后将其转发给ServerChannel(目标服务器)。
      */
-    public void pushProxyMessage(SocksProxyRequest request, ByteBuf buf) {
-        request.getMessageQueue().offer(buf);
-    }
-
     private final class ClientMessageTransferTask implements Runnable {
         private final List<SocksProxyRequest> requests = new LinkedList<>();
         private final BlockingQueue<SocksProxyRequest> newRequestQueue = new LinkedBlockingQueue<>();
@@ -113,7 +111,7 @@ public class SocksProxyComponent extends ProxyComponent<SocksProxyRequest> {
 
                     BlockingQueue<ByteBuf> queue = req.getMessageQueue();
                     ByteBuf buf;
-                    try {
+                    try { //之所以采用循环是为了转发客户端请求时避免消息不完整
                         while ((buf = queue.poll(1, TimeUnit.MILLISECONDS)) != null) {
                             sc.writeAndFlush(buf);
                         }
@@ -122,6 +120,7 @@ public class SocksProxyComponent extends ProxyComponent<SocksProxyRequest> {
                     }
                 }
 
+                //接收新的代理请求
                 SocksProxyRequest newRequest;
                 try {
                     while ((newRequest = newRequestQueue.poll(2, TimeUnit.MILLISECONDS)) != null) {
@@ -148,14 +147,5 @@ public class SocksProxyComponent extends ProxyComponent<SocksProxyRequest> {
         private void pushProxyRequest(SocksProxyRequest request) {
             newRequestQueue.offer(request);
         }
-    }
-
-    /**
-     * 创建单线程线程池
-     * @return 单线程线程池实例
-     */
-    protected static ExecutorService constructSingleExecutor() {
-        return new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
-                new SynchronousQueue<>(), Executors.defaultThreadFactory(), new ThreadPoolExecutor.DiscardPolicy());
     }
 }

@@ -2,6 +2,8 @@ package com.lzf.flyingsocks.client.proxy.socks;
 
 import com.lzf.flyingsocks.AbstractComponent;
 
+import com.lzf.flyingsocks.client.proxy.ProxyRequest;
+import com.lzf.flyingsocks.client.proxy.ProxyRequestSubscriber;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
@@ -11,8 +13,7 @@ import java.util.concurrent.*;
 
 public final class SocksSenderComponent extends AbstractComponent<SocksProxyComponent> {
 
-    private ExecutorService requestQueuePoller;
-
+    //private ExecutorService requestQueuePoller;
     private Bootstrap connectBootstrap;
 
     SocksSenderComponent(SocksProxyComponent proxyComponent) {
@@ -21,7 +22,7 @@ public final class SocksSenderComponent extends AbstractComponent<SocksProxyComp
 
     @Override
     protected void initInternal() {
-        requestQueuePoller = SocksProxyComponent.constructSingleExecutor();
+        //requestQueuePoller = SocksProxyComponent.constructSingleExecutor();
 
         connectBootstrap = new Bootstrap();
         connectBootstrap.group(getParentComponent().getWorkerEventLoopGroup())
@@ -33,7 +34,8 @@ public final class SocksSenderComponent extends AbstractComponent<SocksProxyComp
 
     @Override
     protected void startInternal() {
-        requestQueuePoller.submit(() -> {
+        getParentComponent().registerSubscriber(new SocksProxyRequestSubscriber());
+        /*requestQueuePoller.submit(() -> {
            while (true) {
                try {
                    SocksProxyRequest request = getParentComponent().pollProxyRequest(false);
@@ -58,38 +60,54 @@ public final class SocksSenderComponent extends AbstractComponent<SocksProxyComp
                    return;
                }
            }
-        });
+        });*/
     }
 
-    @Override
-    protected void stopInternal() {
-        requestQueuePoller.shutdown();
-    }
+    private final class SocksProxyRequestSubscriber implements ProxyRequestSubscriber {
+        @Override
+        public void receive(ProxyRequest req) {
+            SocksProxyRequest request = (SocksProxyRequest) req;
+            String host = request.getHost();
+            int port = request.getPort();
 
-    /**
-     * 连接监听器
-     */
-    private final class ConnectListener implements ChannelFutureListener {
-        private final SocksProxyRequest request;
+            if(log.isTraceEnabled())
+                log.trace("connect to server {}:{} established...", host, port);
 
-        private ConnectListener(SocksProxyRequest request) {
-            this.request = request;
+            Bootstrap b = connectBootstrap.clone();
+            b.handler(new ChannelInitializer<SocketChannel>() {
+                @Override
+                protected void initChannel(SocketChannel ch) {
+                    ch.pipeline().addFirst(new DirectConnectHandler(request));
+                }
+            });
+
+            b.connect(host, port).addListener((ChannelFuture f) -> {
+                if(!f.isSuccess()){
+                    if(log.isWarnEnabled())
+                        log.warn("connect establish failure, from " + request.getHost() + ":" + request.getPort(), f.cause());
+                    request.getClientChannel().close();
+                    f.channel().close();
+                } else {
+                    if(log.isTraceEnabled())
+                        log.trace("connect establish success, from {}:{}", request.getHost(), request.getPort());
+                    request.setServerChannel(f.channel());
+                }
+            });
         }
 
         @Override
-        public void operationComplete(ChannelFuture channelFuture) {
-            if(!channelFuture.isSuccess()){
-                if(log.isWarnEnabled())
-                    log.warn("connect establish failure, from " + request.getHost() + ":" + request.getPort(), channelFuture.cause());
-                request.getClientChannel().close();
-                channelFuture.channel().close();
-            } else {
-                if(log.isTraceEnabled())
-                    log.trace("connect establish success, from {}:{}", request.getHost(), request.getPort());
-                request.setServerChannel(channelFuture.channel());
-            }
+        public boolean receiveNeedProxy() {
+            return false;
+        }
 
-            channelFuture.removeListener(this);
+        @Override
+        public boolean receiveNeedlessProxy() {
+            return true;
+        }
+
+        @Override
+        public Class<? extends ProxyRequest> requestType() {
+            return SocksProxyRequest.class;
         }
     }
 

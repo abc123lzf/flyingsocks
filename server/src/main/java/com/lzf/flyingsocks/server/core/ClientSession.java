@@ -31,6 +31,8 @@ public class ClientSession extends AbstractSession implements Session {
     private final AtomicLong traffic = new AtomicLong(0);
 
 
+
+
     public ClientSession(Channel channel) {
         super((SocketChannel) channel);
     }

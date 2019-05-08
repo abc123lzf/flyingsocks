@@ -2,6 +2,10 @@ package com.lzf.flyingsocks;
 
 import java.io.Serializable;
 
+/**
+ * 表示一个配置对象，需要和ConfigManager搭配使用
+ * @see com.lzf.flyingsocks.ConfigManager
+ */
 public interface Config extends Named, Serializable {
 
     /**
@@ -29,4 +33,20 @@ public interface Config extends Named, Serializable {
      * 初始化配置
      */
     void initialize() throws ConfigInitializationException;
+
+    /**
+     * @return 该配置是否支持保存
+     */
+    default boolean canSave() {
+        return false;
+    }
+
+    /**
+     * 保存配置
+     */
+    default void save() {
+        throw new UnsupportedOperationException("Config " + getName() + " at ConfigManager " +
+                configManager().getName() + " NOT support save.");
+    }
+
 }

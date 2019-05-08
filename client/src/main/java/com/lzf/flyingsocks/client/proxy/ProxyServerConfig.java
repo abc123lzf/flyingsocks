@@ -29,12 +29,21 @@ public class ProxyServerConfig extends AbstractConfig {
 
     @Override
     protected void initInternal() throws ConfigInitializationException {
-        InputStream is;
+        InputStream is = null;
         try {
             is = configManager.loadResource(DEFAULT_CONFIG_PATH);
         } catch (IOException e) {
+            try {
+                if(is != null)
+                    is.close();
+            } catch (IOException ignore) {
+                //IGNORE
+            }
             throw new ConfigInitializationException(e);
         }
+
+        if(is == null)
+            return;
 
         byte[] b = new byte[1024 * 500];
         int size;
