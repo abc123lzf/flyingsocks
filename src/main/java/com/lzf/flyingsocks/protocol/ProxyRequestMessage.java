@@ -12,7 +12,7 @@ import java.nio.charset.Charset;
  * |  (2 Bytes)   |           |(2 Bytes)|      | (4 Bytes)| (4 Bytes) |       Content      |
  * +--------------+-----------+---------+------+----------+-----------+--------------------+
  */
-public class ProxyRequestMessage extends ProxyMessage implements Message {
+public class ProxyRequestMessage extends ProxyMessage implements Message, Cloneable {
 
     static final Charset HOST_ENCODING = Charset.forName("Unicode");
 
@@ -119,6 +119,13 @@ public class ProxyRequestMessage extends ProxyMessage implements Message {
         } catch (IndexOutOfBoundsException e) {
             throw new SerializationException("Illegal ProxyRequestMessage", e);
         }
+    }
+
+    @Override
+    public ProxyRequestMessage clone() throws CloneNotSupportedException {
+        ProxyRequestMessage obj = (ProxyRequestMessage) super.clone();
+        obj.setMessage(message.copy());
+        return obj;
     }
 
     @Override

@@ -33,4 +33,8 @@ public class StandardClient extends TopLevelComponent implements Client {
         throw new ComponentException("can not restart client");
     }
 
+    @Override
+    public ConfigManager<?> getConfigManager() {
+        return super.getConfigManager();
+    }
 }

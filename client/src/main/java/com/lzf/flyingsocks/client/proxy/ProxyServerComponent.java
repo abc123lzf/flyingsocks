@@ -12,9 +12,9 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.SslHandler;
 
 import javax.net.ssl.TrustManagerFactory;
 import java.io.InputStream;
@@ -27,8 +27,8 @@ import java.util.concurrent.*;
  * 例如：若需要连接多个flyingsocks服务器实现负载均衡，则需要多个ProxyServerComponent对象
  *
  */
-public class ProxyServerComponent extends AbstractComponent<ProxyComponent> {
-    private static final int DEFAULT_PROCESSOR_THREAD = 4;
+public class ProxyServerComponent extends AbstractComponent<ProxyComponent> implements ProxyRequestSubscriber {
+    private static final int DEFAULT_PROCESSOR_THREAD = 1;
 
     //该服务器节点配置信息
     private final ProxyServerConfig.Node config;
@@ -53,6 +53,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> {
 
     //与flyingsocks服务器会话对象
     private volatile ProxyServerSession proxyServerSession;
+
+    private final BlockingQueue<ProxyRequest> proxyRequestQueue = new LinkedBlockingQueue<>();
 
     //活跃的代理请求Map
     private final Map<String, ProxyRequest> activeProxyRequestMap = new ConcurrentHashMap<>(512);
@@ -89,7 +91,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> {
                     @Override
                     protected void initChannel(SocketChannel ch) {
                         ChannelPipeline cp = ch.pipeline();
-                        cp.addLast(new SslHandler(sslContext.newEngine(ch.alloc())));
+                        //cp.addLast(new SslHandler(sslContext.newEngine(ch.alloc())));
                         cp.addLast(new InitialHandler());
                     }
                 });
@@ -113,6 +115,21 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> {
 
         if(active)
             getParentComponent().addActiveProxyServer(this);
+    }
+
+    @Override
+    public boolean receiveNeedProxy() {
+        return true;
+    }
+
+    @Override
+    public boolean receiveNeedlessProxy() {
+        return false;
+    }
+
+    @Override
+    public Class<? extends ProxyRequest> requestType() {
+        return ProxyRequest.class;
     }
 
     private void doConnect(boolean sync) {
@@ -140,6 +157,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> {
                     clientMessageProcessor.submit(new ClientMessageTransferTask());
                 }
 
+                getParentComponent().registerSubscriber(this);
             } else {
                 Throwable t = future.cause();
                 if (log.isWarnEnabled())
@@ -201,7 +219,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> {
     }
 
     private synchronized void afterChannelInactive() {
+        //FIXME 断线重连有问题
         log.warn("AfterChannelInactive");
+        getParentComponent().removeSubscriber(this);
         active = false;
         clientMessageProcessor.shutdownNow();
         loopGroup.shutdownGracefully();
@@ -253,7 +273,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> {
                 try {
                     DelimiterMessage dmsg = new DelimiterMessage(msg);
                     byte[] b = new byte[DelimiterMessage.DEFAULT_SIZE];
-                    dmsg.getDelimiter().readBytes(b);
+                    ByteBuf dbuf = dmsg.getDelimiter();
+                    dbuf.copy().readBytes(b);
 
                     byte[] rb = proxyServerSession.getDelimiter();
 
@@ -267,7 +288,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> {
                     }
 
                     ctx.pipeline().remove(this)
-                            .addLast(new DelimiterOutboundHandler()).addLast(new AuthHandler());
+                            .addLast(new DelimiterBasedFrameDecoder(102400, dbuf.copy()))
+                            .addLast(new DelimiterOutboundHandler())
+                            .addLast(new AuthHandler());
 
                 } catch (SerializationException e) {
                     if(log.isWarnEnabled())
@@ -373,7 +396,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> {
                         return;
                     Channel cc;
                     if((cc = req.getClientChannel()).isActive()) {
-                        cc.writeAndFlush(req.getClientMessage());
+                        cc.writeAndFlush(resp.getMessage());
                     }
                 }
 
@@ -388,42 +411,15 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> {
         }
     }
 
+    @Override
+    public void receive(ProxyRequest request) {
+        proxyRequestQueue.add(request);
+        activeProxyRequestMap.put(request.getClientChannel().id().asLongText(), request);
+    }
 
-    private final class ClientMessageTransferTask implements Runnable, ProxyRequestSubscriber {
+
+    private final class ClientMessageTransferTask implements Runnable{
         private final List<ProxyRequest> requests = new LinkedList<>();
-        private final List<ProxyRequest> tmpList = new ArrayList<>(50);
-
-        @Override
-        public void receive(ProxyRequest request) {
-            if(taskWaitLatch == null || taskWaitLatch.getCount() > 0)
-                return;
-
-            if(request.sureMessageOnlyOne()) {
-                ByteBuf buf = request.getClientMessage();
-                sendToProxyServer(request, buf);
-            } else {
-                synchronized (tmpList) {
-                    tmpList.add(request);
-                }
-            }
-
-            activeProxyRequestMap.put(request.getClientChannel().id().asLongText(), request);
-        }
-
-        @Override
-        public boolean receiveNeedProxy() {
-            return true;
-        }
-
-        @Override
-        public boolean receiveNeedlessProxy() {
-            return false;
-        }
-
-        @Override
-        public Class<? extends ProxyRequest> requestType() {
-            return ProxyRequest.class;
-        }
 
         @Override
         public void run() {
@@ -432,39 +428,58 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> {
             } catch (InterruptedException e) {
                 return;
             }
+
+            if(log.isTraceEnabled())
+                log.trace("Server:{} ClientMessageTransferTask start", config.getHost());
+
             Thread t = Thread.currentThread();
+            //begin:
             while(!t.isInterrupted()) {
-                ListIterator<ProxyRequest> it = requests.listIterator();
-                while(it.hasNext()) {
-                    ProxyRequest req = it.next();
-                    Channel cc = req.getClientChannel();
-                    if(!cc.isActive()) {
-                        it.remove();
-                        activeProxyRequestMap.remove(req.getClientChannel().id().asLongText());
-                        continue;
+                try {
+                    ProxyRequest pr;
+                    try {
+                        while ((pr = proxyRequestQueue.poll(1, TimeUnit.MILLISECONDS)) != null) {
+                        /*if(pr.sureMessageOnlyOne()) {
+                            sendToProxyServer(pr, pr.getClientMessage());
+                            continue begin;
+                        }*/
+                            requests.add(pr);
+                        }
+                    } catch (InterruptedException e) {
+                        break;
                     }
 
-                    boolean isWrite = false;
-                    CompositeByteBuf buf = Unpooled.compositeBuffer();
-                    ByteBuf b;
-                    while((b = req.getClientMessage()) != null) {
-                        buf.addComponent(b);
-                        isWrite = true;
+                    ListIterator<ProxyRequest> it = requests.listIterator();
+                    while (it.hasNext()) {
+                        ProxyRequest req = it.next();
+                        Channel cc = req.getClientChannel();
+                        if (!cc.isActive()) {
+                            it.remove();
+                            activeProxyRequestMap.remove(req.getClientChannel().id().asLongText());
+                            continue;
+                        }
+
+                        boolean isWrite = false;
+                        CompositeByteBuf buf = Unpooled.compositeBuffer();
+                        ByteBuf b;
+                        while ((b = req.getClientMessage()) != null) {
+                            buf.addComponent(true, b);
+                            isWrite = true;
+                        }
+
+                        if (isWrite) {
+                            sendToProxyServer(req, buf);
+                        }
                     }
-
-                    if(isWrite)
-                        sendToProxyServer(req, buf);
-                }
-
-                synchronized (tmpList) {
-                    requests.addAll(tmpList);
-                    tmpList.clear();
+                } catch (Exception e) {
+                    log.error("Exception cause at ClientMessageTransferTask", e);
                 }
             }
 
             for(ProxyRequest request : requests) {
                 request.getClientChannel().close();
             }
+
         }
 
         private void sendToProxyServer(ProxyRequest request, ByteBuf buf) {
@@ -472,6 +487,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> {
             prm.setHost(request.getHost());
             prm.setPort(request.getPort());
             prm.setMessage(buf);
+
             try {
                 proxyServerSession.socketChannel().writeAndFlush(prm.serialize());
             } catch (SerializationException e) {

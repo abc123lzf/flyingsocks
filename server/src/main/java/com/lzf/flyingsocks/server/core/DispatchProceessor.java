@@ -86,15 +86,29 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
         }
     }
 
-    private final class DispatcherTask implements Runnable {
+    private final class DispatcherTask implements Runnable, ProxyTaskSubscriber {
         private final Map<ClientSession, ReturnableSet<ActiveConnection>> activeConnectionMap = new LinkedHashMap<>(64);
+        private final BlockingQueue<ProxyTask> taskQueue = new LinkedBlockingQueue<>();
+
+        private DispatcherTask() {
+            parent.registerSubscriber(this);
+        }
 
         @Override
         public void run() {
             try {
                 Thread thread = Thread.currentThread();
+                int count = 0;
                 while (!thread.isInterrupted()) {
-                    ProxyTask task = getParentComponent().pollProxyTask();
+                    ProxyTask task = taskQueue.poll(2500, TimeUnit.MILLISECONDS);
+                    if(task == null) {
+                        checkoutConnection();
+                        continue;
+                    }
+
+                    if(log.isTraceEnabled())
+                        log.trace("Receive ProxyTask at DispatcherTask thread");
+
                     try {
                         ProxyRequestMessage prm = task.getProxyRequestMessage();
                         ClientSession cs = task.getSession();
@@ -104,12 +118,15 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
                         ReturnableSet<ActiveConnection> set = activeConnectionMap.computeIfAbsent(cs, key -> new ReturnableLinkedHashSet<>(128));
 
-                        ActiveConnection conn = new ActiveConnection(prm.getHost(), prm.getPort(), prm.getChannelId());
+                        String host = prm.getHost();
+                        int port = prm.getPort();
+
+                        ActiveConnection conn = new ActiveConnection(host, port, prm.getChannelId());
                         ActiveConnection sconn;
                         if((sconn = set.getIfContains(conn)) != null)
                             conn = sconn;
                         if(sconn != null) {
-
+                            log.debug("find same connection");
                             ChannelFuture f = conn.future;
                             Channel c = f.channel();
                             if(f.isDone() && f.isSuccess()) { //如果连接成功
@@ -125,6 +142,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                                     set.remove(conn);
                                 }
                             } else if(!f.isDone()) { //如果正处于连接状态
+                                log.debug("Add msg queue");
                                 conn.msgQueue.add(prm.getMessage());
                             } else { //如果连接建立失败
                                 set.remove(conn);
@@ -138,8 +156,10 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                                 }
                             });
 
-                            conn.future = b.connect(prm.getHost(), prm.getPort()).addListener(future -> {
-                                if (!future.isSuccess()) {
+                            conn.future = b.connect(host, port).addListener(future -> {
+                                if (!future.isSuccess()) { //如果连接没有建立成功，那么向客户端返回一个错误的消息
+                                    if(log.isWarnEnabled())
+                                        log.warn("Can not connect to {}:{}", host, port);
                                     ProxyResponseMessage resp = new ProxyResponseMessage(prm.getChannelId());
                                     resp.setState(ProxyResponseMessage.State.FAILURE);
                                     try {
@@ -148,13 +168,16 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                                         if (log.isTraceEnabled())
                                             log.trace("Client from {} has disconnect.", cs.remoteAddress().getAddress());
                                     }
+                                } else {
+                                    if(log.isTraceEnabled())
+                                        log.trace("Connect to {}:{} success", host, port);
                                 }
                             });
 
                             set.add(conn);
                         }
 
-                        clearUnactiveConnection();
+                        checkoutConnection();
 
                     } catch (Exception e) {
                         if(log.isWarnEnabled())
@@ -164,22 +187,39 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
             } catch (InterruptedException e) {
                 if (log.isInfoEnabled())
                     log.info("RequestReceiver interrupt, from {}", getName());
+            } finally {
+                parent.removeSubscriber(this);
             }
         }
 
+        @Override
+        public void receive(ProxyTask task) {
+            taskQueue.add(task);
+        }
+
         /**
-         * 清除废弃的ActiveConnection对象
+         * 检查ActiveConnection对象
          */
-        private void clearUnactiveConnection() {
+        private void checkoutConnection() {
             Iterator<Map.Entry<ClientSession, ReturnableSet<ActiveConnection>>> it = activeConnectionMap.entrySet().iterator();
             it.forEachRemaining(e -> {
-                if(!e.getKey().isActive())
+                if(!e.getKey().isActive()) //如果客户端本身连接已经不活跃了，那么移除这个ClientSession
                     it.remove();
                 else {
                     Iterator<ActiveConnection> sit = e.getValue().iterator();
                     sit.forEachRemaining(ac -> {
-                        if (ac.future.isDone() && !ac.future.channel().isActive())
-                            sit.remove();
+                        //如果已经建立过连接但是该连接已经不活跃了，那么清除这个ActiveConnection
+                        if (ac.future.isDone()) {
+                             if(!ac.future.channel().isActive()) {
+                                 sit.remove();
+                             } else {
+                                 Channel ch = ac.future.channel();
+                                 ByteBuf buf;
+                                 while((buf = ac.msgQueue.poll()) != null)
+                                     ch.write(buf);
+                                 ch.flush();
+                             }
+                        }
                     });
                 }
             });
@@ -189,7 +229,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
     /**
      * 将来自客户端的请求内容转发给目标服务器
      */
-    private static class DispatchHandler extends SimpleChannelInboundHandler<ByteBuf> {
+    private class DispatchHandler extends SimpleChannelInboundHandler<ByteBuf> {
         private final ProxyTask proxyTask;
 
         private DispatchHandler(ProxyTask task) {
@@ -198,18 +238,33 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
         }
 
         @Override
+        public void channelInactive(ChannelHandlerContext ctx) {
+            if(log.isTraceEnabled())
+                log.trace("Connection close by {}:{}", proxyTask.getProxyRequestMessage().getHost(),
+                        proxyTask.getProxyRequestMessage().getPort());
+        }
+
+        @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
-            ctx.writeAndFlush(proxyTask.getProxyRequestMessage().getMessage());
+            ByteBuf buf = proxyTask.getProxyRequestMessage().getMessage();
+            ctx.writeAndFlush(buf);
             super.channelActive(ctx);
         }
 
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
+            if(log.isTraceEnabled())
+                log.trace("Receive from {}:{} response.", proxyTask.getProxyRequestMessage().getHost(),
+                        proxyTask.getProxyRequestMessage().getPort());
+
             ProxyResponseMessage prm = new ProxyResponseMessage(proxyTask.getProxyRequestMessage().getChannelId());
             prm.setState(ProxyResponseMessage.State.SUCCESS);
             prm.setMessage(msg);
-
-            proxyTask.getSession().writeAndFlushMessage(prm.serialize());
+            try {
+                proxyTask.getSession().writeAndFlushMessage(prm.serialize());
+            } catch (IllegalStateException e) {
+                ctx.close();
+            }
         }
     }
 }

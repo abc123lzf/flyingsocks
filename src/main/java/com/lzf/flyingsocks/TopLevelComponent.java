@@ -102,7 +102,7 @@ public abstract class TopLevelComponent extends AbstractComponent<VoidComponent>
         }
     }
 
-    protected final ConfigManager<?> getConfigManager() {
+    protected ConfigManager<?> getConfigManager() {
         return configManager;
     }
 }

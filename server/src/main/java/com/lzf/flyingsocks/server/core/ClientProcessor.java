@@ -11,21 +11,17 @@ import com.lzf.flyingsocks.server.ServerConfig;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelPipeline;
-import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.channel.*;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.codec.FixedLengthFrameDecoder;
-import io.netty.handler.ssl.SslHandler;
-
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import java.io.InputStream;
 import java.security.KeyStore;
+import java.util.Objects;
 
 
 public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
@@ -35,7 +31,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
     private SSLContext sslContext;
 
     public ClientProcessor(ProxyProcessor proxyProcessor) {
-        super("ClientProcessor", proxyProcessor);
+        super("ClientProcessor", Objects.requireNonNull(proxyProcessor));
     }
 
     @Override
@@ -64,7 +60,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                 @Override
                 protected void initChannel(SocketChannel ch) {
                     ChannelPipeline cp = ch.pipeline();
-                    cp.addLast(new SslHandler(sslEngine));
+                    //cp.addLast(new SslHandler(sslEngine));
                     cp.addLast(getParentComponent().clientSessionHandler());
                     cp.addLast(new FixedLengthFrameDecoder(DelimiterMessage.DEFAULT_SIZE));
                     cp.addLast(new InitialHandler());
@@ -109,18 +105,43 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             keyBuf.writeBytes(key);
             ctx.writeAndFlush(keyBuf.copy());
 
+            cp.addLast(new DelimiterOutboundHandler(keyBuf));
             cp.addLast(new DelimiterBasedFrameDecoder(102400, keyBuf));
             cp.addLast(new AuthHandler(state));
         }
 
     }
 
+    private final class DelimiterOutboundHandler extends ChannelOutboundHandlerAdapter {
+        private final ByteBuf delimiter;
+
+        private DelimiterOutboundHandler(ByteBuf delimiter) {
+            if(delimiter.readableBytes() != DelimiterMessage.DEFAULT_SIZE)
+                throw new IllegalArgumentException("Illegal delimiter ByteBuf, request delimiter length is " + DelimiterMessage.DEFAULT_SIZE);
+            this.delimiter = delimiter.copy();
+        }
+
+        @Override
+        public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+            if(msg instanceof ByteBuf) {
+                ctx.write(msg, promise);
+                ctx.write(delimiter.copy(), promise);
+            } else {
+                ctx.write(msg, promise);
+            }
+        }
+    }
+
+
+    /**
+     * 负责处理来自客户端的认证消息
+     */
     private final class AuthHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
         private final ClientSession clientSession;
 
         private AuthHandler(ClientSession clientSession) {
-            this.clientSession = clientSession;
+            this.clientSession = Objects.requireNonNull(clientSession, "ClientSession must not be null");
         }
 
         @Override
@@ -148,8 +169,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                 }
             }
 
-            ClientSession cs = getParentComponent().localClientMap.get().get(ctx.channel());
-            cs.passAuth();
+            clientSession.passAuth();
 
             ChannelPipeline cp = ctx.pipeline();
             cp.remove(this).remove(DelimiterBasedFrameDecoder.class);
@@ -159,11 +179,18 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             cp.addLast(new DelimiterBasedFrameDecoder(1024 * 1000 * 50,
                     Unpooled.buffer(DelimiterMessage.DEFAULT_SIZE).writeBytes(b)));
 
-            cp.addLast(new ProxyHandler());
+            cp.addLast(new ProxyHandler(clientSession));
         }
     }
 
     private final class ProxyHandler extends SimpleChannelInboundHandler<ByteBuf> {
+
+        private final ClientSession clientSession;
+
+        private ProxyHandler(ClientSession cs) {
+            this.clientSession = Objects.requireNonNull(cs, "ClientSession must not be null");
+        }
+
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, ByteBuf buf) {
             ProxyRequestMessage msg;
@@ -176,7 +203,12 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                 return;
             }
 
+            if(log.isTraceEnabled())
+                log.trace("Receiver client ProxyRequest from {}", clientSession.remoteAddress().getAddress().getHostAddress());
 
+            ProxyTask task = new ProxyTask(msg, clientSession);
+            //发布代理任务
+            getParentComponent().publish(task);
         }
     }
 }

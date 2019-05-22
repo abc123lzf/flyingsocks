@@ -2,15 +2,20 @@ package com.lzf.flyingsocks.server.core;
 
 import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
 
-class ProxyTask {
+import java.util.Objects;
+
+/**
+ * 代理任务对象
+ */
+class ProxyTask implements Cloneable {
 
     private final ProxyRequestMessage proxyRequestMessage;
 
     private final ClientSession session;
 
     ProxyTask(ProxyRequestMessage proxyRequestMessage, ClientSession clientSession) {
-        this.proxyRequestMessage = proxyRequestMessage;
-        this.session = clientSession;
+        this.proxyRequestMessage = Objects.requireNonNull(proxyRequestMessage, "ProxyRequestMessage must not be null");
+        this.session = Objects.requireNonNull(clientSession, "ClientSession must not be null");
     }
 
     ProxyRequestMessage getProxyRequestMessage() {
@@ -19,6 +24,11 @@ class ProxyTask {
 
     ClientSession getSession() {
         return session;
+    }
+
+    @Override @SuppressWarnings("CloneDoesntCallSuperClone")
+    public ProxyTask clone() throws CloneNotSupportedException {
+        return new ProxyTask((ProxyRequestMessage) proxyRequestMessage.clone(), session);
     }
 
     @Override

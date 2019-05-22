@@ -24,11 +24,6 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
     protected Channel clientChannel;
 
 
-    /**
-     * hashCode缓存
-     */
-    private int hashCode;
-
     protected ProxyRequest() {
     }
 
@@ -71,14 +66,16 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
 
     @Override
     public final boolean equals(Object obj) {
-        return this == obj;
+        ProxyRequest req;
+        return this == obj || (obj instanceof ProxyRequest &&
+                this.clientChannel.id().equals((req = (ProxyRequest)obj).clientChannel.id()) &&
+                this.host.equals(req.host) &&
+                this.port == req.port);
     }
 
     @Override
     public final int hashCode() {
-        if(hashCode == 0)
-            return hashCode = super.hashCode();
-        return hashCode;
+        return clientChannel.id().hashCode() ^ host.hashCode();
     }
 
     @Override

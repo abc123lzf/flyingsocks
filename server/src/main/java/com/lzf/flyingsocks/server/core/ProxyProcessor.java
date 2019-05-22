@@ -6,35 +6,51 @@ import com.lzf.flyingsocks.server.ServerConfig;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.util.concurrent.FastThreadLocal;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class ProxyProcessor extends AbstractComponent<Server> {
+public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTaskManager {
 
     private static final AtomicInteger ID_BUILDER = new AtomicInteger(0);
 
+    private final Logger log;
+
+    //ProxyProcessor ID
     private final int handlerId;
 
+    //活跃的ClientSession Map
     private final Map<Channel, ClientSession> activeClientMap = new ConcurrentHashMap<>();
 
+    //Boss线程
     private EventLoopGroup connectionReceiveWorker = new NioEventLoopGroup(1);
 
+    //Worker线程池
     private EventLoopGroup requestProcessWorker = new NioEventLoopGroup();
 
+    //绑定的端口
     private final int port;
 
+    //最大客户端数
     private final int maxClient;
 
+    //负责添加ClientSession的进站处理器
     private final ChannelInboundHandler clientSessionHandler = new ClientSessionHandler();
 
+    //配置信息
     private final ServerConfig.Node serverConfig;
 
-    private BlockingQueue<ProxyTask> proxyTaskQueue = new LinkedBlockingQueue<>();
+    //代理任务订阅者列表
+    private final List<ProxyTaskSubscriber> proxyTaskSubscribers = new CopyOnWriteArrayList<>();
 
     FastThreadLocal<Map<Channel, ClientSession>> localClientMap = new FastThreadLocal<Map<Channel, ClientSession>>() {
         @Override
@@ -43,12 +59,14 @@ public class ProxyProcessor extends AbstractComponent<Server> {
         }
     };
 
+
     public ProxyProcessor(Server server, ServerConfig.Node serverConfig) {
         super(serverConfig.name, server);
         this.handlerId = ID_BUILDER.incrementAndGet();
         this.port = serverConfig.port;
         this.maxClient = serverConfig.maxClient;
         this.serverConfig = serverConfig;
+        this.log = LoggerFactory.getLogger(String.format("ProxyProcessor [ID:%d Port:%d]", handlerId, port));
     }
 
     @Override
@@ -84,14 +102,6 @@ public class ProxyProcessor extends AbstractComponent<Server> {
         return maxClient;
     }
 
-    void pushProxyTask(ProxyTask proxyTask) throws InterruptedException {
-        proxyTaskQueue.put(proxyTask);
-    }
-
-    ProxyTask pollProxyTask() throws InterruptedException {
-        return proxyTaskQueue.take();
-    }
-
     /**
      * @return 连接请求处理线程池
      */
@@ -122,7 +132,47 @@ public class ProxyProcessor extends AbstractComponent<Server> {
         return activeClientMap.get(channel);
     }
 
+    @Override
+    public void registerSubscriber(ProxyTaskSubscriber subscriber) {
+        proxyTaskSubscribers.add(subscriber);
+        if(log.isInfoEnabled())
+            log.info("ProxyTaskSubscriber {} has been register in manager.", subscriber.toString());
+    }
+
+    @Override
+    public void removeSubscriber(ProxyTaskSubscriber subscriber) {
+        if(proxyTaskSubscribers.remove(subscriber)) {
+            if (log.isInfoEnabled())
+                log.info("ProxyTaskSubscriber {} has been remove from manager.", subscriber.toString());
+        } else if(log.isWarnEnabled()) {
+            log.warn("Remove failure, cause ProxyTaskSubscriber doesn't found in list.");
+        }
+    }
+
+    @Override
+    public void publish(ProxyTask task) {
+        if(proxyTaskSubscribers.size() == 0)
+            log.warn("No ProxyTaskSubscriber register.");
+
+        int count = 0;
+        for(ProxyTaskSubscriber subscriber : proxyTaskSubscribers) {
+            if(count == 0) {
+                subscriber.receive(task);
+            } else {
+                try {
+                    subscriber.receive((ProxyTask) task.clone());
+                } catch (CloneNotSupportedException e) {
+                    throw new IllegalStateException(e);
+                }
+            }
+
+            count++;
+        }
+    }
+
     private void removeClientSession(Channel channel) {
+        if(log.isInfoEnabled())
+            log.info("Client channel {} has been removed.", channel.id().asLongText());
         activeClientMap.remove(channel);
     }
 
@@ -179,6 +229,4 @@ public class ProxyProcessor extends AbstractComponent<Server> {
             ctx.fireChannelInactive();
         }
     }
-
-
 }

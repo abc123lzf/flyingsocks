@@ -62,11 +62,12 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
             buf.writeByte(h);
             buf.writeInt(message.readableBytes());
             buf.writeBytes(getMessage());
+
             return buf;
         } else {
             ByteBuf buf;
             if(message == null) {
-                buf = Unpooled.buffer(2 + cid.length + 1);
+                buf = Unpooled.buffer(2 + cid.length + 1 + 4);
             } else {
                 buf = Unpooled.buffer(2 + cid.length + 1 + 4 + message.readableBytes());
             }
@@ -78,6 +79,8 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
             if(message != null) {
                 buf.writeInt(message.readableBytes());
                 buf.writeBytes(getMessage());
+            } else {
+                buf.writeInt(0);
             }
 
             return buf;
@@ -100,14 +103,19 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
 
             ByteBuf msg;
             if(state == State.SUCCESS) {
-                msg = Unpooled.buffer(buf.readInt());
+                int len;
+                msg = Unpooled.buffer(len = buf.readInt());
+                System.out.println(String.format("cidlen:%d | type:%d | msglen: %d", cidlen, h, len));
                 buf.readBytes(msg);
-            } else {
-                if(buf.readableBytes() > 0) {
-                    msg = Unpooled.buffer(buf.readInt());
+            } else if(state == State.FAILURE) {
+                int len = buf.readInt();
+                if(len > 0) {
+                    msg = Unpooled.buffer(len);
                     buf.readBytes(msg);
-                }
-                msg = null;
+                } else
+                    msg = null;
+            } else {
+                throw new SerializationException("Unknown ProxyResponseMessage type " + h);
             }
 
             this.channelId = cid;

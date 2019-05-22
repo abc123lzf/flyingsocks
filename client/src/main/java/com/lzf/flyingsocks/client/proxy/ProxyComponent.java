@@ -12,18 +12,6 @@ import java.util.concurrent.*;
  */
 public abstract class ProxyComponent extends AbstractComponent<Client> implements ProxyRequestManager {
 
-    /*
-     * 该队列起到一个通知的作用，当客户端有代理请求时，会将这个代理请求放入队列。
-     * 此队列仅限放置无需进行代理的请求
-     */
-    //private final BlockingQueue<ProxyRequest> needlessProxyRequestQueue = new LinkedBlockingQueue<>();
-
-    /*
-     * 该队列起到一个通知的作用，当客户端有代理请求时，会将这个代理请求放入队列。
-     * 此队列仅限放置需要进行代理的请求
-     */
-    //private final BlockingQueue<ProxyRequest> needProxyRequestQueue = new LinkedBlockingQueue<>();
-
 
     private final List<ProxyRequestSubscriber> requestSubscribers = new CopyOnWriteArrayList<>();
 
@@ -75,31 +63,6 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
         super.initInternal();
     }
 
-    /*public void pushProxyRequest(ProxyRequest request) {
-        //根据PAC文件的配置自动选择代理模式，并且必须要持有连接成功的Flyingsocks服务器
-        request.setProxy(proxyAutoConfig.needProxy(request.getHost()) && activeProxyServers.size() > 0);
-        //确保拥有活跃的代理服务器连接，以免造成队列没有消费者的现象
-        if(request.needProxy())
-            needProxyRequestQueue.offer(request);
-        else
-            needlessProxyRequestQueue.offer(request);
-    }
-
-    @SuppressWarnings("unchecked")
-    public ProxyRequest pollProxyRequest(boolean proxy) throws InterruptedException {
-        if(proxy)
-            return needProxyRequestQueue.take();
-        else
-            return needlessProxyRequestQueue.take();
-    }
-
-    @SuppressWarnings("unchecked")
-    public ProxyRequest pollProxyRequest(boolean proxy ,long timeOut, TimeUnit timeUnit) throws InterruptedException {
-        if(proxy)
-            return needProxyRequestQueue.poll(timeOut, timeUnit);
-        else
-            return needlessProxyRequestQueue.poll(timeOut, timeUnit);
-    }*/
 
     @Override
     public void registerSubscriber(ProxyRequestSubscriber subscriber) {
@@ -113,25 +76,32 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
 
     @Override
     public void publish(ProxyRequest request) {
+        if(requestSubscribers.size() == 0)
+            log.warn("No RequestSubscriber found in manager");
         //根据PAC文件的配置自动选择代理模式
         boolean np = needProxy(request.getHost());
-        boolean isPub = false;
-        for(int i = 0; i < requestSubscribers.size(); i++) {
-            ProxyRequestSubscriber s = requestSubscribers.get(i);
-            if(request.getClass() == s.requestType() &&
-                    (s.receiveNeedProxy() && np || s.receiveNeedlessProxy() && !np)) {
-                if (!isPub) {
-                    s.receive(request);
-                    isPub = true;
+        boolean consume = false;
+        int count = 0;
+        for(ProxyRequestSubscriber sub : requestSubscribers) {
+            if(sub.requestType().isAssignableFrom(request.getClass()) &&
+                    (sub.receiveNeedProxy() && np || sub.receiveNeedlessProxy() && !np)) {
+                if(count == 0) {
+                    sub.receive(request);
                 } else {
                     try {
-                        s.receive((ProxyRequest) request.clone());
+                        sub.receive((ProxyRequest) request.clone());
                     } catch (CloneNotSupportedException e) {
                         throw new Error(e);
                     }
                 }
+
+                consume = true;
+                count++;
             }
         }
+
+        if(!consume && log.isWarnEnabled())
+            log.warn("ProxyRequest was not consume");
     }
 
     protected boolean needProxy(String host) {

@@ -9,11 +9,9 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import java.util.concurrent.*;
 
 public final class SocksSenderComponent extends AbstractComponent<SocksProxyComponent> {
 
-    //private ExecutorService requestQueuePoller;
     private Bootstrap connectBootstrap;
 
     SocksSenderComponent(SocksProxyComponent proxyComponent) {
@@ -22,8 +20,6 @@ public final class SocksSenderComponent extends AbstractComponent<SocksProxyComp
 
     @Override
     protected void initInternal() {
-        //requestQueuePoller = SocksProxyComponent.constructSingleExecutor();
-
         connectBootstrap = new Bootstrap();
         connectBootstrap.group(getParentComponent().getWorkerEventLoopGroup())
                 .channel(NioSocketChannel.class)
@@ -35,32 +31,6 @@ public final class SocksSenderComponent extends AbstractComponent<SocksProxyComp
     @Override
     protected void startInternal() {
         getParentComponent().registerSubscriber(new SocksProxyRequestSubscriber());
-        /*requestQueuePoller.submit(() -> {
-           while (true) {
-               try {
-                   SocksProxyRequest request = getParentComponent().pollProxyRequest(false);
-
-                   String host = request.getHost();
-                   int port = request.getPort();
-
-                   if(log.isTraceEnabled())
-                       log.trace("connect to server {}:{} established...", host, port);
-
-                   Bootstrap b = connectBootstrap.clone();
-                   b.handler(new ChannelInitializer<SocketChannel>() {
-                       @Override
-                       protected void initChannel(SocketChannel ch) {
-                           ch.pipeline().addFirst(new DirectConnectHandler(request));
-                       }
-                   });
-
-                   b.connect(host, port).addListener(new ConnectListener(request));
-
-               } catch (InterruptedException e) {
-                   return;
-               }
-           }
-        });*/
     }
 
     private final class SocksProxyRequestSubscriber implements ProxyRequestSubscriber {
@@ -156,7 +126,5 @@ public final class SocksSenderComponent extends AbstractComponent<SocksProxyComp
             ctx.fireChannelInactive();
             ctx.close();
         }
-
     }
-
 }

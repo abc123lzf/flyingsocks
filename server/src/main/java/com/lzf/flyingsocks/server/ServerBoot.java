@@ -4,9 +4,9 @@ import com.lzf.flyingsocks.ComponentException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Boot {
+public class ServerBoot {
 
-    private static final Logger log = LoggerFactory.getLogger(Boot.class);
+    private static final Logger log = LoggerFactory.getLogger(ServerBoot.class);
 
     public static void main(String[] args) {
         log.info("flyingsocks server v1.0 start...");

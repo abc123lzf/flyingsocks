@@ -33,7 +33,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     private static final int PROXY_PAC = 1;
     private static final int PROXY_GLOBAL = 2;
 
-    private int proxyMode = PROXY_GLOBAL;
+    private int proxyMode = PROXY_GLOBAL; //TODO 临时换成GLOBAL测试
 
     private final Set<String> proxySet = Collections.newSetFromMap(new ConcurrentHashMap<>());
 

@@ -4,8 +4,8 @@ import com.lzf.flyingsocks.ComponentException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class Boot {
-    private static final Logger log = LoggerFactory.getLogger(Boot.class);
+public final class ClientBoot {
+    private static final Logger log = LoggerFactory.getLogger(ClientBoot.class);
 
     public static void main(String[] args) {
         log.info("flyingsocks client v1.0 start...");
