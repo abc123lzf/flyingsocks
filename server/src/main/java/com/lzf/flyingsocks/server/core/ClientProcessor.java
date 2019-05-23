@@ -47,50 +47,51 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             case JKS:
                 provider = EncryptSupport.lookupProvider("JKS");
                 break;
+            case None:
+                provider = null;
+                break;
             default:
                 throw new ComponentException("Unsupport encrypt type");
         }
 
-        ChannelInboundHandler cih;
-        ChannelOutboundHandler coh;
+        if(provider != null) {
+            if (provider instanceof OpenSSLEncryptProvider) {
+                ConfigManager<?> manager = parent.getParentComponent().getConfigManager();
+                OpenSSLConfig cfg = new OpenSSLConfig(manager);
+                manager.registerConfig(cfg);
 
-        if(provider instanceof OpenSSLEncryptProvider) {
-            ConfigManager<?> manager = parent.getParentComponent().getConfigManager();
-            OpenSSLConfig cfg = new OpenSSLConfig(manager);
-            manager.registerConfig(cfg);
+                Map<String, Object> params = new HashMap<>();
+                params.put("client", false);
+                params.put("file.cert", cfg.openServerCertStream());
+                params.put("file.cert.root", cfg.openRootCertStream());
+                params.put("file.key", cfg.openKeyStream());
 
-            Map<String, Object> params = new HashMap<>();
-            params.put("client", false);
-            params.put("file.cert", cfg.openServerCertStream());
-            params.put("file.cert.root", cfg.openRootCertStream());
-            params.put("file.key", cfg.openKeyStream());
-
-            try {
-                cih = provider.decodeHandler(params);
-                if(provider.isInboundHandlerSameAsOutboundHandler())
-                    coh = (ChannelOutboundHandler) cih;
-                else
-                    coh = provider.encodeHandler(params);
-            } catch (Exception e) {
-                throw new ComponentException("Load OpenSSL Module occur a exception", e);
+                try {
+                    provider.initialize(params);
+                } catch (Exception e) {
+                    throw new ComponentException("Load OpenSSL Module occur a exception", e);
+                }
+            } else if (provider instanceof JksSSLEncryptProvider) {
+                throw new ComponentException("Unsupport JKS encrypt method");
+            } else {
+                throw new ComponentException("Unsupport other encrypt method");
             }
-        } else if(provider instanceof JksSSLEncryptProvider) {
-            throw new ComponentException("Unsupport JKS encrypt method");
-        } else {
-            throw new ComponentException("Unsupport other encrypt method");
         }
-
 
         ServerBootstrap boot = new ServerBootstrap();
         boot.group(getParentComponent().getConnectionReceiveWorker(), getParentComponent().getRequestProcessWorker())
             .channel(NioServerSocketChannel.class)
             .childHandler(new ChannelInitializer<SocketChannel>() {
                 @Override
-                protected void initChannel(SocketChannel ch) {
+                protected void initChannel(SocketChannel ch) throws Exception {
                     ChannelPipeline cp = ch.pipeline();
-                    if(cih != coh)
-                        cp.addLast(coh);
-                    cp.addLast(cih);
+                    Map<String, Object> m = new HashMap<>(2);
+                    m.put("alloc", ch.alloc());
+                    if(provider != null) {
+                        if(!provider.isInboundHandlerSameAsOutboundHandler())
+                            cp.addLast(provider.encodeHandler(m));
+                        cp.addLast(provider.decodeHandler(m));
+                    }
                     cp.addLast(getParentComponent().clientSessionHandler());
                     cp.addLast(new FixedLengthFrameDecoder(DelimiterMessage.DEFAULT_SIZE));
                     cp.addLast(new InitialHandler());

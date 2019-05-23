@@ -34,7 +34,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     private static final int PROXY_PAC = 1;
     private static final int PROXY_GLOBAL = 2;
 
-    private int proxyMode = PROXY_GLOBAL; //TODO 临时换成GLOBAL测试
+    private int proxyMode;
 
     private final Set<String> proxySet = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
@@ -95,6 +95,14 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
         } catch (IOException e) {
             throw new ConfigInitializationException(e);
         }
+    }
+
+    public int getProxyMode() {
+        return proxyMode;
+    }
+
+    public void setProxyMode(int proxyMode) {
+        this.proxyMode = proxyMode;
     }
 
     public boolean needProxy(String host) {

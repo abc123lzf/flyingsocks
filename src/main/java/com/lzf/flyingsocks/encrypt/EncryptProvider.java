@@ -13,6 +13,12 @@ import java.util.Map;
 public interface EncryptProvider extends Named {
 
     /**
+     * 初始化Provider
+     * @param params 初始化参数
+     */
+    void initialize(Map<String, Object> params) throws Exception;
+
+    /**
      * @return 返回decodeHandler方法和encodeHandler返回的是不是同一个类型
      */
     boolean isInboundHandlerSameAsOutboundHandler();

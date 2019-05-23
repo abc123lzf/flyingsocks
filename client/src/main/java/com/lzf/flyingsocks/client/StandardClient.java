@@ -12,6 +12,9 @@ public class StandardClient extends TopLevelComponent implements Client {
 
     @Override
     protected void initInternal() {
+        GlobalConfig cfg = new GlobalConfig(getConfigManager());
+        getConfigManager().registerConfig(cfg);
+
         addComponent(new SocksProxyComponent(this));
         addComponent(new ViewComponent(this));
         super.initInternal();

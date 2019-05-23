@@ -3,6 +3,8 @@ package com.lzf.flyingsocks.client.proxy;
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.ConfigManager;
+import com.lzf.flyingsocks.client.GlobalConfig;
+import com.lzf.flyingsocks.encrypt.EncryptProvider;
 import com.lzf.flyingsocks.encrypt.EncryptSupport;
 import com.lzf.flyingsocks.encrypt.OpenSSLEncryptProvider;
 import com.lzf.flyingsocks.protocol.*;
@@ -65,28 +67,24 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
     @Override
     protected void initInternal() {
-        ChannelHandler in, out;
+        EncryptProvider provider;
+        //目前仅支持OpenSSL加密和不加密(测试性质)
         if(config.getEncryptType() == ProxyServerConfig.EncryptType.NONE) {
-            in = null;
-            out = null;
+            provider = null;
         } else if(config.getEncryptType() == ProxyServerConfig.EncryptType.SSL) {
             ConfigManager<?> manager = parent.getParentComponent().getConfigManager();
-            OpenSSLConfig sslcfg = new OpenSSLConfig(manager);
+            OpenSSLConfig sslcfg = new OpenSSLConfig(manager, config.getHost());
             manager.registerConfig(sslcfg);
 
-            OpenSSLEncryptProvider provider = EncryptSupport.lookupProvider("OpenSSL", OpenSSLEncryptProvider.class);
+            provider = EncryptSupport.lookupProvider("OpenSSL", OpenSSLEncryptProvider.class);
             Map<String, Object> params = new HashMap<>();
             params.put("client", true);
-            params.put("file.cert", sslcfg.openClientCertStream());
+            //params.put("file.cert", sslcfg.openClientCertStream());
             params.put("file.cert.root", sslcfg.openRootCertStream());
-            params.put("file.key", sslcfg.openKeyStream());
+            //params.put("file.key", sslcfg.openKeyStream());
 
             try {
-                in = provider.decodeHandler(params);
-                if (provider.isInboundHandlerSameAsOutboundHandler())
-                    out = in;
-                else
-                    out = provider.encodeHandler(params);
+                provider.initialize(params);
             } catch (Exception e) {
                 throw new ComponentException(e);
             }
@@ -94,21 +92,25 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             throw new ComponentException("Unsupport encrypt type " + config.getEncryptType());
         }
 
+        GlobalConfig cfg = parent.getParentComponent().getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
+
         taskWaitLatch = new CountDownLatch(1);
 
         loopGroup = new NioEventLoopGroup(2);
         bootstrap = new Bootstrap().group(loopGroup)
                 .channel(NioSocketChannel.class)
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, cfg.getConnectionTimeout())
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
-                    protected void initChannel(SocketChannel ch) {
+                    protected void initChannel(SocketChannel ch) throws Exception {
                         ChannelPipeline cp = ch.pipeline();
-                        if(in != null && out != null) {
-                            if (out != in)
-                                cp.addLast(out);
-                            cp.addLast(in);
+                        Map<String, Object> m = new HashMap<>(2);
+                        m.put("alloc", ch.alloc());
+                        if(provider != null) {
+                            if(!provider.isInboundHandlerSameAsOutboundHandler())
+                                cp.addLast(provider.encodeHandler(m));
+                            cp.addLast(provider.decodeHandler(m));
                         }
                         cp.addLast(new InitialHandler());
                     }
@@ -438,7 +440,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     @Override
     public void receive(ProxyRequest request) {
         proxyRequestQueue.add(request);
-        activeProxyRequestMap.put(request.getClientChannel().id().asLongText(), request);
+        activeProxyRequestMap.put(request.getClientChannel().id().asShortText(), request);
     }
 
 
@@ -457,16 +459,16 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 log.trace("Server:{} ClientMessageTransferTask start", config.getHost());
 
             Thread t = Thread.currentThread();
-            //begin:
+            begin:
             while(!t.isInterrupted()) {
                 try {
                     ProxyRequest pr;
                     try {
                         while ((pr = proxyRequestQueue.poll(1, TimeUnit.MILLISECONDS)) != null) {
-                            /*if(pr.sureMessageOnlyOne()) {
+                            if(pr.sureMessageOnlyOne()) {
                                 sendToProxyServer(pr, pr.getClientMessage());
                                 continue begin;
-                            }*/
+                            }
                             requests.add(pr);
                         }
                     } catch (InterruptedException e) {
@@ -479,7 +481,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                         Channel cc = req.getClientChannel();
                         if (!cc.isActive()) {
                             it.remove();
-                            activeProxyRequestMap.remove(req.getClientChannel().id().asLongText());
+                            activeProxyRequestMap.remove(req.getClientChannel().id().asShortText());
                             continue;
                         }
 
@@ -507,7 +509,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         }
 
         private void sendToProxyServer(ProxyRequest request, ByteBuf buf) {
-            ProxyRequestMessage prm = new ProxyRequestMessage(request.getClientChannel().id().asLongText());
+            ProxyRequestMessage prm = new ProxyRequestMessage(request.getClientChannel().id().asShortText());
             prm.setHost(request.getHost());
             prm.setPort(request.getPort());
             prm.setMessage(buf);

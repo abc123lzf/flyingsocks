@@ -128,7 +128,7 @@ public class ServerConfig extends AbstractConfig implements Config {
     }
 
     public enum EncrtptType {
-        OpenSSL, JKS;
+        None, OpenSSL, JKS;
     }
 
     /**

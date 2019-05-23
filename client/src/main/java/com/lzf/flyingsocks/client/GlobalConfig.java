@@ -16,6 +16,8 @@ public class GlobalConfig extends AbstractConfig  {
 
     private boolean openGUI;
 
+    private int connectionTimeout;
+
     public GlobalConfig(ConfigManager<?> configManager) {
         super(configManager, NAME);
     }
@@ -29,6 +31,7 @@ public class GlobalConfig extends AbstractConfig  {
 
             JSONObject obj = JSON.parseObject(json);
             openGUI = obj.getBooleanValue("gui");
+            connectionTimeout = obj.getIntValue("connect-timeout");
 
         } catch (IOException e) {
             throw new ConfigInitializationException(e);
@@ -37,5 +40,9 @@ public class GlobalConfig extends AbstractConfig  {
 
     public boolean isOpenGUI() {
         return openGUI;
+    }
+
+    public int getConnectionTimeout() {
+        return connectionTimeout;
     }
 }

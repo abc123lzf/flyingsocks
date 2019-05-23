@@ -17,6 +17,15 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public abstract class TopLevelComponent extends AbstractComponent<VoidComponent> implements Environment {
 
+    static {
+        try {
+            //加载这个类以便支持‘classpath:’类型的URL
+            Class.forName("com.lzf.flyingsocks.url.ClasspathURLHandlerFactory");
+        } catch (ClassNotFoundException e) {
+            throw new ComponentException(e);
+        }
+    }
+
     /**
      * 保存系统环境变量，通过System.getenv()获取
      */
@@ -49,13 +58,6 @@ public abstract class TopLevelComponent extends AbstractComponent<VoidComponent>
 
     @Override
     protected void initInternal() {
-        try {
-            //加载这个类以便支持‘classpath:’类型的URL
-            Class.forName("com.lzf.flyingsocks.url.ClasspathURLHandlerFactory");
-        } catch (ClassNotFoundException e) {
-            throw new ComponentException(e);
-        }
-
         environmentVariableMap.putAll(System.getenv());
 
         for(Map.Entry<Object, Object> entry : System.getProperties().entrySet())

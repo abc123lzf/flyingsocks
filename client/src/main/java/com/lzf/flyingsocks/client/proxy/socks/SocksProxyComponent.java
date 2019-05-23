@@ -144,8 +144,8 @@ public class SocksProxyComponent extends ProxyComponent {
                 while ((buf = queue.poll(1, TimeUnit.MILLISECONDS)) != null) {
                     ReferenceCountUtil.release(buf);
                 }
-            } catch (InterruptedException e) {
-
+            } catch (InterruptedException ignore) {
+                // IGNORE
             }
         }
 

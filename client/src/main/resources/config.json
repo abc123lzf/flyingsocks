@@ -1,4 +1,5 @@
 {
+  "connect-timeout": 10000,
   "server": [
     {
       "host": "127.0.0.1",
@@ -21,10 +22,8 @@
       "encrypt": "None"
     }
   ],
-
   "pac": "GLOBAL",
   "gui": true,
-
   "socks": {
     "address": "0.0.0.0",
     "port": 1081,

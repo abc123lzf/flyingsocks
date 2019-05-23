@@ -14,6 +14,21 @@ import java.util.Map;
 public class OpenSSLEncryptProvider implements EncryptProvider {
     static final String NAME = "OpenSSL";
 
+    private volatile SslContext sslContext;
+
+    private boolean client;
+
+    private boolean initialize = false;
+
+    @Override
+    public synchronized void initialize(Map<String, Object> params) throws Exception {
+        if(initialize)
+            throw new IllegalStateException("OpenSSLEncryptProvider instance has been initialize");
+        client = (boolean)params.get("client");
+        sslContext = buildSSLContext(params);
+        initialize = true;
+    }
+
     @Override
     public boolean isInboundHandlerSameAsOutboundHandler() {
         return true;
@@ -21,35 +36,37 @@ public class OpenSSLEncryptProvider implements EncryptProvider {
 
     @Override
     public ChannelInboundHandler decodeHandler(Map<String, Object> params) throws Exception {
+        if(!initialize)
+            throw new IllegalStateException("OpenSSLEncryptProvider instance must be initial first !");
         return createSSLHandler(params);
     }
 
     @Override
     public ChannelOutboundHandler encodeHandler(Map<String, Object> params) throws Exception {
+        if(!initialize)
+            throw new IllegalStateException("OpenSSLEncryptProvider instance must be initial first !");
         return createSSLHandler(params);
     }
 
     private SslHandler createSSLHandler(Map<String, Object> params) throws Exception {
-        boolean client = (boolean) params.get("client");
+        if (params == null || params.get("alloc") == null)
+            return sslContext.newHandler(ByteBufAllocator.DEFAULT);
+        return sslContext.newHandler((ByteBufAllocator) params.get("alloc"));
+    }
+
+    private SslContext buildSSLContext(Map<String, Object> params) throws Exception {
         if(client) {
-            InputStream crt = (InputStream) params.get("file.cert");
-            InputStream key = (InputStream) params.get("file.key");
-            InputStream x509crt = (InputStream) params.get("file.cert.root");
-
-            SslContext ctx = SslContextBuilder.forClient().keyManager(crt, key)
-                    .trustManager(x509crt).build();
-
-            return ctx.newHandler((ByteBufAllocator) params.get("alloc"));
+            try (InputStream x509crt = (InputStream) params.get("file.cert.root")) {
+                return SslContextBuilder.forClient()
+                        .trustManager(x509crt).build();
+            }
         } else {
-            InputStream crt = (InputStream) params.get("file.cert");
-            InputStream key = (InputStream) params.get("file.key");
-            InputStream x509crt = (InputStream) params.get("file.cert.root");
-            SslContext ctx = SslContextBuilder.forServer(crt, key)
-                    .trustManager(x509crt).clientAuth(ClientAuth.REQUIRE).build();
-
-            if(params.get("alloc") == null)
-                return ctx.newHandler(ByteBufAllocator.DEFAULT);
-            return ctx.newHandler((ByteBufAllocator) params.get("alloc"));
+            try (InputStream crt = (InputStream) params.get("file.cert");
+                 InputStream key = (InputStream) params.get("file.key");
+                 InputStream x509crt = (InputStream) params.get("file.cert.root")) {
+                return SslContextBuilder.forServer(crt, key)
+                        .trustManager(x509crt).clientAuth(ClientAuth.NONE).build();
+            }
         }
     }
 

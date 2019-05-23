@@ -87,6 +87,16 @@ public class ProxyServerConfig extends AbstractConfig {
         return nodes.toArray(new Node[nodes.size()]);
     }
 
+    public void addProxyServerNode(Node node) {
+        nodes.add(node);
+        configManager.updateConfig(this);
+    }
+
+    public void removeProxyServerNode(Node node) {
+        nodes.remove(node);
+        configManager.updateConfig(this);
+    }
+
     public enum AuthType {
         SIMPLE, USER;
     }
@@ -94,6 +104,8 @@ public class ProxyServerConfig extends AbstractConfig {
     public enum EncryptType {
         NONE, SSL;
     }
+
+
 
     public static final class Node {
         private String host;

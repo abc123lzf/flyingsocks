@@ -20,11 +20,26 @@ public final class JksSSLEncryptProvider implements EncryptProvider {
 
     static final String NAME = "JKS";
 
+    private SSLEngine sslEngine;
+
+    private boolean initialize;
+
+    private boolean client;
+
     JksSSLEncryptProvider() { }
 
     @Override
     public String getName() {
         return NAME;
+    }
+
+    @Override
+    public synchronized void initialize(Map<String, Object> params) throws Exception {
+        if(initialize)
+            throw new IllegalStateException("JksEncryptProvider instance has been initialize");
+        client = (boolean)params.get("client");
+        sslEngine = buildSSLEngine(params);
+        initialize = true;
     }
 
     @Override
@@ -43,13 +58,15 @@ public final class JksSSLEncryptProvider implements EncryptProvider {
     }
 
     private SslHandler createSSLHandler(Map<String, Object> params) throws Exception {
+        return new SslHandler(sslEngine);
+    }
+
+    private SSLEngine buildSSLEngine(Map<String, Object> params) throws Exception {
         if(params == null)
             throw new NullPointerException("params should not be null.");
 
         if(!params.containsKey("password") || !params.containsKey("url") || !params.containsKey("client"))
             throw new IllegalArgumentException("Parameter key jksPass/jksUrl/isClient should not be null");
-
-        boolean cli = (boolean) params.get("client");
 
         char[] pass = ((String)params.get("password")).toCharArray();
 
@@ -62,10 +79,10 @@ public final class JksSSLEncryptProvider implements EncryptProvider {
             SSLContext context = SSLContext.getInstance("TLS");
             context.init(kmf.getKeyManagers(), null, null);
             SSLEngine sslEngine = context.createSSLEngine();
-            sslEngine.setUseClientMode(cli);
+            sslEngine.setUseClientMode(client);
             sslEngine.setNeedClientAuth(false);
 
-            return new SslHandler(sslEngine);
+            return sslEngine;
         }
     }
 }
