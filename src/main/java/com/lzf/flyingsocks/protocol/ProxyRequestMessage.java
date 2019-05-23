@@ -14,7 +14,7 @@ import java.nio.charset.Charset;
  */
 public class ProxyRequestMessage extends ProxyMessage implements Message, Cloneable {
 
-    static final Charset HOST_ENCODING = Charset.forName("Unicode");
+    private static final Charset HOST_ENCODING = Charset.forName("Unicode");
 
     /**
      * 代理主机名，例如www.google.com
@@ -35,11 +35,16 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
         super(buf);
     }
 
-
+    /**
+     * @return 代理目标主机名或者IP地址
+     */
     public String getHost() {
         return host;
     }
 
+    /**
+     * @return 代理目标主机的端口号
+     */
     public int getPort() {
         return port;
     }

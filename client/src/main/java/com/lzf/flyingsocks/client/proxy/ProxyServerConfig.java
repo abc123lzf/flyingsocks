@@ -76,12 +76,10 @@ public class ProxyServerConfig extends AbstractConfig {
                 authArg.put(key, v);
             }
 
-            String jksPath = o.getString("jks-path");
-            String jksPass = o.getString("jks-pass");
-
             boolean use = o.getBooleanValue("state");
+            EncryptType etype = EncryptType.valueOf(o.getString("encrypt").toUpperCase());
 
-            nodes.add(new Node(host, port, type, authArg, jksPath, jksPass, use));
+            nodes.add(new Node(host, port, type, etype, authArg, use));
         }
     }
 
@@ -89,12 +87,12 @@ public class ProxyServerConfig extends AbstractConfig {
         return nodes.toArray(new Node[nodes.size()]);
     }
 
-    public InputStream loadJksFile(Node node) throws IOException {
-        return configManager.loadResource(node.getJksPath());
-    }
-
     public enum AuthType {
         SIMPLE, USER;
+    }
+
+    public enum EncryptType {
+        NONE, SSL;
     }
 
     public static final class Node {
@@ -102,22 +100,20 @@ public class ProxyServerConfig extends AbstractConfig {
         private int port;
         private AuthType authType;
         private Map<String, String> authArgument = new HashMap<>(4);
-        private String jksPath;
-        private String jksPass;
+        private EncryptType encryptType;
 
         private boolean use;
 
         public Node() { }
 
-        public Node(String host, int port, AuthType authType, Map<String, String> authArgument,
-                    String jksPath, String jksPass, boolean use) {
+        public Node(String host, int port, AuthType authType, EncryptType type,
+                    Map<String, String> authArgument, boolean use) {
             this.host = host;
             this.port = port;
             this.authType = authType;
             this.authArgument = authArgument;
-            this.jksPath = jksPath;
-            this.jksPass = jksPass;
             this.use = use;
+            this.encryptType = type;
         }
 
         public String getHost() {
@@ -156,28 +152,20 @@ public class ProxyServerConfig extends AbstractConfig {
             this.authArgument = arg;
         }
 
-        public String getJksPath() {
-            return jksPath;
-        }
-
-        public void setJksPath(String jksPath) {
-            this.jksPath = jksPath;
-        }
-
-        public String getJksPass() {
-            return jksPass;
-        }
-
-        public void setJksPass(String jksPass) {
-            this.jksPass = jksPass;
-        }
-
         public boolean isUse() {
             return use;
         }
 
         public void setUse(boolean use) {
             this.use = use;
+        }
+
+        public EncryptType getEncryptType() {
+            return encryptType;
+        }
+
+        public void setEncryptType(EncryptType encryptType) {
+            this.encryptType = encryptType;
         }
     }
 }

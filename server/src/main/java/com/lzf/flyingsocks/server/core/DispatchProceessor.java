@@ -98,7 +98,6 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
         public void run() {
             try {
                 Thread thread = Thread.currentThread();
-                int count = 0;
                 while (!thread.isInterrupted()) {
                     ProxyTask task = taskQueue.poll(2500, TimeUnit.MILLISECONDS);
                     if(task == null) {

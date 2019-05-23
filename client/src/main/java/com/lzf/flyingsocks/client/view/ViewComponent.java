@@ -3,10 +3,12 @@ package com.lzf.flyingsocks.client.view;
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.client.Client;
+import com.lzf.flyingsocks.client.GlobalConfig;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.io.IOException;
+import java.util.Objects;
 
 public class ViewComponent extends AbstractComponent<Client> {
 
@@ -14,11 +16,15 @@ public class ViewComponent extends AbstractComponent<Client> {
     private TrayModule trayModule;
 
     public ViewComponent(Client client) {
-        super("ViewComponent", client);
+        super("ViewComponent", Objects.requireNonNull(client));
     }
 
     @Override
     protected void initInternal() {
+        GlobalConfig cfg = parent.getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
+        if(!cfg.isOpenGUI())
+            return;
+
         if(!SystemTray.isSupported())
             throw new UnsupportedOperationException("System not support the tray.");
 
@@ -36,5 +42,4 @@ public class ViewComponent extends AbstractComponent<Client> {
         this.serverSettingModule = new ServerSettingModule(this, image);
         addModule(serverSettingModule);
     }
-
 }

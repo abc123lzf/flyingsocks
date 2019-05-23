@@ -2,6 +2,9 @@ package com.lzf.flyingsocks.client.proxy;
 
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.ComponentException;
+import com.lzf.flyingsocks.ConfigManager;
+import com.lzf.flyingsocks.encrypt.EncryptSupport;
+import com.lzf.flyingsocks.encrypt.OpenSSLEncryptProvider;
 import com.lzf.flyingsocks.protocol.*;
 
 import io.netty.bootstrap.Bootstrap;
@@ -13,12 +16,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
 
-import javax.net.ssl.TrustManagerFactory;
-import java.io.InputStream;
-import java.security.KeyStore;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -45,9 +43,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     //通用Netty引导对象
     private Bootstrap bootstrap;
 
-    //SSL加密上下文对象
-    private SslContext sslContext;
-
     //用于处理客户端消息
     private ExecutorService clientMessageProcessor;
 
@@ -70,14 +65,33 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
     @Override
     protected void initInternal() {
-        try(InputStream is = getParentComponent().getParentComponent().loadResource(config.getJksPath())) {
-            KeyStore key = KeyStore.getInstance("JKS");
-            key.load(is, config.getJksPass().toCharArray());
-            TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
-            tmf.init(key);
-            sslContext = SslContextBuilder.forClient().trustManager(tmf).build();
-        } catch (Exception e) {
-            throw new ComponentException(e);
+        ChannelHandler in, out;
+        if(config.getEncryptType() == ProxyServerConfig.EncryptType.NONE) {
+            in = null;
+            out = null;
+        } else if(config.getEncryptType() == ProxyServerConfig.EncryptType.SSL) {
+            ConfigManager<?> manager = parent.getParentComponent().getConfigManager();
+            OpenSSLConfig sslcfg = new OpenSSLConfig(manager);
+            manager.registerConfig(sslcfg);
+
+            OpenSSLEncryptProvider provider = EncryptSupport.lookupProvider("OpenSSL", OpenSSLEncryptProvider.class);
+            Map<String, Object> params = new HashMap<>();
+            params.put("client", true);
+            params.put("file.cert", sslcfg.openClientCertStream());
+            params.put("file.cert.root", sslcfg.openRootCertStream());
+            params.put("file.key", sslcfg.openKeyStream());
+
+            try {
+                in = provider.decodeHandler(params);
+                if (provider.isInboundHandlerSameAsOutboundHandler())
+                    out = in;
+                else
+                    out = provider.encodeHandler(params);
+            } catch (Exception e) {
+                throw new ComponentException(e);
+            }
+        } else {
+            throw new ComponentException("Unsupport encrypt type " + config.getEncryptType());
         }
 
         taskWaitLatch = new CountDownLatch(1);
@@ -91,7 +105,11 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     @Override
                     protected void initChannel(SocketChannel ch) {
                         ChannelPipeline cp = ch.pipeline();
-                        //cp.addLast(new SslHandler(sslContext.newEngine(ch.alloc())));
+                        if(in != null && out != null) {
+                            if (out != in)
+                                cp.addLast(out);
+                            cp.addLast(in);
+                        }
                         cp.addLast(new InitialHandler());
                     }
                 });
@@ -220,15 +238,21 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
     private synchronized void afterChannelInactive() {
         //FIXME 断线重连有问题
-        log.warn("AfterChannelInactive");
-        getParentComponent().removeSubscriber(this);
+        if(log.isInfoEnabled())
+            log.info("Disconnect with flyingsocks server {}:{}", config.getHost(), config.getPort());
+
+        getParentComponent().removeSubscriber(this); //移除订阅，防止在此期间请求涌入队列
         active = false;
+        //清空队列
+        proxyRequestQueue.clear();
         clientMessageProcessor.shutdownNow();
         loopGroup.shutdownGracefully();
 
         activeProxyRequestMap.clear();
 
         if(use) {
+            if(log.isInfoEnabled())
+                log.info("Retry to connect flyingsocks server {}:{}", config.getHost(), config.getPort());
             proxyServerSession = null;
             taskWaitLatch = new CountDownLatch(1);
             loopGroup = new NioEventLoopGroup(2);
@@ -439,10 +463,10 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     ProxyRequest pr;
                     try {
                         while ((pr = proxyRequestQueue.poll(1, TimeUnit.MILLISECONDS)) != null) {
-                        /*if(pr.sureMessageOnlyOne()) {
-                            sendToProxyServer(pr, pr.getClientMessage());
-                            continue begin;
-                        }*/
+                            /*if(pr.sureMessageOnlyOne()) {
+                                sendToProxyServer(pr, pr.getClientMessage());
+                                continue begin;
+                            }*/
                             requests.add(pr);
                         }
                     } catch (InterruptedException e) {

@@ -30,7 +30,7 @@ public abstract class TopLevelComponent extends AbstractComponent<VoidComponent>
     /**
      * 配置管理器实例
      */
-    private ConfigManager<TopLevelComponent> configManager = new DefaultConfigManager<>(this);
+    private final ConfigManager<TopLevelComponent> configManager = new DefaultConfigManager<>(this);
 
     protected TopLevelComponent() {
         super();

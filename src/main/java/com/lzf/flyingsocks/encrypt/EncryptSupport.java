@@ -1,8 +1,8 @@
 package com.lzf.flyingsocks.encrypt;
 
-import java.io.IOException;
-import java.net.URL;
-import java.util.Enumeration;
+
+import com.lzf.flyingsocks.ConfigManager;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -17,29 +17,10 @@ public abstract class EncryptSupport {
     }
 
     static {
-        ClassLoader cl = EncryptSupport.class.getClassLoader();
-        Package p = EncryptSupport.class.getPackage();
         try {
-            Enumeration<URL> it = cl.getResources(p.getName().replace('.', '/'));
-            while(it.hasMoreElements()) {
-                URL url = it.nextElement();
-                String name = (url.getAuthority() + url.getContent()).replace('/', '.');
-                try {
-                    Class<?> clazz = cl.loadClass(name);
-                    if(clazz.isAssignableFrom(EncryptProvider.class)) {
-                        Class<? extends EncryptProvider> klass = (Class) clazz;
-                        try {
-                            registerEncryptProvider(klass);
-                        } catch (Exception e) {
-                            throw new Error(e);
-                        }
-                    }
-                } catch (ClassNotFoundException e) {
-                    throw new Error(e);
-                }
-            }
-
-        } catch (IOException e) {
+            registerEncryptProvider(JksSSLEncryptProvider.class);
+            registerEncryptProvider(OpenSSLEncryptProvider.class);
+        } catch (Exception e) {
             throw new Error(e);
         }
     }

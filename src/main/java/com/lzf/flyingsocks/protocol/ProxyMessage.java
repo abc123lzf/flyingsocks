@@ -27,12 +27,16 @@ abstract class ProxyMessage implements Message {
         deserialize(serialBuf);
     }
 
-
+    /**
+     * @return 客户端发起代理请求的Channel ID，编码为ASCII
+     */
     public final String getChannelId() {
         return channelId;
     }
 
-
+    /**
+     * @return 代理消息请求/响应正文
+     */
     public final ByteBuf getMessage() {
         if(message != null) {
             ByteBuf buf = message;
@@ -42,6 +46,5 @@ abstract class ProxyMessage implements Message {
 
         throw new UnsupportedOperationException("ProxyMessage content is only can get one time");
     }
-
 
 }

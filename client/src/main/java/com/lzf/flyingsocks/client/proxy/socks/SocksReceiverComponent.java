@@ -10,18 +10,46 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.socks.*;
 
+import java.util.Objects;
+
 public final class SocksReceiverComponent extends AbstractComponent<SocksProxyComponent> {
 
+    // 引导类
     private ServerBootstrap serverBootstrap;
 
+    // Netty线程池
     private EventLoopGroup socksReceiveGroup;
 
+    // 是否进行Socks认证
+    private boolean auth;
+
+    // 绑定的端口
+    private int port;
+
+    // 绑定的IP地址，如果需要对外网开放则为0.0.0.0
+    private String bindAddress;
+
+    // Socks5认证用户名，如果无需认证则为null
+    private String username;
+
+    // Socks5认证密码，如果无需认证则为null
+    private String password;
+
     public SocksReceiverComponent(SocksProxyComponent proxyComponent) {
-        super("SocksRequestReceiver", proxyComponent);
+        super("SocksRequestReceiver", Objects.requireNonNull(proxyComponent));
     }
 
     @Override
     protected void initInternal() {
+        SocksConfig cfg = parent.getParentComponent().getConfigManager()
+                .getConfig(SocksConfig.NAME, SocksConfig.class);
+
+        this.auth = cfg.isAuth();
+        this.port = cfg.getPort();
+        this.username = cfg.getUsername();
+        this.password = cfg.getPassword();
+        this.bindAddress = cfg.getAddress();
+
         socksReceiveGroup = new NioEventLoopGroup(1);
 
         ServerBootstrap boot = new ServerBootstrap();
@@ -35,7 +63,6 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                     cp.addLast(new SocksMessageEncoder());
                     cp.addLast(new SocksRequestHandler());
                 }
-
             });
 
         serverBootstrap = boot;
@@ -44,7 +71,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
     @Override
     protected void startInternal() {
         try {
-            serverBootstrap.clone().bind(1081).addListener(f -> {
+            serverBootstrap.clone().bind(bindAddress, port).addListener(f -> {
                 if(!f.isSuccess()) {
                     Throwable t = f.cause();
                     log.error("bind socks server error.", t);
@@ -77,15 +104,33 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                 case INIT: {
                     if(log.isTraceEnabled())
                         log.trace("Socks init, thread:" + Thread.currentThread().getName());
+
                     ctx.pipeline().addFirst(new SocksCmdRequestDecoder());
-                    ctx.writeAndFlush(new SocksInitResponse(SocksAuthScheme.NO_AUTH));
+
+                    if(!auth)
+                        ctx.writeAndFlush(new SocksInitResponse(SocksAuthScheme.NO_AUTH));
+                    else
+                        ctx.writeAndFlush(new SocksInitResponse(SocksAuthScheme.AUTH_PASSWORD));
+
                     break;
                 }
                 case AUTH: {
                     if(log.isTraceEnabled())
                         log.trace("Socks auth, thread:" + Thread.currentThread().getName());
+
                     ctx.pipeline().addFirst(new SocksCmdRequestDecoder());
-                    ctx.writeAndFlush(new SocksAuthResponse(SocksAuthStatus.SUCCESS));
+
+                    if(!auth)
+                        ctx.writeAndFlush(new SocksAuthResponse(SocksAuthStatus.SUCCESS));
+                    else {
+                        SocksAuthRequest req = (SocksAuthRequest) request;
+                        if(req.username().equals(username) && req.password().equals(password)) {
+                            ctx.writeAndFlush(new SocksAuthResponse(SocksAuthStatus.SUCCESS));
+                        } else {
+                            ctx.writeAndFlush(new SocksAuthResponse(SocksAuthStatus.FAILURE));
+                        }
+                    }
+
                     break;
                 }
                 case CMD: {
@@ -98,6 +143,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                     }
                     ctx.pipeline().addLast(new SocksCommandRequestHandler()).remove(this);
                     ctx.fireChannelRead(req);
+
                     break;
                 }
                 case UNKNOWN: {

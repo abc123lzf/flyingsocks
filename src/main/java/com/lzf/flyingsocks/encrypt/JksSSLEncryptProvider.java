@@ -33,30 +33,27 @@ public final class JksSSLEncryptProvider implements EncryptProvider {
     }
 
     @Override
-    public ChannelInboundHandler decodeHandler(Map<String, String> params) throws Exception {
+    public ChannelInboundHandler decodeHandler(Map<String, Object> params) throws Exception {
         return createSSLHandler(params);
     }
 
     @Override
-    public ChannelOutboundHandler encodeHandler(Map<String, String> params) throws Exception {
+    public ChannelOutboundHandler encodeHandler(Map<String, Object> params) throws Exception {
         return createSSLHandler(params);
     }
 
-    private SslHandler createSSLHandler(Map<String, String> params) throws Exception {
+    private SslHandler createSSLHandler(Map<String, Object> params) throws Exception {
         if(params == null)
             throw new NullPointerException("params should not be null.");
 
-        if(!params.containsKey("jksPass") || !params.containsKey("jksUrl") || !params.containsKey("isClient"))
+        if(!params.containsKey("password") || !params.containsKey("url") || !params.containsKey("client"))
             throw new IllegalArgumentException("Parameter key jksPass/jksUrl/isClient should not be null");
 
-        String cli = params.get("isClient").toLowerCase();
-        if(!cli.equals("true") && !cli.equals("false")) {
-            throw new IllegalArgumentException("Parameter key isClient value should be true or false");
-        }
+        boolean cli = (boolean) params.get("client");
 
-        char[] pass = params.get("jksPass").toCharArray();
+        char[] pass = ((String)params.get("password")).toCharArray();
 
-        URL url = new URL(params.get("jksUrl"));
+        URL url = new URL((String) params.get("url"));
         try(InputStream is = url.openStream()) {
             KeyStore ks = KeyStore.getInstance("JKS");
             ks.load(is, pass);
@@ -65,7 +62,7 @@ public final class JksSSLEncryptProvider implements EncryptProvider {
             SSLContext context = SSLContext.getInstance("TLS");
             context.init(kmf.getKeyManagers(), null, null);
             SSLEngine sslEngine = context.createSSLEngine();
-            sslEngine.setUseClientMode(Boolean.valueOf(cli));
+            sslEngine.setUseClientMode(cli);
             sslEngine.setNeedClientAuth(false);
 
             return new SslHandler(sslEngine);

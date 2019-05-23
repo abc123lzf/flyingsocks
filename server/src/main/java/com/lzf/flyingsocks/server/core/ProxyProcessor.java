@@ -160,7 +160,7 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
                 subscriber.receive(task);
             } else {
                 try {
-                    subscriber.receive((ProxyTask) task.clone());
+                    subscriber.receive(task.clone());
                 } catch (CloneNotSupportedException e) {
                     throw new IllegalStateException(e);
                 }
@@ -217,9 +217,7 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             if(log.isWarnEnabled())
                 log.warn("An exception occur", cause);
-            ctx.close().addListener(future -> {
-                removeClientSession(ctx.channel());
-            });
+            ctx.close().addListener(future -> removeClientSession(ctx.channel()));
         }
 
         @Override

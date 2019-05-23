@@ -1,5 +1,6 @@
 package com.lzf.flyingsocks.client.proxy.socks;
 
+import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.client.Client;
 import com.lzf.flyingsocks.client.proxy.ProxyComponent;
 
@@ -22,11 +23,15 @@ public class SocksProxyComponent extends ProxyComponent {
     private ExecutorService clientMessageProcessor;
 
     public SocksProxyComponent(Client client) {
-        super(client);
+        super(Objects.requireNonNull(client));
     }
 
     @Override
     protected void initInternal() {
+        ConfigManager<?> manager = parent.getConfigManager();
+        SocksConfig cfg = new SocksConfig(manager);
+        manager.registerConfig(cfg);
+
         int cpus = getParentComponent().getAvailableProcessors();
         nettyWorkerLoopGroup = new NioEventLoopGroup(cpus < 4 ? 4 : cpus);
 

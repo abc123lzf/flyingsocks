@@ -7,9 +7,8 @@
       "auth-arg": {
         "password": "abc123lzf"
       },
-      "jks-path": "classpath://flyingsocks-cli.jks",
-      "jks-pass": "flyingsocks",
-      "state": "true"
+      "state": true,
+      "encrypt": "SSL"
     }, {
       "host": "149.3.61.3",
       "port": 320,
@@ -18,9 +17,17 @@
         "user": "root",
         "pass": "abc123lzf"
       },
-      "jks-path": "classpath://flyingsocks-cli.jks",
-      "jks-pass": "flyingsocks",
-      "state": "false"
+      "state": false,
+      "encrypt": "None"
     }
-  ]
+  ],
+
+  "pac": "GLOBAL",
+  "gui": true,
+
+  "socks": {
+    "address": "0.0.0.0",
+    "port": 1081,
+    "auth": false
+  }
 }

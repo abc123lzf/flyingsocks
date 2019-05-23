@@ -3,7 +3,7 @@
     "name": "default",
     "port": 2020,
     "max-client": 10,
-    "encrypt": "RSA",
+    "encrypt": "OpenSSL",
     "auth-type": "simple",
     "password": "abc123lzf"
   }

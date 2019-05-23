@@ -27,7 +27,8 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     private static final Logger log = LoggerFactory.getLogger(ProxyAutoConfig.class);
 
     private static final String DEFAULT_PAC_CONFIG_LOCATION = "classpath://pac.txt";
-    private static final String DEFAULT_PAC_CONFIG_ENCODING = "UTF-8";
+    private static final String DEFAULT_CONFIG_LOCATION = "classpath://config.json";
+    private static final Charset DEFAULT_CONFIG_ENCODING = Charset.forName("UTF-8");
 
     private static final int PROXY_NO = 0;
     private static final int PROXY_PAC = 1;
@@ -43,36 +44,56 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
 
     @Override
     protected void initInternal() throws ConfigInitializationException {
-        InputStream is;
-        try {
-            is = configManager.loadResource(DEFAULT_PAC_CONFIG_LOCATION);
+        try(InputStream is = configManager.loadResource(DEFAULT_PAC_CONFIG_LOCATION)) {
+            byte[] b = new byte[5120000];
+            int r = is.read(b);
+
+            String str = new String(b, 0, r, DEFAULT_CONFIG_ENCODING);
+            JSONObject object;
+            try {
+                object = JSON.parseObject(str);
+            } catch (JSONException e) {
+                if(log.isErrorEnabled())
+                    log.error("PAC file format is not illegal.");
+                throw new ConfigInitializationException(e);
+            }
+
+            for(Map.Entry<String, Object> entry : object.entrySet()) {
+                String k;
+                if(object.getInteger(k = entry.getKey()) != 0)
+                    proxySet.add(k);
+            }
         } catch (IOException e) {
             throw new ConfigInitializationException(e);
         }
-        byte[] b = new byte[5120000];
-        int r;
-        try {
-            r = is.read(b);
+
+        try(InputStream is = configManager.loadResource(DEFAULT_CONFIG_LOCATION)) {
+            byte[] b = new byte[512000];
+            int r = is.read(b);
+            String str = new String(b, 0, r, DEFAULT_CONFIG_ENCODING);
+            JSONObject object;
+            try {
+                object = JSON.parseObject(str);
+            } catch (JSONException e) {
+                if(log.isErrorEnabled())
+                    log.error("Config file format is not illegal.");
+                throw new ConfigInitializationException(e);
+            }
+
+            String pac = object.getString("pac");
+            if(pac == null)
+                throw new ConfigInitializationException("Config file pac setting is null");
+            switch (pac) {
+                case "no": proxyMode = PROXY_NO; break;
+                case "pac": proxyMode = PROXY_PAC; break;
+                case "global": proxyMode = PROXY_GLOBAL; break;
+                default:
+                    log.warn("Config file pac setting is not correct, only 'no' / 'pac' / 'global'");
+                    proxyMode = PROXY_PAC;
+            }
+
         } catch (IOException e) {
-            if(log.isErrorEnabled())
-                log.error("This PAC file is too big, this file should be 5MB maximum.");
             throw new ConfigInitializationException(e);
-        }
-
-        String str = new String(b, 0, r, Charset.forName(DEFAULT_PAC_CONFIG_ENCODING));
-        JSONObject object;
-        try {
-            object = JSON.parseObject(str);
-        } catch (JSONException e) {
-            if(log.isErrorEnabled())
-                log.error("PAC file format is not illegal.");
-            throw new ConfigInitializationException(e);
-        }
-
-        for(Map.Entry<String, Object> entry : object.entrySet()) {
-            String k;
-            if(object.getInteger(k = entry.getKey()) != 0)
-                proxySet.add(k);
         }
     }
 

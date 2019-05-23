@@ -2,6 +2,11 @@ package com.lzf.flyingsocks.server.core;
 
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.ComponentException;
+import com.lzf.flyingsocks.ConfigManager;
+import com.lzf.flyingsocks.encrypt.EncryptProvider;
+import com.lzf.flyingsocks.encrypt.EncryptSupport;
+import com.lzf.flyingsocks.encrypt.JksSSLEncryptProvider;
+import com.lzf.flyingsocks.encrypt.OpenSSLEncryptProvider;
 import com.lzf.flyingsocks.protocol.AuthMessage;
 import com.lzf.flyingsocks.protocol.DelimiterMessage;
 import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
@@ -16,11 +21,9 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.codec.FixedLengthFrameDecoder;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-import java.io.InputStream;
-import java.security.KeyStore;
+
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 
@@ -28,7 +31,6 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
     private ServerBootstrap serverBootstrap;
 
-    private SSLContext sslContext;
 
     public ClientProcessor(ProxyProcessor proxyProcessor) {
         super("ClientProcessor", Objects.requireNonNull(proxyProcessor));
@@ -36,22 +38,48 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
     @Override
     protected void initInternal() {
-        try(InputStream in = getParentComponent().getParentComponent().loadResource("classpath://flyingsocks.jks")) {
-            KeyStore ks = KeyStore.getInstance("JKS");
-            ks.load(in, "flyingsocks".toCharArray());
-            KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
-            kmf.init(ks, "flyingsocks".toCharArray());
-            SSLContext context = SSLContext.getInstance("TLS");
-            context.init(kmf.getKeyManagers(), null, null);
-            this.sslContext = context;
-        } catch (Exception e) {
-            throw new ComponentException(e);
+        ServerConfig.Node node = parent.getServerConfig();
+        EncryptProvider provider;
+        switch (node.encrtptType) {
+            case OpenSSL:
+                provider = EncryptSupport.lookupProvider("OpenSSL");
+                break;
+            case JKS:
+                provider = EncryptSupport.lookupProvider("JKS");
+                break;
+            default:
+                throw new ComponentException("Unsupport encrypt type");
         }
 
-        SSLEngine sslEngine = sslContext.createSSLEngine();
+        ChannelInboundHandler cih;
+        ChannelOutboundHandler coh;
 
-        sslEngine.setUseClientMode(false);
-        sslEngine.setNeedClientAuth(false);
+        if(provider instanceof OpenSSLEncryptProvider) {
+            ConfigManager<?> manager = parent.getParentComponent().getConfigManager();
+            OpenSSLConfig cfg = new OpenSSLConfig(manager);
+            manager.registerConfig(cfg);
+
+            Map<String, Object> params = new HashMap<>();
+            params.put("client", false);
+            params.put("file.cert", cfg.openServerCertStream());
+            params.put("file.cert.root", cfg.openRootCertStream());
+            params.put("file.key", cfg.openKeyStream());
+
+            try {
+                cih = provider.decodeHandler(params);
+                if(provider.isInboundHandlerSameAsOutboundHandler())
+                    coh = (ChannelOutboundHandler) cih;
+                else
+                    coh = provider.encodeHandler(params);
+            } catch (Exception e) {
+                throw new ComponentException("Load OpenSSL Module occur a exception", e);
+            }
+        } else if(provider instanceof JksSSLEncryptProvider) {
+            throw new ComponentException("Unsupport JKS encrypt method");
+        } else {
+            throw new ComponentException("Unsupport other encrypt method");
+        }
+
 
         ServerBootstrap boot = new ServerBootstrap();
         boot.group(getParentComponent().getConnectionReceiveWorker(), getParentComponent().getRequestProcessWorker())
@@ -60,7 +88,9 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                 @Override
                 protected void initChannel(SocketChannel ch) {
                     ChannelPipeline cp = ch.pipeline();
-                    //cp.addLast(new SslHandler(sslEngine));
+                    if(cih != coh)
+                        cp.addLast(coh);
+                    cp.addLast(cih);
                     cp.addLast(getParentComponent().clientSessionHandler());
                     cp.addLast(new FixedLengthFrameDecoder(DelimiterMessage.DEFAULT_SIZE));
                     cp.addLast(new InitialHandler());

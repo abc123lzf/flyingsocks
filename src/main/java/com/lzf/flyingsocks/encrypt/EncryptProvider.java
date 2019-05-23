@@ -23,7 +23,7 @@ public interface EncryptProvider extends Named {
      * @return ChannelInboundHandler实例
      * @throws Exception 实例化过程抛出的异常
      */
-    ChannelInboundHandler decodeHandler(Map<String, String> params) throws Exception;
+    ChannelInboundHandler decodeHandler(Map<String, Object> params) throws Exception;
 
     /**
      * 返回加密处理器
@@ -31,5 +31,5 @@ public interface EncryptProvider extends Named {
      * @return ChannelOutboundHandler实例
      * @throws Exception 实例化过程抛出的一场
      */
-    ChannelOutboundHandler encodeHandler(Map<String, String> params) throws Exception;
+    ChannelOutboundHandler encodeHandler(Map<String, Object> params) throws Exception;
 }
