@@ -23,7 +23,11 @@ public class DelimiterMessage implements Message {
 
     @Override
     public ByteBuf serialize() throws SerializationException {
-        return Unpooled.buffer(DEFAULT_SIZE).writeBytes(delimiter);
+        try {
+            return Unpooled.buffer(DEFAULT_SIZE).writeBytes(delimiter);
+        } catch (Exception e) {
+            throw new SerializationException(e);
+        }
     }
 
     @Override

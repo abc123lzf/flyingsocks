@@ -92,17 +92,28 @@ public class ProxyServerConfig extends AbstractConfig {
         configManager.updateConfig(this);
     }
 
+    public void setProxyServerUsing(Node node, boolean use) {
+        if(!nodes.contains(node))
+            throw new IllegalStateException(String.format("Server Node %s:%d not exists", node.getHost(), node.getPort()));
+        if(node.isUse() == use)
+            return;
+        for(Node n : nodes)
+            n.setUse(false);
+        node.setUse(use);
+        configManager.updateConfig(this);
+    }
+
     public void removeProxyServerNode(Node node) {
         nodes.remove(node);
         configManager.updateConfig(this);
     }
 
     public enum AuthType {
-        SIMPLE, USER;
+        SIMPLE, USER
     }
 
     public enum EncryptType {
-        NONE, SSL;
+        NONE, SSL
     }
 
 
@@ -168,7 +179,7 @@ public class ProxyServerConfig extends AbstractConfig {
             return use;
         }
 
-        public void setUse(boolean use) {
+        private void setUse(boolean use) {
             this.use = use;
         }
 

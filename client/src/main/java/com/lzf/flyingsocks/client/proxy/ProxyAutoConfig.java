@@ -30,9 +30,9 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     private static final String DEFAULT_CONFIG_LOCATION = "classpath://config.json";
     private static final Charset DEFAULT_CONFIG_ENCODING = Charset.forName("UTF-8");
 
-    private static final int PROXY_NO = 0;
-    private static final int PROXY_PAC = 1;
-    private static final int PROXY_GLOBAL = 2;
+    public static final int PROXY_NO = 0;
+    public static final int PROXY_PAC = 1;
+    public static final int PROXY_GLOBAL = 2;
 
     private int proxyMode;
 
@@ -102,7 +102,11 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     }
 
     public void setProxyMode(int proxyMode) {
+        if(this.proxyMode == proxyMode)
+            return;
+
         this.proxyMode = proxyMode;
+        configManager.updateConfig(this);
     }
 
     public boolean needProxy(String host) {

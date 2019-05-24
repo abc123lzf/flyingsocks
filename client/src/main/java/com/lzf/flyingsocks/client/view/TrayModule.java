@@ -1,7 +1,10 @@
 package com.lzf.flyingsocks.client.view;
 
 import com.lzf.flyingsocks.*;
+import com.lzf.flyingsocks.client.proxy.ProxyAutoConfig;
 import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -10,6 +13,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 class TrayModule extends AbstractModule<ViewComponent> {
+    private static final Logger log = LoggerFactory.getLogger("PopupMenu");
+
     static final String NAME = "TrayModule";
 
     private final TrayIcon tray;
@@ -26,7 +31,9 @@ class TrayModule extends AbstractModule<ViewComponent> {
         this.tray = initTray();
     }
 
-    private class PACSettingMenu {
+    private final class PACSettingMenu {
+        int select;
+        ProxyAutoConfig pacConfig;
         final MenuItem proxyItemClose = new MenuItem("关闭代理");
         final MenuItem proxyItemPac = new MenuItem("PAC模式");
         final MenuItem proxyItemGlobal = new MenuItem("全局模式");
@@ -36,26 +43,95 @@ class TrayModule extends AbstractModule<ViewComponent> {
             proxyItem.add(proxyItemPac);
             proxyItem.add(proxyItemGlobal);
             proxyItem.add(proxyItemClose);
+
+            proxyItemClose.addActionListener(e -> {
+                if(select == ProxyAutoConfig.PROXY_NO)
+                    return;
+                if(pacConfig == null)
+                    return;
+                select = ProxyAutoConfig.PROXY_NO;
+                pacConfig.setProxyMode(select);
+            });
+
+            proxyItemPac.addActionListener(e -> {
+                if(select == ProxyAutoConfig.PROXY_NO)
+                    return;
+                if(pacConfig == null)
+                    return;
+
+                select = ProxyAutoConfig.PROXY_PAC;
+                pacConfig.setProxyMode(select);
+            });
+
+            proxyItemGlobal.addActionListener(e -> {
+                if(select == ProxyAutoConfig.PROXY_NO)
+                    return;
+                if(pacConfig == null)
+                    return;
+
+                select = ProxyAutoConfig.PROXY_GLOBAL;
+                pacConfig.setProxyMode(select);
+            });
+
             menu.add(proxyItem);
+        }
+
+        private void initProxyAutoConfig(ProxyAutoConfig cfg) {
+            switch (this.select = cfg.getProxyMode()) {
+                case ProxyAutoConfig.PROXY_NO:
+                    proxyItemClose.setLabel("√ 关闭代理");
+                    proxyItemPac.setLabel("PAC模式");
+                    proxyItemGlobal.setLabel("全局模式");
+                    break;
+                case ProxyAutoConfig.PROXY_PAC:
+                    proxyItemClose.setLabel("关闭代理");
+                    proxyItemPac.setLabel("√ PAC模式");
+                    proxyItemGlobal.setLabel("全局模式");
+                    break;
+                case ProxyAutoConfig.PROXY_GLOBAL:
+                    proxyItemClose.setLabel("关闭代理");
+                    proxyItemPac.setLabel("PAC模式");
+                    proxyItemGlobal.setLabel("√ 全局模式");
+                    break;
+                default:
+                    log.error("Unknown ProxyAuto mode.");
+            }
+
+            this.pacConfig = cfg;
         }
     }
 
-
-    private class ServerChooseMenu {
+    /**
+     * 代理服务器选择列表
+     */
+    private final class ServerChooseMenu {
+        int select;
         final Menu serverMenu = new Menu("选择服务器");
         final Map<Integer, MenuItem> serverMap = new LinkedHashMap<>();
+        final Map<Integer, ProxyServerConfig.Node> nodeMap = new LinkedHashMap<>();
 
         private ServerChooseMenu(PopupMenu menu) {
             menu.add(serverMenu);
         }
 
-        void addServer(int index, String host, int port) {
-            MenuItem item = new MenuItem(host + ":" + port);
+        void addServer(final int index, final ProxyServerConfig cfg, final ProxyServerConfig.Node node) {
+            MenuItem item = new MenuItem(node.getHost() + ":" + node.getPort());
+            item.addActionListener(e -> {
+                MenuItem mi = serverMap.get(select);
+                mi.setLabel("");
+
+                select = index;
+                cfg.setProxyServerUsing(node, true);
+
+
+            });
+            nodeMap.put(index, node);
             serverMap.put(index, item);
             serverMenu.add(item);
         }
 
         void removeServer(int index) {
+            nodeMap.remove(index);
             serverMenu.remove(serverMap.remove(index));
         }
 
@@ -67,7 +143,7 @@ class TrayModule extends AbstractModule<ViewComponent> {
             ProxyServerConfig.Node[] nodes = cfg.getProxyServerConfig();
             int i = 0;
             for(ProxyServerConfig.Node node : nodes) {
-                addServer(i++, node.getHost(), node.getPort());
+                addServer(i++, cfg, node);
             }
         }
     }
@@ -115,6 +191,21 @@ class TrayModule extends AbstractModule<ViewComponent> {
             });
         } else {
             serverChooseMenu.initServerItem(cfg);
+        }
+
+        ProxyAutoConfig pac = cm.getConfig(ProxyAutoConfig.DEFAULT_NAME, ProxyAutoConfig.class);
+        if(pac == null) {
+            cm.registerConfigEventListener(new ConfigEventListener() {
+                @Override
+                public void configEvent(ConfigEvent event) {
+                    if(event.getEvent().equals(Config.REGISTER_EVENT) && event.getSource() instanceof ProxyAutoConfig) {
+                        pacSettingMenu.initProxyAutoConfig((ProxyAutoConfig) event.getSource());
+                        cm.removeConfigEventListener(this);
+                    }
+                }
+            });
+        } else {
+            pacSettingMenu.initProxyAutoConfig(pac);
         }
 
 
