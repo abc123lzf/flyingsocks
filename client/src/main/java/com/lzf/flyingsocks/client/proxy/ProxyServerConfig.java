@@ -6,10 +6,10 @@ import com.alibaba.fastjson.JSONObject;
 import com.lzf.flyingsocks.AbstractConfig;
 import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
+import com.lzf.flyingsocks.client.GlobalConfig;
 import com.lzf.flyingsocks.protocol.AuthMessage;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.List;
@@ -17,11 +17,12 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ProxyServerConfig extends AbstractConfig {
-    public static final String DEFAULT_NAME = "Config-ProxyServer";
+    public static final String DEFAULT_NAME = "config.proxyserver";
 
     private static final String DEFAULT_CONFIG_PATH = "classpath://config.json";
 
     private List<Node> nodes = new CopyOnWriteArrayList<>();
+
 
     public ProxyServerConfig(ConfigManager<?> configManager) {
         super(configManager, DEFAULT_NAME);
@@ -29,100 +30,153 @@ public class ProxyServerConfig extends AbstractConfig {
 
     @Override
     protected void initInternal() throws ConfigInitializationException {
-        InputStream is = null;
-        try {
-            is = configManager.loadResource(DEFAULT_CONFIG_PATH);
-        } catch (IOException e) {
+        GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
+        String url = cfg.configLocationURL();
+
+        try(InputStream is = configManager.loadResource(url)) {
+            byte[] b = new byte[1024 * 500];
+            int size;
             try {
-                if(is != null)
-                    is.close();
-            } catch (IOException ignore) {
-                //IGNORE
+                size = is.read(b);
+            } catch (IOException e) {
+                throw new ConfigInitializationException(e);
             }
-            throw new ConfigInitializationException(e);
-        }
 
-        if(is == null)
-            return;
+            byte[] nb = new byte[size];
+            System.arraycopy(b, 0, nb, 0, size);
+            JSONObject obj = JSON.parseObject(new String(nb, Charset.forName("UTF-8")));
 
-        byte[] b = new byte[1024 * 500];
-        int size;
-        try {
-            size = is.read(b);
+            JSONArray array = obj.getJSONArray("server");
+
+            for(int i = 0; i < array.size(); i++) {
+                JSONObject o = array.getJSONObject(i);
+                String host = o.getString("host");
+                int port = o.getIntValue("port");
+                String t;
+                AuthType type = AuthType.valueOf(t = o.getString("auth").toUpperCase());
+
+                List<String> keys = AuthMessage.AuthMethod.valueOf(t).getContainsKey();
+
+                Map<String, String> authArg = new HashMap<>(4);
+                JSONObject auth = o.getJSONObject("auth-arg");
+                for(String key : keys) {
+                    String v = auth.getString(key);
+                    if(v == null)
+                        throw new ConfigInitializationException(String.format("config.json: node %s:%d auth-arg need key %s",
+                                host, port, key));
+                    authArg.put(key, v);
+                }
+
+                boolean use = o.getBooleanValue("state");
+                EncryptType etype = EncryptType.valueOf(o.getString("encrypt").toUpperCase());
+
+                nodes.add(new Node(host, port, type, etype, authArg, use));
+            }
         } catch (IOException e) {
             throw new ConfigInitializationException(e);
         }
+    }
 
-        byte[] nb = new byte[size];
-        System.arraycopy(b, 0, nb, 0, size);
-        JSONObject obj = JSON.parseObject(new String(nb, Charset.forName("UTF-8")));
+    @Override
+    public boolean canSave() {
+        return true;
+    }
 
-        JSONArray array = obj.getJSONArray("server");
+    @Override
+    public void save() throws Exception {
+        GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
 
-        for(int i = 0; i < array.size(); i++) {
-            JSONObject o = array.getJSONObject(i);
-            String host = o.getString("host");
-            int port = o.getIntValue("port");
-            String t;
-            AuthType type = AuthType.valueOf(t = o.getString("auth").toUpperCase());
-
-            List<String> keys = AuthMessage.AuthMethod.valueOf(t).getContainsKey();
-            Map<String, String> authArg = new HashMap<>(4);
-            JSONObject auth = o.getJSONObject("auth-arg");
-            for(String key : keys) {
-                String v = auth.getString(key);
-                if(v == null)
-                    throw new ConfigInitializationException(String.format("config.json: node %s:%d auth-arg need key %s", host, port, key));
-                authArg.put(key, v);
+        File f = new File(cfg.configLocation());
+        JSONObject obj;
+        if(f.exists() && f.length() > 0) {
+            FileReader reader = new FileReader(f);
+            char[] s = new char[(int)f.length()];
+            int r = reader.read(s);
+            if(r < f.length()) {
+                char[] os = s;
+                s = new char[r];
+                System.arraycopy(os, 0, s, 0, r);
             }
-
-            boolean use = o.getBooleanValue("state");
-            EncryptType etype = EncryptType.valueOf(o.getString("encrypt").toUpperCase());
-
-            nodes.add(new Node(host, port, type, etype, authArg, use));
+            obj = JSON.parseObject(new String(s));
+            reader.close();
+        } else {
+            obj = new JSONObject();
         }
+
+        JSONArray arr = new JSONArray(nodes.size());
+        for(Node node : nodes) {
+            JSONObject o = new JSONObject();
+            o.put("host", node.getHost());
+            o.put("port", node.getPort());
+            o.put("auth", node.getAuthType().name().toLowerCase());
+            JSONObject auth = new JSONObject();
+            auth.putAll(node.authArgument);
+            o.put("auth-arg", auth);
+            o.put("state", node.isUse());
+            o.put("encrypt", node.encryptType.name());
+            arr.add(o);
+        }
+
+        obj.put("server", arr);
+
+        FileWriter writer = new FileWriter(f);
+        writer.write(obj.toJSONString());
+        writer.close();
     }
 
     public Node[] getProxyServerConfig() {
         return nodes.toArray(new Node[nodes.size()]);
     }
 
+
     public void addProxyServerNode(Node node) {
         nodes.add(node);
         configManager.updateConfig(this);
     }
 
+    public void updateProxyServerNode(Node node) {
+        if(containsProxyServerNode(node))
+            configManager.updateConfig(this);
+        else
+            throw new IllegalArgumentException(String.format("Node %s:%d doesn't exists",
+                    node.getHost(), node.getPort()));
+    }
+
+    public boolean containsProxyServerNode(Node node) {
+        return nodes.contains(node);
+    }
+
     public void setProxyServerUsing(Node node, boolean use) {
         if(!nodes.contains(node))
-            throw new IllegalStateException(String.format("Server Node %s:%d not exists", node.getHost(), node.getPort()));
+            throw new IllegalArgumentException(String.format("Server Node %s:%d not exists", node.getHost(), node.getPort()));
         if(node.isUse() == use)
             return;
-        for(Node n : nodes)
-            n.setUse(false);
         node.setUse(use);
         configManager.updateConfig(this);
     }
+
 
     public void removeProxyServerNode(Node node) {
         nodes.remove(node);
         configManager.updateConfig(this);
     }
 
+
     public enum AuthType {
         SIMPLE, USER
     }
+
 
     public enum EncryptType {
         NONE, SSL
     }
 
 
-
     public static final class Node {
         private String host;
         private int port;
         private AuthType authType;
-        private Map<String, String> authArgument = new HashMap<>(4);
+        private Map<String, String> authArgument;
         private EncryptType encryptType;
 
         private boolean use;
@@ -168,6 +222,8 @@ public class ProxyServerConfig extends AbstractConfig {
         }
 
         public void putAuthArgument(String key, String val) {
+            if(authArgument == null)
+                authArgument = new HashMap<>(4);
             authArgument.put(key, val);
         }
 

@@ -1,5 +1,10 @@
 package com.lzf.flyingsocks;
 
+/**
+ * 组件接口，每个程序应由多个组件构成
+ * @see com.lzf.flyingsocks.Lifecycle
+ * @param <T> 父组件类型
+ */
 public interface Component<T extends Component<?>> extends Lifecycle, Named {
 
     /**
@@ -70,5 +75,5 @@ public interface Component<T extends Component<?>> extends Lifecycle, Named {
      * 添加模块
      * @param module 模块
      */
-    void addModule(Module module);
+    void addModule(Module<?> module);
 }

@@ -9,23 +9,24 @@ import javax.swing.*;
 import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 class ServerSettingModule extends AbstractModule<ViewComponent> {
     private static final Logger log = LoggerFactory.getLogger(ServerSettingModule.class);
 
+    private static final String NEW_CONFIG_NAME = "New config";
+
     static final String NAME = "ServerSettingModule";
 
     private final Frame frame;
 
-    private final Image icon;
-
     private ProxyServerConfig serverConfig;
 
-    //ServerList索引和配置的映射关系
-    private Map<Integer, ProxyServerConfig.Node> serverNode = new LinkedHashMap<>();
+    //ServerList索引和配置的映射关系，GUI界面为单线程无需保证线程安全问题
+    private List<ProxyServerConfig.Node> serverNode = new ArrayList<>();
 
     private HostList hostList;
 
@@ -33,12 +34,11 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
 
     ServerSettingModule(ViewComponent component, Image icon) {
         super(component, NAME);
-        this.icon = icon;
-        this.frame = initFrame();
+        this.frame = initFrame(icon);
         initConfig();
     }
 
-    private Frame initFrame() {
+    private Frame initFrame(Image icon) {
         Frame sf = new Frame("服务器设置");
         sf.setLayout(null);
 
@@ -50,20 +50,27 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
         });
 
         sf.setIconImage(icon);
-        sf.setBounds(0, 0, 800, 620);
+        sf.setBounds(0, 0, 760, 325);
+        sf.setResizable(false);
         sf.setVisible(false);
 
-        this.hostList = new HostList(sf, 10, 50, 300, 600);
-        this.settingTable = new SettingTable(sf, 315, 50, 480, 600);
+        this.hostList = new HostList(sf, 10, 50, 300, 278);
+        this.settingTable = new SettingTable(sf, 315, 50, 480, 275);
 
         settingTable.addEnterButtonActionListener(e -> {
-            hostList.addElement("New config");
+            hostList.addElement(NEW_CONFIG_NAME);
         });
 
         settingTable.addSaveButtonActionListener(e -> {
             int index = hostList.getSelectIndex();
+            if(index == -1) {
+                JOptionPane.showMessageDialog(frame, "请首先点击新建配置再保存", "提示", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
             String host = settingTable.getHostField();
             int port = settingTable.getPortField();
+            if(port < 0)
+                return;
             if(port > 65535) {
                 JOptionPane.showMessageDialog(frame, "端口必须为1~65535之间的数字", "提示", JOptionPane.WARNING_MESSAGE);
                 return;
@@ -78,14 +85,36 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
             String[] args = settingTable.getAuthParameter();
             ProxyServerConfig.EncryptType et = settingTable.getEncryptType();
 
-            ProxyServerConfig.Node n = updateServerNode(host, port, et, at, args);
-            this.serverNode.put(index, n);
+            if(hostList.getSelectContent().equals(NEW_CONFIG_NAME)) {
+                ProxyServerConfig.Node n = addServerNode(host, port, et, at, args);
+                this.serverNode.add(n);
+            } else {
+                updateServerNode(this.serverNode.get(index), host, port, et, at, args);
+            }
+            hostList.removeElement(index);
             hostList.addElement(host + ":" + port, index);
+        });
+
+        settingTable.addDeleteButtonActionListener(e -> {
+            int index = hostList.getSelectIndex();
+            if(hostList.getSelectContent().equals(NEW_CONFIG_NAME)) {
+                hostList.removeElement(index);
+                return;
+            }
+            hostList.removeElement(index);
+            removeServerNode(serverNode.remove(index));
         });
 
         //服务器选择列表事件
         hostList.addListSelectionListener(e -> {
-            ProxyServerConfig.Node n = serverNode.get(hostList.getSelectIndex());
+            int index = hostList.getSelectIndex();
+            if(index == -1 || index >= serverNode.size()) {
+                settingTable.setHostField("");
+                settingTable.setPortField(null);
+                settingTable.setAuthInfo(ProxyServerConfig.AuthType.SIMPLE, "");
+                return;
+            }
+            ProxyServerConfig.Node n = serverNode.get(index);
             if(n == null) {
                 settingTable.setHostField("");
                 settingTable.setPortField(null);
@@ -95,10 +124,9 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
             settingTable.setHostField(n.getHost());
             settingTable.setPortField(n.getPort());
             if(n.getAuthType() == ProxyServerConfig.AuthType.SIMPLE) {
-                settingTable.setAuthInfo(n.getAuthType(), n.getAuthArgument("pass"));
-
+                settingTable.setAuthInfo(n.getAuthType(), n.getAuthArgument("password"));
             } else {
-                settingTable.setAuthInfo(n.getAuthType(), n.getAuthArgument("username"), n.getAuthArgument("password"));
+                settingTable.setAuthInfo(n.getAuthType(), n.getAuthArgument("user"), n.getAuthArgument("pass"));
             }
         });
 
@@ -132,7 +160,7 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
         int i = 0;
         for(ProxyServerConfig.Node node : nodes) {
             hostList.addElement(node.getHost() + ":" + node.getPort(), i);
-            serverNode.put(i, node);
+            serverNode.add(i, node);
             i++;
         }
     }
@@ -150,21 +178,54 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
      * @param authType 认证方式
      * @param args 认证参数
      */
-    private ProxyServerConfig.Node updateServerNode(String host, int port, ProxyServerConfig.EncryptType encryptType,
-                                                    ProxyServerConfig.AuthType authType, String... args) {
+    private ProxyServerConfig.Node addServerNode(String host, int port, ProxyServerConfig.EncryptType encryptType,
+                                                 ProxyServerConfig.AuthType authType, String... args) {
         Map<String, String> param = new HashMap<>(4);
         switch (authType) {
             case SIMPLE:
-                param.put("pass", args[0]); break;
+                param.put("password", args[0]); break;
             case USER:
-                param.put("username", args[0]);
-                param.put("password", args[1]);
+                param.put("user", args[0]);
+                param.put("pass", args[1]);
                 break;
         }
         ProxyServerConfig.Node node = new ProxyServerConfig.Node(host, port, authType, encryptType, param, false);
         this.serverConfig.addProxyServerNode(node);
         return node;
     }
+
+
+    private void updateServerNode(ProxyServerConfig.Node src, String host, int port,
+                                                    ProxyServerConfig.EncryptType encryptType,
+                                                    ProxyServerConfig.AuthType authType, String... args) {
+        Map<String, String> param = new HashMap<>(4);
+        switch (authType) {
+            case SIMPLE:
+                param.put("password", args[0]); break;
+            case USER:
+                param.put("user", args[0]);
+                param.put("pass", args[1]);
+                break;
+        }
+
+        src.setHost(host);
+        src.setPort(port);
+        src.setEncryptType(encryptType);
+        src.setAuthType(authType);
+        src.setAuthArgument(param);
+
+        this.serverConfig.updateProxyServerNode(src);
+    }
+
+
+    private void removeServerNode(ProxyServerConfig.Node node) {
+        if(node == null) {
+            log.warn("Node is null");
+            return;
+        }
+        this.serverConfig.removeProxyServerNode(node);
+    }
+
 
     private class HostList {
         private final DefaultListModel<String> serverListModel;
@@ -185,14 +246,28 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
 
         void addElement(String host) {
             serverListModel.addElement(host);
+            if(host.equals(NEW_CONFIG_NAME))
+                serverList.setSelectedIndex(serverListModel.size() - 1);
         }
 
         void addElement(String host, int index) {
             serverListModel.add(index, host);
         }
 
+        void removeElement(String host) {
+            serverListModel.removeElement(host);
+        }
+
+        void removeElement(int index) {
+            serverListModel.remove(index);
+        }
+
         int getSelectIndex() {
             return serverList.getSelectedIndex();
+        }
+
+        String getSelectContent() {
+            return serverList.getSelectedValue();
         }
 
         void addListSelectionListener(ListSelectionListener listener) {
@@ -221,18 +296,25 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
 
 
         private SettingTable(Frame frame, int x, int y, int width, int height) {
+            Font font = new Font("黑体", Font.BOLD, 16);
+
             hostField = new JTextField();
-            JLabel hostl = new JLabel("服务器IP / 域名");
+            hostField.setFont(font);
+            JLabel hostl = new JLabel("服务器地址");
+            hostl.setFont(font);
             hostl.setBounds(0, 0, 100, 30);
             hostField.setBounds(105, 0, 335, 30);
 
             portField = new JTextField();
-            JLabel portl = new JLabel("端口 (1~65535)");
+            portField.setFont(font);
+            JLabel portl = new JLabel("端口");
+            portl.setFont(font);
             portl.setBounds(0, 40, 100, 30);
             portField.setBounds(105, 40, 335, 30);
 
             JComboBox<String> encrypt = new JComboBox<>();
             JLabel encryptl = new JLabel("加密方式");
+            encryptl.setFont(font);
             DefaultComboBoxModel<String> encryptModel = new DefaultComboBoxModel<>();
             encryptModel.addElement("TLS/SSL");
             encryptModel.addElement("无加密");
@@ -240,11 +322,13 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
             encrypt.setSelectedIndex(0);
             encryptl.setBounds(0, 80, 100, 30);
             encrypt.setBounds(105, 80, 335, 30);
+            encrypt.setFont(font);
             this.encryptBox = encrypt;
             this.encryptBoxModel = encryptModel;
 
             JComboBox<String> auth = new JComboBox<>();
             JLabel authl = new JLabel("认证方式");
+            authl.setFont(font);
             DefaultComboBoxModel<String> authModel = new DefaultComboBoxModel<>();
             authModel.addElement("选择认证方式");
             authModel.addElement("简单认证(SIMPLE)");
@@ -253,32 +337,40 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
             auth.setSelectedIndex(0);
             authl.setBounds(0, 120, 100, 30);
             auth.setBounds(105, 120, 335, 30);
+            auth.setFont(font);
             this.authBox = auth;
             this.authBoxModel = authModel;
 
             JPasswordField simplePass = new JPasswordField();
             JLabel spl = new JLabel("密码");
+            spl.setFont(font);
             spl.setBounds(0, 160, 100, 30);
             simplePass.setBounds(105, 160, 335, 30);
             this.simplePasswordField = simplePass;
 
             JTextField username = new JTextField();
             JLabel ul = new JLabel("用户名");
+            ul.setFont(font);
+            username.setFont(font);
             ul.setBounds(0, 160, 160, 30);
             username.setBounds(105, 160, 335, 30);
             this.usernameField = username;
 
             JPasswordField userPass = new JPasswordField();
             JLabel upl = new JLabel("用户密码");
+            upl.setFont(font);
             upl.setBounds(0, 200, 100, 30);
             userPass.setBounds(105, 200, 335, 30);
             this.passwordField = userPass;
 
             JButton enter = new JButton("新建配置");
+            enter.setFont(font);
             enter.setBounds(0, 240, 140, 30);
             JButton save = new JButton("保存");
+            save.setFont(font);
             save.setBounds(145, 240, 140, 30);
             JButton delete = new JButton("删除");
+            delete.setFont(font);
             delete.setBounds(290, 240, 140, 30);
 
             this.enterButton = enter;
@@ -391,9 +483,9 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
 
         String[] getAuthParameter() {
             switch (getAuthType()) {
-                case SIMPLE:
-                    return new String[] {usernameField.getText(), new String(passwordField.getPassword())};
                 case USER:
+                    return new String[] {usernameField.getText(), new String(passwordField.getPassword())};
+                case SIMPLE:
                     return new String[] {new String(simplePasswordField.getPassword())};
                 default:
                     return null;

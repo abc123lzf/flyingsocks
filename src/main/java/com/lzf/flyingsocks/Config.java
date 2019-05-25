@@ -44,7 +44,7 @@ public interface Config extends Named, Serializable {
     /**
      * 保存配置
      */
-    default void save() {
+    default void save() throws Exception {
         throw new UnsupportedOperationException("Config " + getName() + " at ConfigManager " +
                 configManager().getName() + " NOT support save.");
     }

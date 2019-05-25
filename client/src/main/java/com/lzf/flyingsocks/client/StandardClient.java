@@ -28,6 +28,7 @@ public class StandardClient extends TopLevelComponent implements Client {
     @Override
     protected void stopInternal() {
         super.stopInternal();
+        getConfigManager().saveAllConfig();
         System.exit(0);
     }
 
@@ -40,4 +41,21 @@ public class StandardClient extends TopLevelComponent implements Client {
     public ConfigManager<?> getConfigManager() {
         return super.getConfigManager();
     }
+
+    @Override
+    public String getSystemProperties(String key) {
+        return System.getProperty(key);
+    }
+
+    @Override
+    public String getEnvironmentVariable(String key) {
+        return System.getenv(key);
+    }
+
+    @Override
+    public void setSystemProperties(String key, String value) {
+        System.setProperty(key, value);
+    }
+
+
 }

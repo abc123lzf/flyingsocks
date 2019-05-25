@@ -15,11 +15,13 @@ import java.util.Map;
 class TrayModule extends AbstractModule<ViewComponent> {
     private static final Logger log = LoggerFactory.getLogger("PopupMenu");
 
-    static final String NAME = "TrayModule";
+    static final String NAME = "module.tray";
 
     private final TrayIcon tray;
 
     private final Image icon;
+
+    private final ConfigManager<?> configManager;
 
     private PACSettingMenu pacSettingMenu;
 
@@ -27,6 +29,7 @@ class TrayModule extends AbstractModule<ViewComponent> {
 
     TrayModule(ViewComponent component, Image icon) {
         super(component, NAME);
+        this.configManager = getComponent().getParentComponent().getConfigManager();
         this.icon = icon;
         this.tray = initTray();
     }
@@ -54,7 +57,7 @@ class TrayModule extends AbstractModule<ViewComponent> {
             });
 
             proxyItemPac.addActionListener(e -> {
-                if(select == ProxyAutoConfig.PROXY_NO)
+                if(select == ProxyAutoConfig.PROXY_PAC)
                     return;
                 if(pacConfig == null)
                     return;
@@ -64,13 +67,19 @@ class TrayModule extends AbstractModule<ViewComponent> {
             });
 
             proxyItemGlobal.addActionListener(e -> {
-                if(select == ProxyAutoConfig.PROXY_NO)
+                if(select == ProxyAutoConfig.PROXY_GLOBAL)
                     return;
                 if(pacConfig == null)
                     return;
 
                 select = ProxyAutoConfig.PROXY_GLOBAL;
                 pacConfig.setProxyMode(select);
+            });
+
+            configManager.registerConfigEventListener(event -> {
+                if(event.getEvent().equals(Config.UPDATE_EVENT) && event.getSource() instanceof ProxyAutoConfig) {
+                    initProxyAutoConfig((ProxyAutoConfig) event.getSource());
+                }
             });
 
             menu.add(proxyItem);
@@ -105,26 +114,41 @@ class TrayModule extends AbstractModule<ViewComponent> {
      * 代理服务器选择列表
      */
     private final class ServerChooseMenu {
-        int select;
+        int select = -1;
         final Menu serverMenu = new Menu("选择服务器");
         final Map<Integer, MenuItem> serverMap = new LinkedHashMap<>();
         final Map<Integer, ProxyServerConfig.Node> nodeMap = new LinkedHashMap<>();
 
         private ServerChooseMenu(PopupMenu menu) {
             menu.add(serverMenu);
+            /*configManager.registerConfigEventListener(event -> {
+                if(event.getEvent().equals(Config.UPDATE_EVENT) && event.getSource() instanceof ProxyServerConfig) {
+                    initServerItem((ProxyServerConfig) event.getSource());
+                }
+            });*/
         }
 
         void addServer(final int index, final ProxyServerConfig cfg, final ProxyServerConfig.Node node) {
-            MenuItem item = new MenuItem(node.getHost() + ":" + node.getPort());
+            MenuItem item;
+            if(node.isUse()) {
+                item = new MenuItem("√ " + node.getHost() + ":" + node.getPort());
+                select = index;
+            } else
+                item = new MenuItem(node.getHost() + ":" + node.getPort());
+
             item.addActionListener(e -> {
-                MenuItem mi = serverMap.get(select);
-                mi.setLabel("");
+                if(select != -1) {
+                    MenuItem mi = serverMap.get(select); //获取目前选定的MenuItem
+                    if (item == mi) //如果选择的是自身
+                        return;
+                    ProxyServerConfig.Node oldServ = nodeMap.get(select);
+                    cfg.setProxyServerUsing(oldServ, false); //将目前启用的代理服务器关闭
+                }
 
                 select = index;
-                cfg.setProxyServerUsing(node, true);
-
-
+                cfg.setProxyServerUsing(node, true); //启用新的代理服务器
             });
+
             nodeMap.put(index, node);
             serverMap.put(index, item);
             serverMenu.add(item);
@@ -136,9 +160,11 @@ class TrayModule extends AbstractModule<ViewComponent> {
         }
 
         void initServerItem(ProxyServerConfig cfg) {
-            for(Integer i : serverMap.keySet()) {
-                removeServer(i);
+            for(MenuItem mi : serverMap.values()) {
+                serverMenu.remove(mi);
             }
+            nodeMap.clear();
+            serverMap.clear();
 
             ProxyServerConfig.Node[] nodes = cfg.getProxyServerConfig();
             int i = 0;
@@ -152,14 +178,15 @@ class TrayModule extends AbstractModule<ViewComponent> {
     private TrayIcon initTray() {
         PopupMenu menu = new PopupMenu();
         MenuItem serverItem = new MenuItem("配置服务器");
+        MenuItem socksItem = new MenuItem("Socks5代理设置");
         MenuItem exitItem = new MenuItem("退出");
 
         this.pacSettingMenu = new PACSettingMenu(menu);
         this.serverChooseMenu = new ServerChooseMenu(menu);
 
         menu.add(serverItem);
+        menu.add(socksItem);
         menu.add(exitItem);
-
 
         TrayIcon icon = new TrayIcon(this.icon, "", menu);
         icon.setImageAutoSize(true);
@@ -175,17 +202,16 @@ class TrayModule extends AbstractModule<ViewComponent> {
             }
         });
 
-        ConfigManager<?> cm = getComponent().getParentComponent().getConfigManager();
-        ProxyServerConfig cfg = cm.getConfig(ProxyServerConfig.DEFAULT_NAME, ProxyServerConfig.class);
+        ProxyServerConfig cfg = configManager.getConfig(ProxyServerConfig.DEFAULT_NAME, ProxyServerConfig.class);
 
         if(cfg == null) {
-            cm.registerConfigEventListener(new ConfigEventListener() {
+            configManager.registerConfigEventListener(new ConfigEventListener() {
                 @Override
                 public void configEvent(ConfigEvent configEvent) {
                     if(configEvent.getEvent().equals(Config.REGISTER_EVENT) && configEvent.getSource() instanceof ProxyServerConfig) {
                         ProxyServerConfig psc = (ProxyServerConfig) configEvent.getSource();
                         serverChooseMenu.initServerItem(psc);
-                        cm.removeConfigEventListener(this);
+                        configManager.removeConfigEventListener(this);
                     }
                 }
             });
@@ -193,14 +219,14 @@ class TrayModule extends AbstractModule<ViewComponent> {
             serverChooseMenu.initServerItem(cfg);
         }
 
-        ProxyAutoConfig pac = cm.getConfig(ProxyAutoConfig.DEFAULT_NAME, ProxyAutoConfig.class);
+        ProxyAutoConfig pac = configManager.getConfig(ProxyAutoConfig.DEFAULT_NAME, ProxyAutoConfig.class);
         if(pac == null) {
-            cm.registerConfigEventListener(new ConfigEventListener() {
+            configManager.registerConfigEventListener(new ConfigEventListener() {
                 @Override
                 public void configEvent(ConfigEvent event) {
                     if(event.getEvent().equals(Config.REGISTER_EVENT) && event.getSource() instanceof ProxyAutoConfig) {
                         pacSettingMenu.initProxyAutoConfig((ProxyAutoConfig) event.getSource());
-                        cm.removeConfigEventListener(this);
+                        configManager.removeConfigEventListener(this);
                     }
                 }
             });
@@ -212,12 +238,15 @@ class TrayModule extends AbstractModule<ViewComponent> {
         serverItem.addActionListener(e -> getComponent().getModuleByName(ServerSettingModule.NAME,
                 ServerSettingModule.class).setVisible(true));
 
+        socksItem.addActionListener(e -> getComponent().getModuleByName(SocksSettingModule.NAME,
+                SocksSettingModule.class).setVisiable(true));
+
         exitItem.addActionListener(e -> {
             SystemTray.getSystemTray().remove(icon);
             getComponent().getParentComponent().stop();
         });
 
-        cm.registerConfigEventListener(event -> {
+        configManager.registerConfigEventListener(event -> {
             if(event.getEvent().equals(Config.UPDATE_EVENT) && event.getSource() instanceof ProxyServerConfig) {
                 ProxyServerConfig psc = (ProxyServerConfig) event.getSource();
                 serverChooseMenu.initServerItem(psc);

@@ -1,8 +1,6 @@
 package com.lzf.flyingsocks.client.proxy;
 
-import com.lzf.flyingsocks.AbstractComponent;
-import com.lzf.flyingsocks.ComponentException;
-import com.lzf.flyingsocks.ConfigManager;
+import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.client.GlobalConfig;
 import com.lzf.flyingsocks.encrypt.EncryptProvider;
 import com.lzf.flyingsocks.encrypt.EncryptSupport;
@@ -18,6 +16,8 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -28,7 +28,7 @@ import java.util.concurrent.*;
  *
  */
 public class ProxyServerComponent extends AbstractComponent<ProxyComponent> implements ProxyRequestSubscriber {
-    private static final int DEFAULT_PROCESSOR_THREAD = 1;
+    private static final int DEFAULT_PROCESSOR_THREAD = 4;
 
     //该服务器节点配置信息
     private final ProxyServerConfig.Node config;
@@ -51,6 +51,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     //与flyingsocks服务器会话对象
     private volatile ProxyServerSession proxyServerSession;
 
+    //代理请求消息队列
     private final BlockingQueue<ProxyRequest> proxyRequestQueue = new LinkedBlockingQueue<>();
 
     //活跃的代理请求Map
@@ -59,9 +60,10 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     //确保可以正式向服务器发送代理请求后释放clientMessageProcessor中的等待线程
     private volatile CountDownLatch taskWaitLatch;
 
+
     public ProxyServerComponent(ProxyComponent proxyComponent, ProxyServerConfig.Node config) {
-        super(generalName(config.getHost(), config.getPort()), proxyComponent);
-        this.config = config;
+        super(generalName(config.getHost(), config.getPort()), Objects.requireNonNull(proxyComponent));
+        this.config = Objects.requireNonNull(config);
         this.use = config.isUse();
     }
 
@@ -79,9 +81,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             provider = EncryptSupport.lookupProvider("OpenSSL", OpenSSLEncryptProvider.class);
             Map<String, Object> params = new HashMap<>();
             params.put("client", true);
-            //params.put("file.cert", sslcfg.openClientCertStream());
             params.put("file.cert.root", sslcfg.openRootCertStream());
-            //params.put("file.key", sslcfg.openKeyStream());
 
             try {
                 provider.initialize(params);
@@ -92,7 +92,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             throw new ComponentException("Unsupport encrypt type " + config.getEncryptType());
         }
 
-        GlobalConfig cfg = parent.getParentComponent().getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
+        ConfigManager<?> cm = parent.getParentComponent().getConfigManager();
+        GlobalConfig cfg = cm.getConfig(GlobalConfig.NAME, GlobalConfig.class);
 
         taskWaitLatch = new CountDownLatch(1);
 
@@ -131,6 +132,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             }
         }
 
+        ConfigManager<?> cm = parent.getParentComponent().getConfigManager();
+        cm.registerConfigEventListener(new ConfigRemovedListener());
+
         super.startInternal();
 
         if(active)
@@ -167,25 +171,35 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         CountDownLatch waitLatch = new CountDownLatch(1);
 
-        f.addListener(future -> {
-            if (future.isSuccess()) {
-                if(log.isTraceEnabled())
-                    log.trace("connect success to flyingsocks server {}:{}", host, port);
+        f.addListener(new GenericFutureListener<Future<? super Void>>() {
+            @Override
+            public void operationComplete(Future<? super Void> future) {
+                if (future.isSuccess()) {
+                    if(log.isTraceEnabled())
+                        log.trace("connect success to flyingsocks server {}:{}", host, port);
 
-                active = true;
-                for(int i = 0; i < DEFAULT_PROCESSOR_THREAD; i++) {
-                    clientMessageProcessor.submit(new ClientMessageTransferTask());
+                    active = true;
+                    for(int i = 0; i < DEFAULT_PROCESSOR_THREAD; i++) {
+                        clientMessageProcessor.submit(new ClientMessageTransferTask());
+                    }
+                    //连接成功后注册
+                    getParentComponent().registerSubscriber(ProxyServerComponent.this);
+                    f.removeListener(this);
+                } else {
+                    Throwable t = future.cause();
+                    if(!(t instanceof IllegalStateException && t.getMessage().equals("executor not accepting a task")))
+                        if (log.isWarnEnabled())
+                            log.warn("can not connect to flyingsocks server, cause:", t);
+                    f.removeListener(this);
+                    synchronized (ProxyServerComponent.this) {
+                        if (!ProxyServerComponent.this.getState().after(LifecycleState.STOPING))
+                            stop();
+                    }
                 }
 
-                getParentComponent().registerSubscriber(this);
-            } else {
-                Throwable t = future.cause();
-                if (log.isWarnEnabled())
-                    log.warn("can not connect to flyingsocks server, cause:", t);
+                if(sync)
+                    waitLatch.countDown();
             }
-
-            if(sync)
-                waitLatch.countDown();
         });
 
         try {
@@ -199,7 +213,12 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
     @Override
     protected void stopInternal() {
+        log.info("Ready to stop ProxyServerComponent {}:{}...", config.getHost(), config.getPort());
         active = false;
+        getParentComponent().removeSubscriber(this);
+        getParentComponent().removeProxyServer(this);
+        getParentComponent().getParentComponent().getConfigManager()
+                .removeConfig(OpenSSLConfig.generalName(config.getHost()));
         loopGroup.shutdownGracefully().addListener(future -> {
             if (future.isSuccess())
                 active = false;
@@ -213,6 +232,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         clientMessageProcessor.shutdownNow();
         activeProxyRequestMap.clear();
         super.stopInternal();
+        log.info("Stop ProxyServerComponent {}:{} complete.", config.getHost(), config.getPort());
     }
 
     /**
@@ -444,7 +464,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     }
 
 
-    private final class ClientMessageTransferTask implements Runnable{
+    private final class ClientMessageTransferTask implements Runnable {
         private final List<ProxyRequest> requests = new LinkedList<>();
 
         @Override
@@ -520,6 +540,24 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 if(log.isWarnEnabled())
                     log.warn("Serialize ProxyRequestMessage occur a exception");
                 request.getClientChannel().close();
+            }
+        }
+    }
+
+    private final class ConfigRemovedListener implements ConfigEventListener {
+        @Override
+        public void configEvent(ConfigEvent event) {
+            if(event.getEvent().equals(Config.UPDATE_EVENT) && event.getSource() instanceof ProxyServerConfig) {
+                ProxyServerConfig psc = (ProxyServerConfig) event.getSource();
+                if(!psc.containsProxyServerNode(config)) {
+                    synchronized (ProxyServerComponent.this) {
+                        if(!ProxyServerComponent.this.getState().after(LifecycleState.STOPING)) {
+                            stop();
+                            parent.removeComponentByName(getName());
+                            event.getConfigManager().removeConfigEventListener(this);
+                        }
+                    }
+                }
             }
         }
     }

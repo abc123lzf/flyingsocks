@@ -7,11 +7,11 @@ import com.lzf.flyingsocks.AbstractConfig;
 import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
+import com.lzf.flyingsocks.client.GlobalConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.Map;
@@ -27,7 +27,6 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     private static final Logger log = LoggerFactory.getLogger(ProxyAutoConfig.class);
 
     private static final String DEFAULT_PAC_CONFIG_LOCATION = "classpath://pac.txt";
-    private static final String DEFAULT_CONFIG_LOCATION = "classpath://config.json";
     private static final Charset DEFAULT_CONFIG_ENCODING = Charset.forName("UTF-8");
 
     public static final int PROXY_NO = 0;
@@ -67,7 +66,10 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
             throw new ConfigInitializationException(e);
         }
 
-        try(InputStream is = configManager.loadResource(DEFAULT_CONFIG_LOCATION)) {
+        GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
+        String url = cfg.configLocationURL();
+
+        try(InputStream is = configManager.loadResource(url)) {
             byte[] b = new byte[512000];
             int r = is.read(b);
             String str = new String(b, 0, r, DEFAULT_CONFIG_ENCODING);
@@ -97,14 +99,54 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
         }
     }
 
+    @Override
+    public boolean canSave() {
+        return true;
+    }
+
+    @Override
+    public void save() throws Exception {
+        GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
+
+        File f = new File(cfg.configLocation());
+        JSONObject obj;
+        if(f.exists() && f.length() > 0) {
+            FileReader reader = new FileReader(f);
+            char[] s = new char[(int)f.length()];
+            int r = reader.read(s);
+            if(r < f.length()) {
+                char[] os = s;
+                s = new char[r];
+                System.arraycopy(os, 0, s, 0, r);
+            }
+            obj = JSON.parseObject(new String(s));
+            reader.close();
+        } else {
+            obj = new JSONObject();
+        }
+
+        switch (proxyMode) {
+            case PROXY_NO:
+                obj.put("pac", "no"); break;
+            case PROXY_PAC:
+                obj.put("pac", "pac"); break;
+            case PROXY_GLOBAL:
+                obj.put("pac", "global"); break;
+        }
+
+        FileWriter writer = new FileWriter(f);
+        writer.write(obj.toJSONString());
+        writer.close();
+    }
+
     public int getProxyMode() {
         return proxyMode;
     }
 
+
     public void setProxyMode(int proxyMode) {
         if(this.proxyMode == proxyMode)
             return;
-
         this.proxyMode = proxyMode;
         configManager.updateConfig(this);
     }

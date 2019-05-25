@@ -37,7 +37,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
 
 
     protected ProxyComponent(Client client) {
-        super("ProxyCore", client);
+        super("ProxyCore", Objects.requireNonNull(client));
     }
 
 
@@ -63,6 +63,16 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
         super.initInternal();
     }
 
+    @Override
+    protected void startInternal() {
+        parent.getConfigManager().registerConfigEventListener(new ServerProxyConfigListener());
+        super.startInternal();
+    }
+
+    @Override
+    public void removeComponentByName(String name) {
+        super.removeComponentByName(name);
+    }
 
     @Override
     public void registerSubscriber(ProxyRequestSubscriber subscriber) {
@@ -141,8 +151,6 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
         }
     }
 
-
-
     private final class ServerProxyConfigListener implements ConfigEventListener {
         @Override
         public void configEvent(ConfigEvent configEvent) {
@@ -152,14 +160,28 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
             ProxyServerConfig cfg = (ProxyServerConfig) configEvent.getSource();
 
             if(configEvent.getEvent().equals(Config.UPDATE_EVENT)) {
+                ProxyServerConfig.Node[] nodes = cfg.getProxyServerConfig();
+                for(ProxyServerConfig.Node node : nodes) {
+                    String name = ProxyServerComponent.generalName(node.getHost(), node.getPort());
+                    ProxyServerComponent psc = getComponentByName(name, ProxyServerComponent.class);
 
+                    if(node.isUse()) { //如果用户需要建立一个代理服务器连接
+                        if(psc != null) {
+                            psc.stop();
+                            removeComponentByName(name);
+                        }
+
+                        ProxyServerComponent newPsc = new ProxyServerComponent(ProxyComponent.this, node);
+                        addComponent(newPsc);
+                        newPsc.init();
+                        newPsc.start();
+                    } else if(psc != null) { //如果用户需要关闭这个代理服务器连接
+                        psc.stop();
+                        removeComponentByName(name);
+                    }
+                }
             }
-
         }
     }
 
-    void setLoadBalance(boolean loadBalance) {
-        //TODO 更多的处理
-        this.loadBalance = loadBalance;
-    }
 }

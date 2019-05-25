@@ -1,5 +1,8 @@
 package com.lzf.flyingsocks;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -9,16 +12,19 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class DefaultConfigManager<T extends Component<?> & Environment> extends AbstractModule<T> implements ConfigManager<T> {
 
+    private final Logger log;
+
     private final Map<String, Config> configMap = new ConcurrentHashMap<>();
 
     private final List<ConfigEventListener> listeners = new CopyOnWriteArrayList<>();
 
     public DefaultConfigManager(T belongComponent, String name) {
         super(belongComponent, name);
+        log = LoggerFactory.getLogger(name);
     }
 
     public DefaultConfigManager(T belongComponent) {
-        super(belongComponent, "ConfigManager");
+        this(belongComponent, "ConfigManager");
     }
 
     @Override
@@ -69,13 +75,42 @@ public class DefaultConfigManager<T extends Component<?> & Environment> extends 
     }
 
     @Override
+    public void removeConfig(String name) {
+        Config cfg;
+        synchronized (configMap) {
+            cfg = configMap.remove(name);
+        }
+        if(cfg != null)
+            fireConfigEvent(Config.REMOVE_EVENT, cfg);
+    }
+
+    @Override
     public boolean saveConfig(Config config) {
         if(config.canSave()) {
-            config.save();
-            return true;
+            try {
+                config.save();
+                return true;
+            } catch (Exception e) {
+                log.warn("Save config '" + config.getName() + "' occur a exception", e);
+                return false;
+            }
         }
 
         return false;
+    }
+
+    @Override
+    public void saveAllConfig() {
+        synchronized (configMap) {
+            for (Config c : configMap.values()) {
+                try {
+                    if (c.canSave())
+                        c.save();
+                } catch (Exception e) {
+                    log.warn("Save config '" + c.getName() + "' occur a exception", e);
+                }
+            }
+        }
     }
 
     @Override

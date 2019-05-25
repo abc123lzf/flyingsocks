@@ -21,11 +21,22 @@ public interface ConfigManager<T extends Component<?>> extends Module<T>, Enviro
     void removeConfig(Config config);
 
     /**
+     * 删除配置，通过名称
+     * @param name 配置名称
+     */
+    void removeConfig(String name);
+
+    /**
      * 保存配置
      * @param config 配置对象
      * @return 是否成功
      */
     boolean saveConfig(Config config);
+
+    /**
+     * 保存该配置管理器中所有的配置
+     */
+    void saveAllConfig();
 
 
     /**

@@ -7,6 +7,14 @@ import com.lzf.flyingsocks.server.core.ProxyProcessor;
 
 public class StandardServer extends TopLevelComponent implements Server {
 
+    static {
+        try {
+            Class.forName("com.lzf.flyingsocks.url.ClasspathURLHandlerFactory");
+        } catch (ClassNotFoundException e) {
+            throw new Error(e);
+        }
+    }
+
     private ServerConfig serverConfig;
 
     public StandardServer() {

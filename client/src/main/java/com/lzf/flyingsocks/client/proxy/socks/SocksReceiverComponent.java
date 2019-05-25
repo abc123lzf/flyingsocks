@@ -135,12 +135,15 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                 }
                 case CMD: {
                     SocksCmdRequest req = (SocksCmdRequest) request;
+
+
                     if(req.cmdType() != SocksCmdType.CONNECT) {
                         if(log.isInfoEnabled())
                             log.info("Socks command request is not connect.");
                         ctx.close();
                         return;
                     }
+
                     ctx.pipeline().addLast(new SocksCommandRequestHandler()).remove(this);
                     ctx.fireChannelRead(req);
 

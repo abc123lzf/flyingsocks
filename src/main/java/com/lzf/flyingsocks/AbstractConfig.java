@@ -2,12 +2,25 @@ package com.lzf.flyingsocks;
 
 import java.util.Objects;
 
+/**
+ * 配置模板类
+ * @see com.lzf.flyingsocks.Config
+ */
 public abstract class AbstractConfig implements Config {
 
+    /**
+     * 配置名称
+     */
     private final String name;
 
+    /**
+     * 隶属的配置管理器
+     */
     protected final ConfigManager<?> configManager;
 
+    /**
+     * 是否已经初始化过
+     */
     private boolean initial = false;
 
     protected AbstractConfig(ConfigManager<?> configManager, String name) {

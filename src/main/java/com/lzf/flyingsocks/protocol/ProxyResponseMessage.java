@@ -103,9 +103,7 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
 
             ByteBuf msg;
             if(state == State.SUCCESS) {
-                int len;
-                msg = Unpooled.buffer(len = buf.readInt());
-                System.out.println(String.format("cidlen:%d | type:%d | msglen: %d", cidlen, h, len));
+                msg = Unpooled.buffer(buf.readInt());
                 buf.readBytes(msg);
             } else if(state == State.FAILURE) {
                 int len = buf.readInt();

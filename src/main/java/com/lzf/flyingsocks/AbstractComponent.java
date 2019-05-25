@@ -9,31 +9,60 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+/**
+ * 组件抽象模板类，实现了Component接口和Lifecycle接口
+ * @see com.lzf.flyingsocks.Component
+ * @see com.lzf.flyingsocks.Lifecycle
+ * @see com.lzf.flyingsocks.LifecycleBase
+ * @param <T> 父组件类型
+ */
 public abstract class AbstractComponent<T extends Component<?>> extends LifecycleBase implements Component<T> {
-    protected final Logger log = LoggerFactory.getLogger(getClass().getSimpleName());
 
+    /**
+     * Slf4j日志
+     */
+    protected final Logger log;
+
+    /**
+     * 父组件引用
+     */
     protected final T parent;
 
+    /**
+     * 该组件的名称
+     */
     protected String name;
 
+    /**
+     * 该组件持有的模块，键为该模块的名称
+     */
     private final Map<String, Module<?>> moduleMap = new ConcurrentHashMap<>();
 
+    /**
+     * 该组件持有的子组件，键为该组件的名称
+     */
     private final Map<String, Component<?>> componentMap = new ConcurrentSkipListMap<>();
 
     protected AbstractComponent() {
         super();
         this.parent = null;
         this.name = getClass().getName();
+        log = LoggerFactory.getLogger(this.name);
 
         if(LifecycleLoggerListener.INSTANCE != null)
             addLifecycleEventListener(LifecycleLoggerListener.INSTANCE);
     }
 
+    /**
+     * 构造组件
+     * @param name 组件名
+     * @param parent 父组件，如果没有父组件则泛型参数T需为VoidComponent并且值为null
+     */
     protected AbstractComponent(String name, T parent) {
         super();
         this.name = Objects.requireNonNull(name);
         this.parent = parent;
-
+        log = LoggerFactory.getLogger(name);
         if(LifecycleLoggerListener.INSTANCE != null)
             addLifecycleEventListener(LifecycleLoggerListener.INSTANCE);
     }
@@ -44,6 +73,10 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
 
     @Override
     public void setName(String name) {
+        if(parent instanceof AbstractComponent<?>) {
+            AbstractComponent<?> c = (AbstractComponent) parent;
+            c.changeChildComponentName(this.name, name);
+        }
         this.name = name;
     }
 
@@ -84,10 +117,6 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
      * @param component 组件对象
      */
     protected synchronized void addComponent(Component<?> component) {
-        LifecycleState state = getState();
-        if(state.after(LifecycleState.INITIALIZED))
-            throw new ComponentException(String.format("Component [%s] can not add component when component is new.", getName()));
-
         String name = component.getName();
         if(name == null)
             throw new ComponentException(String.format("Component type [%s] name can not be null.", component.getClass().getName()));
@@ -107,7 +136,7 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
     }
 
     @SuppressWarnings("unchecked")
-    protected <V extends Component<T>> V getComponentByName(String name, Class<V> requireType) {
+    protected <V extends Component<?>> V getComponentByName(String name, Class<V> requireType) {
         Component<?> c = componentMap.get(name);
         if(c == null)
             return null;
@@ -117,6 +146,7 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
 
         return (V)c;
     }
+
 
     /**
      * 移除组件
@@ -179,5 +209,36 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
         }
 
         super.restartInternal();
+    }
+
+    /**
+     * 当子模块需要修改名称时由子模块调用
+     * @param oldName 子模块旧名称
+     * @param newName 子模块新名称
+     */
+    void changeModuleComponentName(String oldName, String newName) {
+        Module<?> c = moduleMap.get(oldName);
+        if(c == null)
+            throw new ComponentException("Can not find module: " + oldName + " at " + name);
+        if(moduleMap.containsKey(newName))
+            throw new ComponentException("Module name: " + newName + " is already in " + name);
+        moduleMap.remove(oldName);
+        moduleMap.put(newName, c);
+    }
+
+    /**
+     * 当子组件需要修改名称时由子组件调用
+     * @param oldName 子组件旧名称
+     * @param newName 子组件新名称
+     */
+    private void changeChildComponentName(String oldName, String newName) {
+        Component<?> c = componentMap.get(oldName);
+        if(c == null)
+            throw new ComponentException("Can not find component: " + oldName + " at " + name);
+        if(componentMap.containsKey(newName))
+            throw new ComponentException("Component name: " + newName + " is already in " + name);
+
+        componentMap.remove(oldName);
+        componentMap.put(newName, c);
     }
 }

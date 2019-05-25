@@ -1,5 +1,8 @@
 package com.lzf.flyingsocks;
 
+/**
+ * 用于描述组件中发生的异常
+ */
 public class ComponentException extends RuntimeException {
 
     private static final long serialVersionUID = 4087418469075268501L;

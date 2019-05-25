@@ -6,16 +6,14 @@ import com.alibaba.fastjson.JSONObject;
 import com.lzf.flyingsocks.AbstractConfig;
 import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
+import com.lzf.flyingsocks.client.GlobalConfig;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.charset.Charset;
 
 public class SocksConfig extends AbstractConfig {
 
-    static final String NAME = "config.socks";
-
-    private static final String PATH = "classpath://config.json";
+    public static final String NAME = "config.socks";
 
     private boolean auth;
 
@@ -33,7 +31,10 @@ public class SocksConfig extends AbstractConfig {
 
     @Override
     protected void initInternal() throws ConfigInitializationException {
-        try(InputStream is = configManager.loadResource(PATH)) {
+        GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
+        String url = cfg.configLocationURL();
+        System.out.println(url);
+        try(InputStream is = configManager.loadResource(url)) {
             byte[] b = new byte[512000];
             int len = is.read(b);
             String json = new String(b, 0, len, Charset.forName("UTF-8"));
@@ -57,6 +58,48 @@ public class SocksConfig extends AbstractConfig {
         }
     }
 
+    @Override
+    public boolean canSave() {
+        return true;
+    }
+
+    @Override
+    public void save() throws Exception {
+        GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
+
+        File f = new File(cfg.configLocation());
+        JSONObject obj;
+        if(f.exists() && f.length() > 0) {
+            FileReader reader = new FileReader(f);
+            char[] s = new char[(int)f.length()];
+            int r = reader.read(s);
+            if(r < f.length()) {
+                char[] os = s;
+                s = new char[r];
+                System.arraycopy(os, 0, s, 0, r);
+            }
+            obj = JSON.parseObject(new String(s));
+            reader.close();
+        } else {
+            obj = new JSONObject();
+        }
+
+        JSONObject socks = new JSONObject();
+        socks.put("address", address);
+        socks.put("port", port);
+        socks.put("auth", auth);
+        if(auth) {
+            socks.put("username", username);
+            socks.put("password", password);
+        }
+
+        obj.put("socks", socks);
+
+        FileWriter writer = new FileWriter(f);
+        writer.write(obj.toJSONString());
+        writer.close();
+    }
+
     public boolean isAuth() {
         return auth;
     }
@@ -75,5 +118,12 @@ public class SocksConfig extends AbstractConfig {
 
     public String getAddress() {
         return address;
+    }
+
+    public void update(boolean auth, String username, String password) {
+        this.auth = auth;
+        this.username = username;
+        this.password = password;
+        configManager.updateConfig(this);
     }
 }
