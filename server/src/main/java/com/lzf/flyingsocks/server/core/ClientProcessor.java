@@ -13,6 +13,7 @@ import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
 import com.lzf.flyingsocks.protocol.SerializationException;
 
 import com.lzf.flyingsocks.server.ServerConfig;
+import com.lzf.flyingsocks.server.UserDatabase;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -23,6 +24,7 @@ import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.codec.FixedLengthFrameDecoder;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -40,7 +42,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
     protected void initInternal() {
         ServerConfig.Node node = parent.getServerConfig();
         EncryptProvider provider;
-        switch (node.encrtptType) {
+        switch (node.encryptType) {
             case OpenSSL:
                 provider = EncryptSupport.lookupProvider("OpenSSL");
                 break;
@@ -121,10 +123,11 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) {
-            if(log.isTraceEnabled())
-                log.trace("Receiver DelimiterMessage from client.");
             byte[] key = new byte[DelimiterMessage.DEFAULT_SIZE];
             msg.readBytes(key);
+
+            if(log.isTraceEnabled())
+                log.trace("Receive DelimiterMessage from client.");
 
             ClientSession state = getParentComponent().getClientSession(ctx.channel());
             state.setDelimiterKey(key);
@@ -153,10 +156,11 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
         }
 
         @Override
-        public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+        public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
             if(msg instanceof ByteBuf) {
-                ctx.write(msg, promise);
-                ctx.write(delimiter.copy(), promise);
+                VoidChannelPromise vcp = new VoidChannelPromise(ctx.channel(), true);
+                ctx.write(msg, vcp);
+                ctx.write(delimiter.copy(), vcp);
             } else {
                 ctx.write(msg, promise);
             }
@@ -187,8 +191,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                 return;
             }
 
-            ServerConfig.Node n = getParentComponent().getServerConfig();
-            boolean auth = n.authType.doAuth(n, msg);
+            boolean auth = doAuth(msg);
             if(!auth) {
                 if(log.isTraceEnabled())
                     log.trace("Auth failure, from client {}", ((SocketChannel)ctx.channel()).remoteAddress().getHostName());
@@ -211,6 +214,34 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                     Unpooled.buffer(DelimiterMessage.DEFAULT_SIZE).writeBytes(b)));
 
             cp.addLast(new ProxyHandler(clientSession));
+        }
+
+        /**
+         * 对客户端认证报文进行比对
+         * @param msg 客户端认证报文
+         * @return 是否通过认证
+         */
+        private boolean doAuth(AuthMessage msg) {
+            ServerConfig.Node n = getParentComponent().getServerConfig();
+            if(n.authType.authMethod != msg.getAuthMethod()) { //如果认证方式不匹配
+                return false;
+            }
+
+            if(n.authType == ServerConfig.AuthType.SIMPLE) {
+                List<String> keys = msg.getAuthMethod().getContainsKey();
+                for(String key : keys) {
+                    if(!n.getArgument(key).equals(msg.getContent(key)))
+                        return false;
+                }
+                return true;
+            } else if(n.authType == ServerConfig.AuthType.USER) {
+                String group = n.getArgument("group");
+                UserDatabase db = parent.getParentComponent().getUserDatabase();
+
+                return db.doAuth(group, msg.getContent("user"), msg.getContent("pass"));
+            }
+
+            return false;
         }
     }
 

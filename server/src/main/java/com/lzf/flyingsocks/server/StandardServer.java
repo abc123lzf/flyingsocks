@@ -17,6 +17,8 @@ public class StandardServer extends TopLevelComponent implements Server {
 
     private ServerConfig serverConfig;
 
+    private UserDatabase userDatabase;
+
     public StandardServer() {
         super("Server");
     }
@@ -30,6 +32,11 @@ public class StandardServer extends TopLevelComponent implements Server {
         for(ServerConfig.Node node : nodes) {
             addComponent(new ProxyProcessor(this, node));
         }
+
+        UserDatabaseImpl db = new UserDatabaseImpl(getConfigManager());
+        getConfigManager().registerConfig(db);
+
+        this.userDatabase = db;
         super.initInternal();
     }
 
@@ -41,5 +48,25 @@ public class StandardServer extends TopLevelComponent implements Server {
     @Override
     public ConfigManager<?> getConfigManager() {
         return super.getConfigManager();
+    }
+
+    @Override
+    public UserDatabase getUserDatabase() {
+        return userDatabase;
+    }
+
+    @Override
+    public String getSystemProperties(String key) {
+        return super.getSystemProperties(key);
+    }
+
+    @Override
+    public String getEnvironmentVariable(String key) {
+        return super.getEnvironmentVariable(key);
+    }
+
+    @Override
+    public void setSystemProperties(String key, String value) {
+        super.setSystemProperties(key, value);
     }
 }

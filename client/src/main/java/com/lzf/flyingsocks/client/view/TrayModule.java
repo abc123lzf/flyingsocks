@@ -144,7 +144,6 @@ class TrayModule extends AbstractModule<ViewComponent> {
                     ProxyServerConfig.Node oldServ = nodeMap.get(select);
                     cfg.setProxyServerUsing(oldServ, false); //将目前启用的代理服务器关闭
                 }
-
                 select = index;
                 cfg.setProxyServerUsing(node, true); //启用新的代理服务器
             });

@@ -197,6 +197,11 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
      */
     @ChannelHandler.Sharable
     private final class ClientSessionHandler extends ChannelInboundHandlerAdapter {
+        private final int maxClient;
+
+        private ClientSessionHandler() {
+            maxClient = serverConfig.maxClient;
+        }
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
@@ -206,6 +211,10 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
+            if(localClientMap.get().size() > maxClient) {
+                log.info("Node \"{}\" Client number out of maxClient limit, value:{}", serverConfig.name, maxClient);
+                ctx.close();
+            }
             ClientSession state = new ClientSession(ctx.channel());
             putClientSession(state);
             localClientMap.get().put(state.socketChannel(), state);

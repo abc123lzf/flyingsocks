@@ -187,9 +187,10 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     f.removeListener(this);
                 } else {
                     Throwable t = future.cause();
-                    if(!(t instanceof IllegalStateException && t.getMessage().equals("executor not accepting a task")))
+                    /*if(!(t instanceof IllegalStateException && t.getMessage().equals("executor not accepting a task")))
                         if (log.isWarnEnabled())
-                            log.warn("can not connect to flyingsocks server, cause:", t);
+                            log.warn("can not connect to flyingsocks server, cause:", t);*/
+                    log.warn("can not connect to flyingsocks server, cause:", t);
                     f.removeListener(this);
                     synchronized (ProxyServerComponent.this) {
                         if (!ProxyServerComponent.this.getState().after(LifecycleState.STOPING))
@@ -259,7 +260,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     }
 
     private synchronized void afterChannelInactive() {
-        //FIXME 断线重连有问题
         if(log.isInfoEnabled())
             log.info("Disconnect with flyingsocks server {}:{}", config.getHost(), config.getPort());
 
@@ -373,9 +373,10 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         @Override
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
             if(msg instanceof ByteBuf) {
+                VoidChannelPromise vcp = new VoidChannelPromise(ctx.channel(), true);
                 ByteBuf delimiter = Unpooled.buffer(this.delimiter.length).writeBytes(this.delimiter);
-                ctx.write(msg, promise);
-                ctx.write(delimiter, promise);
+                ctx.write(msg, vcp);
+                ctx.write(delimiter, vcp);
             } else {
                 ctx.write(msg, promise);
             }
@@ -403,6 +404,14 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 ctx.pipeline().remove(this).addLast(new ProxyHandler());
             } catch (SerializationException e) {
                 log.error("Serialize AuthMessage occur a exception:", e);
+            }
+        }
+
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+            if(!ctx.channel().isActive()) {
+                log.warn(String.format("[%s:%d]AuthHandler occur a exception", config.getHost(), config.getPort()), cause);
+                afterChannelInactive();
             }
         }
 

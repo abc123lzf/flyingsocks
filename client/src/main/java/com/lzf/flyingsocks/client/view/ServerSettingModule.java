@@ -50,8 +50,9 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
         });
 
         sf.setIconImage(icon);
-        sf.setBounds(0, 0, 760, 325);
+        sf.setBounds(0, 0, 760, 335);
         sf.setResizable(false);
+        sf.setLocationRelativeTo(null);
         sf.setVisible(false);
 
         this.hostList = new HostList(sf, 10, 50, 300, 278);

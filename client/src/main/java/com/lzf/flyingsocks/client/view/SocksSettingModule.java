@@ -26,6 +26,7 @@ public class SocksSettingModule extends AbstractModule<ViewComponent> {
         f.setLayout(null);
         f.setBounds(0, 0, 400, 180);
         f.setResizable(false);
+        f.setLocationRelativeTo(null);
         f.setIconImage(icon);
 
         f.addWindowListener(new WindowAdapter() {

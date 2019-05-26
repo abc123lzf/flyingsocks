@@ -2,7 +2,6 @@ package com.lzf.flyingsocks.server;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
 import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.protocol.AuthMessage;
@@ -11,7 +10,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.*;
@@ -19,10 +17,16 @@ import java.util.*;
 public class ServerConfig extends AbstractConfig implements Config {
     private static final Logger log = LoggerFactory.getLogger(ServerConfig.class);
 
+    static final String NAME = "config.server";
+
     private final List<Node> nodeList = new ArrayList<>();
 
+    private String location;
+
+    private String locationURL;
+
     ServerConfig(ConfigManager<?> configManager) {
-        super(configManager, "Config-Server");
+        super(configManager, NAME);
     }
 
     @Override
@@ -46,8 +50,16 @@ public class ServerConfig extends AbstractConfig implements Config {
             if(!location.endsWith("/"))
                 location += "/";
 
-            location += "config.json";
+            this.location = location;
 
+            if(configManager.getSystemProperties("os.name").toLowerCase().startsWith("win") ||
+                    !location.startsWith("/")) {
+                this.locationURL = "file:///" + this.location;
+            } else {
+                this.locationURL = "file://" + this.location;
+            }
+
+            location += "config.json";
             File file = new File(location);
 
             if(!file.exists()) {
@@ -65,10 +77,10 @@ public class ServerConfig extends AbstractConfig implements Config {
                     int port = obj.getIntValue("port");
                     int client = obj.getIntValue("max-client");
 
-                    EncrtptType encrtptType = EncrtptType.valueOf(obj.getString("encrypt"));
+                    EncryptType encryptType = EncryptType.valueOf(obj.getString("encrypt"));
                     AuthType authType = AuthType.valueOf(obj.getString("auth-type").toUpperCase());
 
-                    Node n = new Node(name, port, client, authType, encrtptType);
+                    Node n = new Node(name, port, client, authType, encryptType);
 
                     switch (authType) {
                         case SIMPLE: {
@@ -82,6 +94,7 @@ public class ServerConfig extends AbstractConfig implements Config {
                     }
 
                     nodeList.add(n);
+                    log.info("Create node {}", n.toString());
                 }
             }
 
@@ -107,6 +120,13 @@ public class ServerConfig extends AbstractConfig implements Config {
         writer.close();
     }
 
+    public String getLocation() {
+        return location;
+    }
+
+    public String getLocationURL() {
+        return locationURL;
+    }
 
     public Node[] getServerNode() {
         return nodeList.toArray(new Node[nodeList.size()]);
@@ -118,37 +138,15 @@ public class ServerConfig extends AbstractConfig implements Config {
     public enum AuthType {
         SIMPLE(AuthMessage.AuthMethod.SIMPLE), USER(AuthMessage.AuthMethod.USER);
 
-        private final AuthMessage.AuthMethod authMethod;
+        public final AuthMessage.AuthMethod authMethod;
 
         AuthType(AuthMessage.AuthMethod authMethod) {
             this.authMethod = authMethod;
         }
-
-        /**
-         * 对客户端认证报文进行比对
-         * @param node 服务器配置
-         * @param authMessage 客户端认证报文
-         * @return 是否通过认证
-         */
-        public boolean doAuth(Node node, AuthMessage authMessage) {
-            //如果认证方式不匹配
-            if(this.authMethod != authMessage.getAuthMethod()) {
-                return false;
-            }
-
-            List<String> keys = authMessage.getAuthMethod().getContainsKey();
-            //比对认证信息
-            for(String key : keys) {
-                if(!node.getArgument(key).equals(authMessage.getContent(key)))
-                    return false;
-            }
-
-            return true;
-        }
     }
 
-    public enum EncrtptType {
-        None, OpenSSL, JKS;
+    public enum EncryptType {
+        None, OpenSSL, JKS
     }
 
     /**
@@ -160,17 +158,17 @@ public class ServerConfig extends AbstractConfig implements Config {
         public final int port;      //绑定端口
         public final int maxClient; //最大客户端连接数
         public final AuthType authType; //认证方式
-        public final EncrtptType encrtptType;   //加密方式
+        public final EncryptType encryptType;   //加密方式
 
         //认证参数
         private final Map<String, String> args = new HashMap<>(4);
 
-        private Node(String name, int port, int maxClient, AuthType authType, EncrtptType encrtptType) {
+        private Node(String name, int port, int maxClient, AuthType authType, EncryptType encryptType) {
             this.name = Objects.requireNonNull(name);
             this.port = port;
             this.maxClient = maxClient;
             this.authType = Objects.requireNonNull(authType);
-            this.encrtptType = Objects.requireNonNull(encrtptType);
+            this.encryptType = Objects.requireNonNull(encryptType);
         }
 
         private void putArgument(String key, String value) {
@@ -181,6 +179,25 @@ public class ServerConfig extends AbstractConfig implements Config {
             synchronized (args) {
                 return args.get(key);
             }
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("[").append("name:").append(name).append(" port:")
+                    .append(port).append(" maxClient:").append(maxClient).append(" Auth:")
+                    .append(authType.name());
+
+            switch (authType) {
+                case SIMPLE:
+                    sb.append(" password:").append(args.get("password")); break;
+                case USER:
+                    sb.append(" group:").append(args.get("group")); break;
+            }
+
+            sb.append(" Encrypt:").append(encryptType.name());
+
+            return sb.toString();
         }
     }
 }

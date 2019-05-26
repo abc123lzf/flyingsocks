@@ -33,7 +33,7 @@ public class SocksConfig extends AbstractConfig {
     protected void initInternal() throws ConfigInitializationException {
         GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
         String url = cfg.configLocationURL();
-        System.out.println(url);
+
         try(InputStream is = configManager.loadResource(url)) {
             byte[] b = new byte[512000];
             int len = is.read(b);

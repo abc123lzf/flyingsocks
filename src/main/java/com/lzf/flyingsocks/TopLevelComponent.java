@@ -27,16 +27,6 @@ public abstract class TopLevelComponent extends AbstractComponent<VoidComponent>
     }
 
     /**
-     * 保存系统环境变量，通过System.getenv()获取
-     */
-    private final Map<String, String> environmentVariableMap = new ConcurrentHashMap<>();
-
-    /**
-     * 保存系统变量
-     */
-    private final Map<String, String> systemProperties = new ConcurrentHashMap<>();
-
-    /**
      * 配置管理器实例
      */
     private final ConfigManager<TopLevelComponent> configManager = new DefaultConfigManager<>(this);
@@ -56,30 +46,19 @@ public abstract class TopLevelComponent extends AbstractComponent<VoidComponent>
         return null;
     }
 
-    @Override
-    protected void initInternal() {
-        environmentVariableMap.putAll(System.getenv());
-
-        for(Map.Entry<Object, Object> entry : System.getProperties().entrySet())
-            systemProperties.put((String)entry.getKey(), (String)entry.getValue());
-
-        super.initInternal();
-    }
-
 
     @Override
     public String getEnvironmentVariable(String key) {
-        return environmentVariableMap.get(key);
+        return System.getenv(key);
     }
 
     @Override
     public String getSystemProperties(String key) {
-        return systemProperties.get(key);
+        return System.getProperty(key);
     }
 
     @Override
     public void setSystemProperties(String key, String value) {
-        systemProperties.put(key, value);
         System.setProperty(key, value);
     }
 

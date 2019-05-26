@@ -125,7 +125,6 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                         if((sconn = set.getIfContains(conn)) != null)
                             conn = sconn;
                         if(sconn != null) {
-                            log.debug("find same connection");
                             ChannelFuture f = conn.future;
                             Channel c = f.channel();
                             if(f.isDone() && f.isSuccess()) { //如果连接成功
@@ -141,7 +140,6 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                                     set.remove(conn);
                                 }
                             } else if(!f.isDone()) { //如果正处于连接状态
-                                log.debug("Add msg queue");
                                 conn.msgQueue.add(prm.getMessage());
                             } else { //如果连接建立失败
                                 set.remove(conn);
