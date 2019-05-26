@@ -163,7 +163,7 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
             for(Map.Entry<String, Component<?>> entry : componentMap.entrySet()) {
                 try {
                     entry.getValue().init();
-                } catch (LifecycleException | ComponentException e) {
+                } catch (Exception e) {
                     log.error(String.format("Component [%s] init failure.", entry.getKey()), e);
                 }
             }
@@ -176,7 +176,7 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
             for(Map.Entry<String, Component<?>> entry : componentMap.entrySet()) {
                 try {
                     entry.getValue().start();
-                } catch (LifecycleException | ComponentException e) {
+                } catch (Exception e) {
                     log.error(String.format("Component [%s] start failure.", entry.getKey()), e);
                 }
             }
@@ -189,7 +189,7 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
             for(Map.Entry<String, Component<?>> entry : componentMap.entrySet()) {
                 try {
                     entry.getValue().stop();
-                } catch (LifecycleException | ComponentException e) {
+                } catch (Exception e) {
                     log.error(String.format("Component [%s] stop failure.", entry.getKey()), e);
                 }
             }
@@ -202,7 +202,7 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
             for(Map.Entry<String, Component<?>> entry : componentMap.entrySet()) {
                 try {
                     entry.getValue().restart();
-                } catch (LifecycleException | ComponentException e) {
+                } catch (Exception e) {
                     log.error(String.format("Component [%s] restart failure.", entry.getKey()), e);
                 }
             }

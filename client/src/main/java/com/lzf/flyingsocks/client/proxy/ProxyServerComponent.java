@@ -16,6 +16,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
+import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 
@@ -40,13 +41,13 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     private volatile boolean active = false;
 
     //连接线程池
-    private EventLoopGroup loopGroup;
+    private volatile EventLoopGroup loopGroup;
 
     //通用Netty引导对象
-    private Bootstrap bootstrap;
+    private volatile Bootstrap bootstrap;
 
     //用于处理客户端消息
-    private ExecutorService clientMessageProcessor;
+    private volatile ExecutorService clientMessageProcessor;
 
     //与flyingsocks服务器会话对象
     private volatile ProxyServerSession proxyServerSession;
@@ -126,10 +127,10 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     protected void startInternal() {
         if(use) {
             doConnect(true);
-            if(!active) {
+            /*if(!active) {
                 stop();
                 return;
-            }
+            }*/
         }
 
         ConfigManager<?> cm = parent.getParentComponent().getConfigManager();
@@ -163,8 +164,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         String host = config.getHost();
         int port = config.getPort();
 
-        if(log.isTraceEnabled())
-            log.trace("Connect to flyingsocks server {}:{}...", host, port);
+        if(log.isInfoEnabled())
+            log.info("Connect to flyingsocks server {}:{}...", host, port);
 
         Bootstrap b = bootstrap.clone();
         ChannelFuture f = b.connect(host, port);
@@ -175,8 +176,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             @Override
             public void operationComplete(Future<? super Void> future) {
                 if (future.isSuccess()) {
-                    if(log.isTraceEnabled())
-                        log.trace("connect success to flyingsocks server {}:{}", host, port);
+                    if(log.isInfoEnabled())
+                        log.info("connect success to flyingsocks server {}:{}", host, port);
 
                     active = true;
                     for(int i = 0; i < DEFAULT_PROCESSOR_THREAD; i++) {
@@ -220,15 +221,16 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         getParentComponent().removeProxyServer(this);
         getParentComponent().getParentComponent().getConfigManager()
                 .removeConfig(OpenSSLConfig.generalName(config.getHost()));
-        loopGroup.shutdownGracefully().addListener(future -> {
-            if (future.isSuccess())
-                active = false;
-            else {
-                Throwable t = future.cause();
-                if (log.isWarnEnabled())
-                    log.warn("Shutdown Component " + getName() + "Failure, cause:", t);
-            }
-        });
+        if(loopGroup != null)
+            loopGroup.shutdownGracefully().addListener(future -> {
+                if (future.isSuccess())
+                    active = false;
+                else {
+                    Throwable t = future.cause();
+                    if (log.isWarnEnabled())
+                        log.warn("Shutdown Component " + getName() + "Failure, cause:", t);
+                }
+            });
 
         clientMessageProcessor.shutdownNow();
         activeProxyRequestMap.clear();
@@ -432,6 +434,13 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         }
 
         @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+            if(log.isWarnEnabled())
+                log.warn(String.format("Flyingsocks server connection %s:%d occur a exception",
+                        config.getHost(), config.getPort()), cause);
+        }
+
+        @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
             if(msg instanceof ByteBuf) {
                 ProxyResponseMessage resp;
@@ -538,6 +547,10 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         }
 
         private void sendToProxyServer(ProxyRequest request, ByteBuf buf) {
+            if(proxyServerSession == null) {
+                ReferenceCountUtil.release(buf);
+                return;
+            }
             ProxyRequestMessage prm = new ProxyRequestMessage(request.getClientChannel().id().asShortText());
             prm.setHost(request.getHost());
             prm.setPort(request.getPort());

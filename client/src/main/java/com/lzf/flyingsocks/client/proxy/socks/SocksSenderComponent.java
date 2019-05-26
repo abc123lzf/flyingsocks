@@ -53,8 +53,13 @@ public final class SocksSenderComponent extends AbstractComponent<SocksProxyComp
 
             b.connect(host, port).addListener((ChannelFuture f) -> {
                 if(!f.isSuccess()){
-                    if(log.isWarnEnabled())
-                        log.warn("connect establish failure, from " + request.getHost() + ":" + request.getPort(), f.cause());
+                    if(f.cause() instanceof ConnectTimeoutException) {
+                        if(log.isInfoEnabled())
+                            log.info("connect to " + request.getHost() + ":" + request.getPort() + " failure, cause connect timeout");
+                    } else {
+                        if (log.isWarnEnabled())
+                            log.warn("connect establish failure, from " + request.getHost() + ":" + request.getPort(), f.cause());
+                    }
                     request.getClientChannel().close();
                     f.channel().close();
                 } else {

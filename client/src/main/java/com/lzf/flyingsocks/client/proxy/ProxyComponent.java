@@ -36,6 +36,9 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
     private ProxyAutoConfig proxyAutoConfig;
 
 
+    private final ExecutorService executors = Executors.newCachedThreadPool();
+
+
     protected ProxyComponent(Client client) {
         super("ProxyCore", Objects.requireNonNull(client));
     }
@@ -67,6 +70,12 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
     protected void startInternal() {
         parent.getConfigManager().registerConfigEventListener(new ServerProxyConfigListener());
         super.startInternal();
+    }
+
+    @Override
+    protected void stopInternal() {
+        executors.shutdownNow();
+        super.stopInternal();
     }
 
     @Override
@@ -173,10 +182,12 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
 
                         ProxyServerComponent newPsc = new ProxyServerComponent(ProxyComponent.this, node);
                         addComponent(newPsc);
-                        newPsc.init();
-                        newPsc.start();
+                        executors.submit(() -> { //异步执行，防止连接超时阻塞GUI线程
+                            newPsc.init();
+                            newPsc.start();
+                        });
                     } else if(psc != null) { //如果用户需要关闭这个代理服务器连接
-                        psc.stop();
+                        executors.submit(psc::stop);
                         removeComponentByName(name);
                     }
                 }

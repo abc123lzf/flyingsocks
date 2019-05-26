@@ -44,7 +44,7 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
     private final int maxClient;
 
     //负责添加ClientSession的进站处理器
-    private final ChannelInboundHandler clientSessionHandler = new ClientSessionHandler();
+    private final ChannelInboundHandler clientSessionHandler;
 
     //配置信息
     private final ServerConfig.Node serverConfig;
@@ -66,6 +66,7 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
         this.port = serverConfig.port;
         this.maxClient = serverConfig.maxClient;
         this.serverConfig = serverConfig;
+        this.clientSessionHandler = new ClientSessionHandler();
         this.log = LoggerFactory.getLogger(String.format("ProxyProcessor [ID:%d Port:%d]", handlerId, port));
     }
 

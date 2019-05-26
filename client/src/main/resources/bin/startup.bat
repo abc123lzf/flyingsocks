@@ -1,0 +1,1 @@
+java -Xbootclasspath/a:../conf;../resources -jar ../lib/flyingsocks-cli-v1.0.jar
