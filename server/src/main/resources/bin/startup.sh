@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+
+if [ "$1" == "-install" ]; then
+    echo "make folder /var/log/flyingsocks-cli"
+    mkdir /var/log/flyingsocks-cli
+    echo "make folder /etc/flyingsocks-cli"
+    mkdir /etc/flyingsocks-cli
+    exit 0
+fi
+
 java -version
 if [ $? -ne 0 ]; then
     echo "No java command found in PATH"

@@ -178,7 +178,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             public void operationComplete(Future<? super Void> future) {
                 if (future.isSuccess()) {
                     if(log.isInfoEnabled())
-                        log.info("connect success to flyingsocks server {}:{}", host, port);
+                        log.info("Connect success to flyingsocks server {}:{}", host, port);
 
                     active = true;
                     for(int i = 0; i < DEFAULT_PROCESSOR_THREAD; i++) {
@@ -192,7 +192,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     /*if(!(t instanceof IllegalStateException && t.getMessage().equals("executor not accepting a task")))
                         if (log.isWarnEnabled())
                             log.warn("can not connect to flyingsocks server, cause:", t);*/
-                    log.warn("can not connect to flyingsocks server, cause:", t);
+                    log.warn("Can not connect to flyingsocks server, cause:", t);
                     f.removeListener(this);
                     synchronized (ProxyServerComponent.this) {
                         if (!ProxyServerComponent.this.getState().after(LifecycleState.STOPING))
@@ -216,7 +216,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
     @Override
     protected void stopInternal() {
-        log.info("Ready to stop ProxyServerComponent {}:{}...", config.getHost(), config.getPort());
+        if(log.isInfoEnabled())
+            log.info("Ready to stop ProxyServerComponent {}:{}...", config.getHost(), config.getPort());
         active = false;
         getParentComponent().removeSubscriber(this);
         getParentComponent().removeProxyServer(this);
@@ -236,7 +237,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         clientMessageProcessor.shutdownNow();
         activeProxyRequestMap.clear();
         super.stopInternal();
-        log.info("Stop ProxyServerComponent {}:{} complete.", config.getHost(), config.getPort());
+        if(log.isInfoEnabled())
+            log.info("Stop ProxyServerComponent {}:{} complete.", config.getHost(), config.getPort());
     }
 
     /**
@@ -318,7 +320,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         public void channelRead(ChannelHandlerContext ctx, Object buf) {
             if(buf instanceof ByteBuf) {
                 if(log.isTraceEnabled())
-                    log.trace("Receiver flyingsocks delimiter message");
+                    log.trace("Receive flyingsocks delimiter message");
                 ByteBuf msg = (ByteBuf) buf;
                 try {
                     DelimiterMessage dmsg = new DelimiterMessage(msg);
@@ -414,7 +416,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             if(!ctx.channel().isActive()) {
-                log.warn(String.format("[%s:%d]AuthHandler occur a exception", config.getHost(), config.getPort()), cause);
+                if(log.isWarnEnabled())
+                    log.warn(String.format("[%s:%d]AuthHandler occur a exception", config.getHost(), config.getPort()), cause);
                 afterChannelInactive();
             }
         }
@@ -496,7 +499,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             }
 
             if(log.isTraceEnabled())
-                log.trace("Server:{} ClientMessageTransferTask start", config.getHost());
+                log.trace("Server: {}:{} ClientMessageTransferTask start", config.getHost(), config.getPort());
 
             Thread t = Thread.currentThread();
             begin:
