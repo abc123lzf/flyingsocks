@@ -2,6 +2,7 @@ package com.lzf.flyingsocks.protocol;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.util.ReferenceCountUtil;
 
 import java.nio.charset.Charset;
 
@@ -131,6 +132,11 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
         ProxyRequestMessage obj = (ProxyRequestMessage) super.clone();
         obj.setMessage(message.copy());
         return obj;
+    }
+
+    @Override
+    protected void finalize() {
+        ReferenceCountUtil.release(message);
     }
 
     @Override

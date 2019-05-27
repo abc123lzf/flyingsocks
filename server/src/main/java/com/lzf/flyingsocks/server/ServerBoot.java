@@ -19,5 +19,4 @@ public class ServerBoot {
             log.error("flyingsocks server v1.0 start failure, cause:", e);
         }
     }
-
 }

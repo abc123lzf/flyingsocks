@@ -1,7 +1,6 @@
 package com.lzf.flyingsocks.client.proxy.socks;
 
 import com.lzf.flyingsocks.AbstractComponent;
-
 import com.lzf.flyingsocks.client.proxy.ProxyRequest;
 import com.lzf.flyingsocks.client.proxy.ProxyRequestSubscriber;
 import io.netty.bootstrap.Bootstrap;

@@ -2,6 +2,7 @@ package com.lzf.flyingsocks.protocol;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.util.ReferenceCountUtil;
 
 public class ProxyResponseMessage extends ProxyMessage implements Message {
 
@@ -131,5 +132,10 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
                 ", channelId='" + channelId + '\'' +
                 ", message=" + message +
                 '}';
+    }
+
+    @Override
+    protected void finalize() {
+        ReferenceCountUtil.release(message);
     }
 }

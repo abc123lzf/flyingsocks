@@ -1,7 +1,6 @@
 package com.lzf.flyingsocks.client;
 
 import com.lzf.flyingsocks.ComponentException;
-import io.netty.util.ResourceLeakDetector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,5 +21,4 @@ public final class ClientBoot {
 
         log.info("flyingsocks client v1.0 start complete");
     }
-
 }

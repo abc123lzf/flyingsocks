@@ -57,8 +57,7 @@ public class OpenSSLEncryptProvider implements EncryptProvider {
     private SslContext buildSSLContext(Map<String, Object> params) throws Exception {
         if(client) {
             try (InputStream x509crt = (InputStream) params.get("file.cert.root")) {
-                return SslContextBuilder.forClient()
-                        .trustManager(x509crt).build();
+                return SslContextBuilder.forClient().trustManager(x509crt).build();
             }
         } else {
             try (InputStream crt = (InputStream) params.get("file.cert");

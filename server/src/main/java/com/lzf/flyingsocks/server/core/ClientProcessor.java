@@ -11,7 +11,6 @@ import com.lzf.flyingsocks.protocol.AuthMessage;
 import com.lzf.flyingsocks.protocol.DelimiterMessage;
 import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
 import com.lzf.flyingsocks.protocol.SerializationException;
-
 import com.lzf.flyingsocks.server.ServerConfig;
 import com.lzf.flyingsocks.server.UserDatabase;
 import io.netty.bootstrap.ServerBootstrap;
@@ -24,10 +23,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.codec.FixedLengthFrameDecoder;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 
 public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
@@ -81,6 +77,11 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             }
         }
 
+
+        Map<String, Object> m = new HashMap<>(2);
+        m.put("alloc", PooledByteBufAllocator.DEFAULT);
+        final Map<String, Object> params = Collections.unmodifiableMap(m);
+
         ServerBootstrap boot = new ServerBootstrap();
         boot.group(getParentComponent().getConnectionReceiveWorker(), getParentComponent().getRequestProcessWorker())
             .channel(NioServerSocketChannel.class)
@@ -88,12 +89,10 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                 @Override
                 protected void initChannel(SocketChannel ch) throws Exception {
                     ChannelPipeline cp = ch.pipeline();
-                    Map<String, Object> m = new HashMap<>(2);
-                    m.put("alloc", PooledByteBufAllocator.DEFAULT);
                     if(provider != null) {
                         if(!provider.isInboundHandlerSameAsOutboundHandler())
-                            cp.addLast(provider.encodeHandler(m));
-                        cp.addLast(provider.decodeHandler(m));
+                            cp.addLast(provider.encodeHandler(params));
+                        cp.addLast(provider.decodeHandler(params));
                     }
                     cp.addLast(getParentComponent().clientSessionHandler());
                     cp.addLast(new FixedLengthFrameDecoder(DelimiterMessage.DEFAULT_SIZE));
@@ -159,7 +158,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
         @Override
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
             if(msg instanceof ByteBuf) {
-                VoidChannelPromise vcp = new VoidChannelPromise(ctx.channel(), true);
+                ChannelPromise vcp = ctx.voidPromise();
                 ctx.write(msg, vcp);
                 ctx.write(delimiter.copy(), vcp);
             } else {

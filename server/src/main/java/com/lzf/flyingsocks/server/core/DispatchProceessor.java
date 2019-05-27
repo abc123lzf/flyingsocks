@@ -7,10 +7,13 @@ import com.lzf.flyingsocks.util.ReturnableLinkedHashSet;
 import com.lzf.flyingsocks.util.ReturnableSet;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.ReferenceCountUtil;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -49,7 +52,8 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
         return new Bootstrap().group(getParentComponent().getRequestProcessWorker())
             .channel(NioSocketChannel.class)
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 8000)
-            .option(ChannelOption.SO_KEEPALIVE, true);
+            .option(ChannelOption.SO_KEEPALIVE, true)
+            .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
     }
 
     /**
@@ -134,10 +138,6 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                                         c.write(buf);
                                     }
                                     c.writeAndFlush(prm.getMessage());
-                                    if(!c.isActive()) //再次检查连接是否活跃
-                                        set.remove(conn);
-                                } else { //如果连接失效
-                                    set.remove(conn);
                                 }
                             } else if(!f.isDone()) { //如果正处于连接状态
                                 conn.msgQueue.add(prm.getMessage());
@@ -200,14 +200,23 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
         private void checkoutConnection() {
             Iterator<Map.Entry<ClientSession, ReturnableSet<ActiveConnection>>> it = activeConnectionMap.entrySet().iterator();
             it.forEachRemaining(e -> {
-                if(!e.getKey().isActive()) //如果客户端本身连接已经不活跃了，那么移除这个ClientSession
+                if(!e.getKey().isActive()) {
                     it.remove();
-                else {
+                    Iterator<ActiveConnection> sit = e.getValue().iterator();
+                    sit.forEachRemaining(ac -> {
+                        ByteBuf buf;
+                        while((buf = ac.msgQueue.poll()) != null)
+                            ReferenceCountUtil.release(buf);
+                    });
+                } else {
                     Iterator<ActiveConnection> sit = e.getValue().iterator();
                     sit.forEachRemaining(ac -> {
                         //如果已经建立过连接但是该连接已经不活跃了，那么清除这个ActiveConnection
                         if (ac.future.isDone()) {
                              if(!ac.future.channel().isActive()) {
+                                 ByteBuf buf;
+                                 while((buf = ac.msgQueue.poll()) != null)
+                                     ReferenceCountUtil.release(buf);
                                  sit.remove();
                              } else {
                                  Channel ch = ac.future.channel();
@@ -232,6 +241,14 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
         private DispatchHandler(ProxyTask task) {
             super(false);
             this.proxyTask = task;
+        }
+
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+            if(cause instanceof IOException && log.isInfoEnabled())
+                log.info("Target remote host {}:{} close, cause IOException", proxyTask.getProxyRequestMessage().getHost(), proxyTask.getProxyRequestMessage().getPort());
+            else if(log.isWarnEnabled())
+                log.warn("DispathcerHandelr occur a exception", cause);
         }
 
         @Override
@@ -261,6 +278,8 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                 proxyTask.getSession().writeAndFlushMessage(prm.serialize());
             } catch (IllegalStateException e) {
                 ctx.close();
+            } finally {
+                ReferenceCountUtil.release(msg);
             }
         }
     }

@@ -99,6 +99,10 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         taskWaitLatch = new CountDownLatch(1);
 
+        Map<String, Object> m = new HashMap<>(2);
+        m.put("alloc", PooledByteBufAllocator.DEFAULT);
+        final Map<String, Object> params = Collections.unmodifiableMap(m);
+
         loopGroup = new NioEventLoopGroup(2);
         bootstrap = new Bootstrap()
                 .channel(NioSocketChannel.class)
@@ -108,12 +112,10 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     @Override
                     protected void initChannel(SocketChannel ch) throws Exception {
                         ChannelPipeline cp = ch.pipeline();
-                        Map<String, Object> m = new HashMap<>(2);
-                        m.put("alloc", PooledByteBufAllocator.DEFAULT);
                         if(provider != null) {
                             if(!provider.isInboundHandlerSameAsOutboundHandler())
-                                cp.addLast(provider.encodeHandler(m));
-                            cp.addLast(provider.decodeHandler(m));
+                                cp.addLast(provider.encodeHandler(params));
+                            cp.addLast(provider.decodeHandler(params));
                         }
                         cp.addLast(new InitialHandler());
                     }
@@ -128,10 +130,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     protected void startInternal() {
         if(use) {
             doConnect(true);
-            /*if(!active) {
-                stop();
-                return;
-            }*/
         }
 
         ConfigManager<?> cm = parent.getParentComponent().getConfigManager();
@@ -188,11 +186,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     getParentComponent().registerSubscriber(ProxyServerComponent.this);
                     f.removeListener(this);
                 } else {
-                    Throwable t = future.cause();
-                    /*if(!(t instanceof IllegalStateException && t.getMessage().equals("executor not accepting a task")))
-                        if (log.isWarnEnabled())
-                            log.warn("can not connect to flyingsocks server, cause:", t);*/
-                    log.warn("Can not connect to flyingsocks server, cause:", t);
+                    log.warn("Can not connect to flyingsocks server, cause:", future.cause());
                     f.removeListener(this);
                     synchronized (ProxyServerComponent.this) {
                         if (!ProxyServerComponent.this.getState().after(LifecycleState.STOPING))
@@ -348,6 +342,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     if(log.isWarnEnabled())
                         log.warn("DelimiterMessage serialization error", e);
                     ctx.close();
+                } finally {
+                    ReferenceCountUtil.release(msg);
                 }
             } else {
                 ctx.fireChannelRead(buf);
@@ -379,7 +375,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         @Override
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
             if(msg instanceof ByteBuf) {
-                VoidChannelPromise vcp = new VoidChannelPromise(ctx.channel(), true);
+                ChannelPromise vcp = ctx.voidPromise();
                 ByteBuf delimiter = Unpooled.buffer(this.delimiter.length).writeBytes(this.delimiter);
                 ctx.write(msg, vcp);
                 ctx.write(delimiter, vcp);
@@ -448,25 +444,29 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
             if(msg instanceof ByteBuf) {
-                ProxyResponseMessage resp;
                 try {
-                    resp = new ProxyResponseMessage((ByteBuf) msg);
-                } catch (SerializationException e) {
-                    if(log.isWarnEnabled()) {
-                        log.warn("Serialize ProxyResponseMessage error", e);
-                    }
-                    ctx.close();
-                    return;
-                }
-
-                if(resp.getState() == ProxyResponseMessage.State.SUCCESS) {
-                    ProxyRequest req = activeProxyRequestMap.get(resp.getChannelId());
-                    if(req == null)
+                    ProxyResponseMessage resp;
+                    try {
+                        resp = new ProxyResponseMessage((ByteBuf) msg);
+                    } catch (SerializationException e) {
+                        if (log.isWarnEnabled()) {
+                            log.warn("Serialize ProxyResponseMessage error", e);
+                        }
+                        ctx.close();
                         return;
-                    Channel cc;
-                    if((cc = req.getClientChannel()).isActive()) {
-                        cc.writeAndFlush(resp.getMessage());
                     }
+
+                    if (resp.getState() == ProxyResponseMessage.State.SUCCESS) {
+                        ProxyRequest req = activeProxyRequestMap.get(resp.getChannelId());
+                        if (req == null)
+                            return;
+                        Channel cc;
+                        if ((cc = req.getClientChannel()).isActive()) {
+                            cc.writeAndFlush(resp.getMessage());
+                        }
+                    }
+                } finally {
+                    ReferenceCountUtil.release(msg);
                 }
 
             } else {
@@ -502,6 +502,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 log.trace("Server: {}:{} ClientMessageTransferTask start", config.getHost(), config.getPort());
 
             Thread t = Thread.currentThread();
+            List<ByteBuf> releaseList = new ArrayList<>(256);
             begin:
             while(!t.isInterrupted()) {
                 try {
@@ -509,7 +510,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     try {
                         while ((pr = proxyRequestQueue.poll(1, TimeUnit.MILLISECONDS)) != null) {
                             if(pr.sureMessageOnlyOne()) {
-                                sendToProxyServer(pr, pr.getClientMessage());
+                                ByteBuf buf = pr.getClientMessage();
+                                sendToProxyServer(pr, buf);
+                                ReferenceCountUtil.release(buf);
                                 continue begin;
                             }
                             requests.add(pr);
@@ -534,12 +537,19 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                         while ((b = req.getClientMessage()) != null) {
                             buf.addComponent(true, b);
                             isWrite = true;
+                            releaseList.add(b);
                         }
 
                         if (isWrite) {
                             sendToProxyServer(req, buf);
                         }
                     }
+
+                    releaseList.forEach(bf -> {
+                        if(ReferenceCountUtil.refCnt(bf) > 0)
+                            ReferenceCountUtil.release(bf);
+                    });
+                    releaseList.clear();
                 } catch (Exception e) {
                     log.error("Exception cause at ClientMessageTransferTask", e);
                 }
@@ -594,6 +604,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     }
 
     private static ExecutorService createMessageExecutor() {
+
         return new ThreadPoolExecutor(DEFAULT_PROCESSOR_THREAD, DEFAULT_PROCESSOR_THREAD, 0, TimeUnit.MILLISECONDS,
                 new SynchronousQueue<>());
     }

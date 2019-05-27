@@ -9,14 +9,12 @@ import io.netty.util.concurrent.FastThreadLocal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Iterator;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTaskManager {
@@ -212,7 +210,7 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
-            if(localClientMap.get().size() > maxClient) {
+            if(activeClientMap.size() > maxClient) {
                 log.info("Node \"{}\" Client number out of maxClient limit, value:{}", serverConfig.name, maxClient);
                 ctx.close();
             }
@@ -225,9 +223,11 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            if(log.isWarnEnabled())
+            if(cause instanceof IOException)
+                log.info("Remote host close the connection");
+            else if(log.isWarnEnabled())
                 log.warn("An exception occur", cause);
-            ctx.close().addListener(future -> removeClientSession(ctx.channel()));
+            ctx.close();
         }
 
         @Override

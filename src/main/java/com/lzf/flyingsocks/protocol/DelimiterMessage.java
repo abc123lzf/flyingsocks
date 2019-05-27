@@ -18,7 +18,7 @@ public class DelimiterMessage implements Message {
     }
 
     public DelimiterMessage(ByteBuf serialBuf) throws SerializationException {
-        deserialize(serialBuf);
+        deserialize(serialBuf.copy());
     }
 
     @Override
