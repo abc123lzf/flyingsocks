@@ -16,6 +16,7 @@ import com.lzf.flyingsocks.server.ServerConfig;
 import com.lzf.flyingsocks.server.UserDatabase;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.socket.SocketChannel;
@@ -88,7 +89,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                 protected void initChannel(SocketChannel ch) throws Exception {
                     ChannelPipeline cp = ch.pipeline();
                     Map<String, Object> m = new HashMap<>(2);
-                    m.put("alloc", ch.alloc());
+                    m.put("alloc", PooledByteBufAllocator.DEFAULT);
                     if(provider != null) {
                         if(!provider.isInboundHandlerSameAsOutboundHandler())
                             cp.addLast(provider.encodeHandler(m));

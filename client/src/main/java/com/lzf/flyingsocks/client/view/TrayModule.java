@@ -121,11 +121,6 @@ class TrayModule extends AbstractModule<ViewComponent> {
 
         private ServerChooseMenu(PopupMenu menu) {
             menu.add(serverMenu);
-            /*configManager.registerConfigEventListener(event -> {
-                if(event.getEvent().equals(Config.UPDATE_EVENT) && event.getSource() instanceof ProxyServerConfig) {
-                    initServerItem((ProxyServerConfig) event.getSource());
-                }
-            });*/
         }
 
         void addServer(final int index, final ProxyServerConfig cfg, final ProxyServerConfig.Node node) {
@@ -164,6 +159,7 @@ class TrayModule extends AbstractModule<ViewComponent> {
             }
             nodeMap.clear();
             serverMap.clear();
+            select = -1;
 
             ProxyServerConfig.Node[] nodes = cfg.getProxyServerConfig();
             int i = 0;

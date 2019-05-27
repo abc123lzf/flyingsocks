@@ -11,7 +11,6 @@ public final class ClientBoot {
     public static void main(String[] args) {
         log.info("flyingsocks client v1.0 start...");
 
-        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.ADVANCED);
         try {
             Client client = new StandardClient();
             client.init();

@@ -10,6 +10,7 @@ import com.lzf.flyingsocks.protocol.*;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -99,7 +100,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         taskWaitLatch = new CountDownLatch(1);
 
         loopGroup = new NioEventLoopGroup(2);
-        bootstrap = new Bootstrap().group(loopGroup)
+        bootstrap = new Bootstrap()
                 .channel(NioSocketChannel.class)
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, cfg.getConnectionTimeout())
                 .option(ChannelOption.SO_KEEPALIVE, true)
@@ -108,7 +109,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     protected void initChannel(SocketChannel ch) throws Exception {
                         ChannelPipeline cp = ch.pipeline();
                         Map<String, Object> m = new HashMap<>(2);
-                        m.put("alloc", ch.alloc());
+                        m.put("alloc", PooledByteBufAllocator.DEFAULT);
                         if(provider != null) {
                             if(!provider.isInboundHandlerSameAsOutboundHandler())
                                 cp.addLast(provider.encodeHandler(m));
@@ -167,7 +168,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         if(log.isInfoEnabled())
             log.info("Connect to flyingsocks server {}:{}...", host, port);
 
-        Bootstrap b = bootstrap.clone();
+        Bootstrap b = bootstrap.clone().group(this.loopGroup);
         ChannelFuture f = b.connect(host, port);
 
         CountDownLatch waitLatch = new CountDownLatch(1);
@@ -206,7 +207,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         try {
             if (sync)
-                waitLatch.await();
+                waitLatch.await(10000, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             if(log.isWarnEnabled())
                 log.warn("ProxyServerComponent interrupted when synchronize doConnect");
@@ -274,13 +275,14 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         activeProxyRequestMap.clear();
 
+        //处理掉线重连
         if(use) {
             if(log.isInfoEnabled())
                 log.info("Retry to connect flyingsocks server {}:{}", config.getHost(), config.getPort());
-            proxyServerSession = null;
-            taskWaitLatch = new CountDownLatch(1);
-            loopGroup = new NioEventLoopGroup(2);
-            clientMessageProcessor = createMessageExecutor();
+            this.proxyServerSession = null;
+            this.taskWaitLatch = new CountDownLatch(1);
+            this.loopGroup = new NioEventLoopGroup(2);
+            this.clientMessageProcessor = createMessageExecutor();
             doConnect(false);
         }
     }
@@ -436,7 +438,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
             if(log.isWarnEnabled())
-                log.warn(String.format("Flyingsocks server connection %s:%d occur a exception",
+                log.warn(String.format("flyingsocks server connection %s:%d occur a exception",
                         config.getHost(), config.getPort()), cause);
         }
 
