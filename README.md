@@ -1,7 +1,7 @@
 ![](flyingsocks.png)
 ## 介绍
 该项目是基于Java Netty框架开发的Socks5代理客户端/服务器，功能类似于Shadowsocks。<br/>
-在客户端与服务端的数据传输上，我们选择了SSL/TLS加密的方式。服务端需要持有CA证书、签名请求以及PKCS8格式的密钥，客户端则需要持有服务端的CA证书，以减少被GFW识别的可能性。<br>
+在客户端与服务端的数据传输上，我们选择了SSL/TLS单向认证的加密方式。服务端需要持有CA证书、签名请求以及PKCS8格式的密钥，客户端则需要持有服务端的CA证书。<br>
 项目基于Maven构建，分为两个模块：server模块和client模块。<br>
 
 
@@ -115,7 +115,7 @@ C:/ProgramData/flyingsocks-server负责存储config.json和user.json配置文件
 4. 进入bin目录，双击运行startup.bat启动项目。
 
 ## 使用的框架
-1. Netty 4.1.34 Final
+1. Netty 4.1.36 Final
 2. BeautyEye
 3. slf4j 1.7.26 / Apache log4j
 4. Alibaba FastJSON 1.2.57
