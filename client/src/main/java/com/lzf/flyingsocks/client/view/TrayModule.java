@@ -42,7 +42,7 @@ class TrayModule extends AbstractModule<ViewComponent> {
         final MenuItem proxyItemGlobal = new MenuItem("全局模式");
 
         private PACSettingMenu(PopupMenu menu) {
-            Menu proxyItem = new Menu("代理设置");
+            Menu proxyItem = new Menu("代理模式");
             proxyItem.add(proxyItemPac);
             proxyItem.add(proxyItemGlobal);
             proxyItem.add(proxyItemClose);

@@ -94,6 +94,7 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
             }
             hostList.removeElement(index);
             hostList.addElement(host + ":" + port, index);
+            JOptionPane.showMessageDialog(frame, "成功保存配置，请右键托盘图标点击‘选择服务器’进行连接");
         });
 
         settingTable.addDeleteButtonActionListener(e -> {

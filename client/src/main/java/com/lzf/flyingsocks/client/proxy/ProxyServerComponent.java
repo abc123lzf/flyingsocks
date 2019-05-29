@@ -21,6 +21,7 @@ import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -169,7 +170,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         Bootstrap b = bootstrap.clone().group(this.loopGroup);
         ChannelFuture f = b.connect(host, port);
 
-        CountDownLatch waitLatch = new CountDownLatch(1);
+        final CountDownLatch waitLatch = new CountDownLatch(1);
 
         f.addListener(new GenericFutureListener<Future<? super Void>>() {
             @Override
@@ -188,10 +189,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 } else {
                     log.warn("Can not connect to flyingsocks server, cause:", future.cause());
                     f.removeListener(this);
-                    synchronized (ProxyServerComponent.this) {
-                        if (!ProxyServerComponent.this.getState().after(LifecycleState.STOPING))
-                            stop();
-                    }
+                    afterChannelInactive(); //重新尝试连接
                 }
 
                 if(sync)
@@ -236,18 +234,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     }
 
     /**
-     * 当不采用这个flyingsocks服务器时调用
-     */
-    public synchronized void unused() {
-        use = false;
-        if(active) {
-            active = false;
-            getParentComponent().removeProxyServer(this);
-            stop();
-        }
-    }
-
-    /**
      * 判断该服务器连接是否活跃
      */
     public boolean isActive() {
@@ -272,7 +258,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         activeProxyRequestMap.clear();
 
         //处理掉线重连
-        if(use) {
+        //如果父组件没有处于正在停止状态并且用户还希望继续使用该节点
+        if(!parent.getState().after(LifecycleState.STOPING) && use) {
             if(log.isInfoEnabled())
                 log.info("Retry to connect flyingsocks server {}:{}", config.getHost(), config.getPort());
             this.proxyServerSession = null;
@@ -436,7 +423,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-            if(log.isWarnEnabled())
+            if(cause instanceof IOException && log.isInfoEnabled()) {
+                log.info("flyingsocks server {}:{} force closure of connections", config.getHost(), config.getPort());
+            } else if(log.isWarnEnabled())
                 log.warn(String.format("flyingsocks server connection %s:%d occur a exception",
                         config.getHost(), config.getPort()), cause);
         }
@@ -449,9 +438,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     try {
                         resp = new ProxyResponseMessage((ByteBuf) msg);
                     } catch (SerializationException e) {
-                        if (log.isWarnEnabled()) {
+                        if (log.isWarnEnabled())
                             log.warn("Serialize ProxyResponseMessage error", e);
-                        }
                         ctx.close();
                         return;
                     }
@@ -461,9 +449,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                         if (req == null)
                             return;
                         Channel cc;
-                        if ((cc = req.getClientChannel()).isActive()) {
+                        if ((cc = req.getClientChannel()).isActive())
                             cc.writeAndFlush(resp.getMessage());
-                        }
                     }
                 } finally {
                     ReferenceCountUtil.release(msg);

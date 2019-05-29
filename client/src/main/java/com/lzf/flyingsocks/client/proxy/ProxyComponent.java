@@ -2,6 +2,7 @@ package com.lzf.flyingsocks.client.proxy;
 
 import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.client.Client;
+import io.netty.util.ReferenceCountUtil;
 
 import java.util.List;
 import java.util.Objects;
@@ -119,8 +120,11 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
             }
         }
 
-        if(!consume && log.isWarnEnabled())
-            log.warn("ProxyRequest was not consume");
+        if(!consume) {
+            ReferenceCountUtil.release(request.getClientMessage());
+            if(log.isWarnEnabled())
+                log.warn("ProxyRequest was not consume");
+        }
     }
 
     protected boolean needProxy(String host) {

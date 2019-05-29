@@ -9,6 +9,8 @@ import io.netty.channel.*;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 
+import java.io.IOException;
+
 public final class SocksSenderComponent extends AbstractComponent<SocksProxyComponent> {
 
     private Bootstrap connectBootstrap;
@@ -113,7 +115,9 @@ public final class SocksSenderComponent extends AbstractComponent<SocksProxyComp
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            if(log.isWarnEnabled())
+            if(cause instanceof IOException && log.isInfoEnabled()) {
+                log.info("Direct connection force to close, from remote server {}:{}", request.getHost(), request.getPort());
+            } else if(log.isWarnEnabled())
                 log.warn("Exception caught in Proxy Handler", cause);
 
             request.closeClientChannel();
