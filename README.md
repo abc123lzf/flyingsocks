@@ -121,7 +121,4 @@ C:/ProgramData/flyingsocks-server负责存储config.json和user.json配置文件
 4. Alibaba FastJSON 1.2.57
 
 ## 最后
-本人大二学生一枚，做个项目纯粹是兴趣爱好，项目可能有或多或少的BUG，欢迎在ISSUE中指出，后期也可能会更新一些新的功能或是做一些优化。如果你觉得我的项目对你有帮助，欢迎你请我喝一杯咖啡：）
-<img src="https://img-blog.csdnimg.cn/20190410110513211.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2FiYzEyM2x6Zg==,size_16,color_FFFFFF,t_70" height="550" width="400" />
-
-<img src="https://img-blog.csdnimg.cn/20190410110541598.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2FiYzEyM2x6Zg==,size_16,color_FFFFFF,t_70" height="550" width="400"/>
+本人大二学生一枚，做个项目纯粹是兴趣爱好，项目可能有或多或少的BUG，欢迎在ISSUE中指出，后期也可能会更新一些新的功能，例如UDP的代理和多服务器的负载均衡等。
