@@ -21,10 +21,12 @@ elif [ $FS_SYS_TYPE == 0 ]; then
     command -v wget >/dev/null 2>&1 || { yum install -y wget; }
     command -v openssl >/dev/null 2>&1 || { yum install -y openssl; }
     command -v unzip >/dev/null 2>&1 || { yum install -y unzip zip;}
+    command -v java >/dev/null 2>&1 || { yum install -y java-1.8.0-openjdk.x86_64 }
 else
     command -v wget >/dev/null 2>&1 || { apt-get install -y wget; }
     command -v openssl >/dev/null 2>&1 || { apt-get install -y openssl; }
     command -v unzip >/dev/null 2>&1 || { apt-get install -y unzip zip;}
+    command -v java >/dev/null 2>&1 || { apt-get install -y java-1.8.0-openjdk.x86_64 }
 fi
 
 echo "服务器配置"
@@ -39,7 +41,7 @@ echo "[{ \"name\": \"default\"," "\"port\":$FS_PORT," "\"max-client\": $FS_MAX_C
         "\"auth-type\": \"simple\"," "\"password\": \"$FS_PWD\"" "}]" > config.json
 
 cd /tmp
-wget https://raw.githubusercontent.com/abc123lzf/flyingsocks/master/flyingsocks-server-1.0.zip
+wget https://raw.githubusercontent.com/abc123lzf/flyingsocks/v1.0/flyingsocks-server-1.0.zip
 unzip flyingsocks-server-1.0.zip -d /usr
 cd /usr/flyingsocks-server-1.0/conf/encrypt
 

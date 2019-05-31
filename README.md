@@ -6,13 +6,21 @@
 
 
 ## 服务端安装/部署
-#### 基本要求
+
+#### 自动安装
+下载fast-server-install.sh脚本
+`wget https://raw.githubusercontent.com/abc123lzf/flyingsocks/v1.0/flyingsocks-server-1.0.zip` <br>
+`chmod 770 fast-server-install.sh`<br>
+`./fast-server-install.sh`<br>
+
+按照提示操作即可
+
+#### 手动安装基本要求
 1. 必须安装JRE/JDK 1.8
 2. 如果没有SSL证书，需要安装OpenSSL
 
 #### Linux 操作系统
 1. 在/etc目录下建立flyingsocks-server文件夹，并进入文件夹：<br>
-
 	`mkdir /etc/flyingsocks-server`<br>
 	`cd /etc/flyingsocks-server`<br>
 		
