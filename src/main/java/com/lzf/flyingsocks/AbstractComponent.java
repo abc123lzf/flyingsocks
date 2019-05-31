@@ -44,13 +44,10 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
     private final Map<String, Component<?>> componentMap = new ConcurrentSkipListMap<>();
 
     protected AbstractComponent() {
-        super();
+        super(LifecycleLoggerListener.INSTANCE);
         this.parent = null;
         this.name = getClass().getName();
         log = LoggerFactory.getLogger(this.name);
-
-        if(LifecycleLoggerListener.INSTANCE != null)
-            addLifecycleEventListener(LifecycleLoggerListener.INSTANCE);
     }
 
     /**
@@ -59,12 +56,10 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
      * @param parent 父组件，如果没有父组件则泛型参数T需为VoidComponent并且值为null
      */
     protected AbstractComponent(String name, T parent) {
-        super();
+        super(LifecycleLoggerListener.INSTANCE);
         this.name = Objects.requireNonNull(name);
         this.parent = parent;
         log = LoggerFactory.getLogger(name);
-        if(LifecycleLoggerListener.INSTANCE != null)
-            addLifecycleEventListener(LifecycleLoggerListener.INSTANCE);
     }
 
     protected AbstractComponent(String name) {

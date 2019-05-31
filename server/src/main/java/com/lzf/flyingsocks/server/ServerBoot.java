@@ -4,7 +4,7 @@ import com.lzf.flyingsocks.ComponentException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ServerBoot {
+public abstract class ServerBoot {
 
     private static final Logger log = LoggerFactory.getLogger(ServerBoot.class);
 
@@ -18,5 +18,9 @@ public class ServerBoot {
         } catch (ComponentException e) {
             log.error("flyingsocks server v1.0 start failure, cause:", e);
         }
+    }
+
+    private ServerBoot() {
+        throw new UnsupportedOperationException();
     }
 }

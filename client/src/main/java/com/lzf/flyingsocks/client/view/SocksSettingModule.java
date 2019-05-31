@@ -8,7 +8,7 @@ import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
-public class SocksSettingModule extends AbstractModule<ViewComponent> {
+class SocksSettingModule extends AbstractModule<ViewComponent> {
     static final String NAME = "module.socks";
 
     private final Frame frame;

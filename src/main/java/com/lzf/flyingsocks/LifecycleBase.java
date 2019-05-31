@@ -1,12 +1,22 @@
 package com.lzf.flyingsocks;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public abstract class LifecycleBase implements Lifecycle {
 
-    private LifecycleState state = LifecycleState.NEW;
+    private volatile LifecycleState state = LifecycleState.NEW;
 
     private final List<LifecycleEventListener> listeners = new CopyOnWriteArrayList<>();
+
+    protected LifecycleBase() { }
+
+    protected LifecycleBase(LifecycleEventListener... listeners) {
+        List<LifecycleEventListener> l = Arrays.asList(listeners);
+        l.removeAll(Collections.singleton(null));
+        this.listeners.addAll(l);
+    }
 
     @Override
     public synchronized final void init() throws LifecycleException {
@@ -84,19 +94,13 @@ public abstract class LifecycleBase implements Lifecycle {
 
     @Override
     public final void removeLifecycleEventListener(LifecycleEventListener listener) {
-        int i = 0;
-        for(LifecycleEventListener eventListener : listeners) {
-            if(eventListener == listener || eventListener.equals(listener))
-                listeners.remove(i);
-            i++;
-        }
+        listeners.remove(listener);
     }
 
-    protected final void fireLifecycleEvent(String event, Object data) {
+    private void fireLifecycleEvent(String event, Object data) {
         LifecycleEvent eventObj = new LifecycleEvent(this, event, data);
         for(LifecycleEventListener listener : listeners) {
             listener.lifecycleEvent(eventObj);
         }
     }
-
 }

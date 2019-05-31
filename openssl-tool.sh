@@ -11,7 +11,7 @@ if [ ! -n "$1" ]; then
         mkdir cert
     fi
 else
-    CERT_PATH = $1
+    CERT_PATH=$1
 fi
 
 

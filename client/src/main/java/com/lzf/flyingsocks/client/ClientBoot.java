@@ -4,7 +4,7 @@ import com.lzf.flyingsocks.ComponentException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class ClientBoot {
+public abstract class ClientBoot {
     private static final Logger log = LoggerFactory.getLogger(ClientBoot.class);
 
     public static void main(String[] args) {
@@ -20,5 +20,9 @@ public final class ClientBoot {
         }
 
         log.info("flyingsocks client v1.0 start complete");
+    }
+
+    private ClientBoot() {
+        throw new UnsupportedOperationException();
     }
 }
