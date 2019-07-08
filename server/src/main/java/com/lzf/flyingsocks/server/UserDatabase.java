@@ -1,7 +1,5 @@
 package com.lzf.flyingsocks.server;
 
-import com.lzf.flyingsocks.Module;
-
 public interface UserDatabase {
 
     /**

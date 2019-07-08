@@ -1,14 +1,10 @@
-import com.lzf.flyingsocks.encrypt.EncryptSupport;
-
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.NavigableMap;
-import java.util.Scanner;
-
 public class Main {
 
     public static void main(String[] args) throws Exception {
-        assert EncryptSupport.lookupProvider("OpenSSL") != null;
+        int val = 123 | (1 << 31);
+
+        System.out.println(1 << 31);
+        System.out.println(val ^ (1 << 31));
     }
 
 

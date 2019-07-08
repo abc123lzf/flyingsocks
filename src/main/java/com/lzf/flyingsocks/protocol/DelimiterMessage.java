@@ -6,6 +6,7 @@ import io.netty.buffer.Unpooled;
 import java.util.Arrays;
 
 public class DelimiterMessage implements Message {
+
     /**
      * 分隔符字节数，建议16字节以上避免与报文数据混淆
      */

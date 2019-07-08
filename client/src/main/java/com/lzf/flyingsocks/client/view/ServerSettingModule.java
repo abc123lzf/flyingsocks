@@ -86,11 +86,16 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
             String[] args = settingTable.getAuthParameter();
             ProxyServerConfig.EncryptType et = settingTable.getEncryptType();
 
+            int certPort = -1;
+            if(et == ProxyServerConfig.EncryptType.SSL) {
+                certPort = settingTable.getCertPort();
+            }
+
             if(hostList.getSelectContent().equals(NEW_CONFIG_NAME)) {
-                ProxyServerConfig.Node n = addServerNode(host, port, et, at, args);
+                ProxyServerConfig.Node n = addServerNode(host, port, certPort, et, at, args);
                 this.serverNode.add(n);
             } else {
-                updateServerNode(this.serverNode.get(index), host, port, et, at, args);
+                updateServerNode(this.serverNode.get(index), host, port, certPort, et, at, args);
             }
             hostList.removeElement(index);
             hostList.addElement(host + ":" + port, index);
@@ -180,7 +185,7 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
      * @param authType 认证方式
      * @param args 认证参数
      */
-    private ProxyServerConfig.Node addServerNode(String host, int port, ProxyServerConfig.EncryptType encryptType,
+    private ProxyServerConfig.Node addServerNode(String host, int port, int certPort, ProxyServerConfig.EncryptType encryptType,
                                                  ProxyServerConfig.AuthType authType, String... args) {
         Map<String, String> param = new HashMap<>(4);
         switch (authType) {
@@ -191,13 +196,13 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
                 param.put("pass", args[1]);
                 break;
         }
-        ProxyServerConfig.Node node = new ProxyServerConfig.Node(host, port, authType, encryptType, param, false);
+        ProxyServerConfig.Node node = new ProxyServerConfig.Node(host, port, certPort, authType, encryptType, param, false);
         this.serverConfig.addProxyServerNode(node);
         return node;
     }
 
 
-    private void updateServerNode(ProxyServerConfig.Node src, String host, int port,
+    private void updateServerNode(ProxyServerConfig.Node src, String host, int port, int certPort,
                                                     ProxyServerConfig.EncryptType encryptType,
                                                     ProxyServerConfig.AuthType authType, String... args) {
         Map<String, String> param = new HashMap<>(4);
@@ -210,8 +215,10 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
                 break;
         }
 
+        src.setCertPort(certPort);
         src.setHost(host);
         src.setPort(port);
+        src.setCertPort(certPort);
         src.setEncryptType(encryptType);
         src.setAuthType(authType);
         src.setAuthArgument(param);
@@ -284,6 +291,8 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
         private final JComboBox<String> encryptBox;
         private final DefaultComboBoxModel<String> encryptBoxModel;
 
+        private final JTextField certPortField;
+
         private final JComboBox<String> authBox;
         private final DefaultComboBoxModel<String> authBoxModel;
 
@@ -327,6 +336,13 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
             encrypt.setFont(font);
             this.encryptBox = encrypt;
             this.encryptBoxModel = encryptModel;
+
+            certPortField = new JTextField();
+            certPortField.setFont(font);
+            JLabel cpl = new JLabel("证书端口");
+
+
+
 
             JComboBox<String> auth = new JComboBox<>();
             JLabel authl = new JLabel("认证方式");
@@ -397,6 +413,8 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
             frame.add(panel);
 
 
+
+
             auth.addItemListener(e -> {
                 if(e.getStateChange() == ItemEvent.SELECTED) {
                     int index = auth.getSelectedIndex();
@@ -453,6 +471,15 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
         int getPortField() {
             try {
                 return Integer.valueOf(portField.getText());
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(frame, "端口必须为数字", "提示", JOptionPane.WARNING_MESSAGE);
+                return -1;
+            }
+        }
+
+        int getCertPort() {
+            try {
+                return Integer.valueOf(certPortField.getText());
             } catch (NumberFormatException e) {
                 JOptionPane.showMessageDialog(frame, "端口必须为数字", "提示", JOptionPane.WARNING_MESSAGE);
                 return -1;

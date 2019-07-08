@@ -52,6 +52,7 @@ public class ProxyServerConfig extends AbstractConfig {
                 JSONObject o = array.getJSONObject(i);
                 String host = o.getString("host");
                 int port = o.getIntValue("port");
+                int certPort = o.getIntValue("cert-port");
                 String t;
                 AuthType type = AuthType.valueOf(t = o.getString("auth").toUpperCase());
 
@@ -70,7 +71,7 @@ public class ProxyServerConfig extends AbstractConfig {
                 boolean use = o.getBooleanValue("state");
                 EncryptType etype = EncryptType.valueOf(o.getString("encrypt").toUpperCase());
 
-                nodes.add(new Node(host, port, type, etype, authArg, use));
+                nodes.add(new Node(host, port, certPort, type, etype, authArg, use));
             }
         } catch (IOException e) {
             throw new ConfigInitializationException(e);
@@ -108,6 +109,7 @@ public class ProxyServerConfig extends AbstractConfig {
             JSONObject o = new JSONObject();
             o.put("host", node.getHost());
             o.put("port", node.getPort());
+            o.put("cert-port", node.getCertPort());
             o.put("auth", node.getAuthType().name().toLowerCase());
             JSONObject auth = new JSONObject();
             auth.putAll(node.authArgument);
@@ -175,6 +177,7 @@ public class ProxyServerConfig extends AbstractConfig {
     public static final class Node {
         private String host;
         private int port;
+        private int certPort;
         private AuthType authType;
         private Map<String, String> authArgument;
         private EncryptType encryptType;
@@ -183,10 +186,11 @@ public class ProxyServerConfig extends AbstractConfig {
 
         public Node() { }
 
-        public Node(String host, int port, AuthType authType, EncryptType type,
+        public Node(String host, int port, int certPort, AuthType authType, EncryptType type,
                     Map<String, String> authArgument, boolean use) {
             this.host = host;
             this.port = port;
+            this.certPort = certPort;
             this.authType = authType;
             this.authArgument = authArgument;
             this.use = use;
@@ -201,12 +205,21 @@ public class ProxyServerConfig extends AbstractConfig {
             this.host = host;
         }
 
+
         public int getPort() {
             return port;
         }
 
         public void setPort(int port) {
             this.port = port;
+        }
+
+        public int getCertPort() {
+            return certPort;
+        }
+
+        public void setCertPort(int certPort) {
+            this.certPort = certPort;
         }
 
         public AuthType getAuthType() {

@@ -30,13 +30,16 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
     private final Map<Channel, ClientSession> activeClientMap = new ConcurrentHashMap<>();
 
     //Boss线程
-    private EventLoopGroup connectionReceiveWorker = new NioEventLoopGroup(1);
+    private EventLoopGroup connectionReceiveWorker = new NioEventLoopGroup(2);
 
     //Worker线程池
     private EventLoopGroup requestProcessWorker = new NioEventLoopGroup();
 
     //绑定的端口
     private final int port;
+
+    //收发证书的端口
+    private final int certPort;
 
     //最大客户端数
     private final int maxClient;
@@ -65,6 +68,7 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
         this.maxClient = serverConfig.maxClient;
         this.serverConfig = serverConfig;
         this.clientSessionHandler = new ClientSessionHandler();
+        this.certPort = serverConfig.certPort;
         this.log = LoggerFactory.getLogger(String.format("ProxyProcessor [ID:%d Port:%d]", handlerId, port));
     }
 
@@ -92,6 +96,13 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
      */
     public final int getPort() {
         return port;
+    }
+
+    /**
+     * @return 收发CA证书的端口
+     */
+    public final int getCertPort() {
+        return certPort;
     }
 
     /**

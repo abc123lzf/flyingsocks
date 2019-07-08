@@ -7,10 +7,7 @@ import com.lzf.flyingsocks.encrypt.EncryptProvider;
 import com.lzf.flyingsocks.encrypt.EncryptSupport;
 import com.lzf.flyingsocks.encrypt.JksSSLEncryptProvider;
 import com.lzf.flyingsocks.encrypt.OpenSSLEncryptProvider;
-import com.lzf.flyingsocks.protocol.AuthMessage;
-import com.lzf.flyingsocks.protocol.DelimiterMessage;
-import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
-import com.lzf.flyingsocks.protocol.SerializationException;
+import com.lzf.flyingsocks.protocol.*;
 import com.lzf.flyingsocks.server.ServerConfig;
 import com.lzf.flyingsocks.server.UserDatabase;
 import io.netty.bootstrap.ServerBootstrap;
@@ -23,6 +20,11 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.codec.FixedLengthFrameDecoder;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 
@@ -30,8 +32,13 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
     private ServerBootstrap serverBootstrap;
 
+    private ServerBootstrap certBootstrap;
 
-    public ClientProcessor(ProxyProcessor proxyProcessor) {
+    private byte[] cert;
+
+    private byte[] certMD5;
+
+    ClientProcessor(ProxyProcessor proxyProcessor) {
         super("ClientProcessor", Objects.requireNonNull(proxyProcessor));
     }
 
@@ -59,9 +66,25 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                 OpenSSLConfig cfg = new OpenSSLConfig(manager);
                 manager.registerConfig(cfg);
 
-                Map<String, Object> params = new HashMap<>();
+                Map<String, Object> params = new HashMap<>(8);
+
+                try(InputStream certIs = cfg.openServerCertStream()) {
+                    byte[] b = new byte[10240];
+                    int r = certIs.read(b);
+                    byte[] nb = new byte[r];
+                    System.arraycopy(b, 0, nb, 0, r);
+                    this.cert = nb;
+
+                    MessageDigest md = MessageDigest.getInstance("MD5");
+                    this.certMD5 = md.digest(cert);
+
+                    ByteArrayInputStream bais = new ByteArrayInputStream(nb);
+                    params.put("file.cert", bais);
+                } catch (IOException | NoSuchAlgorithmException e) {
+                    throw new ComponentException(e);
+                }
+
                 params.put("client", false);
-                params.put("file.cert", cfg.openServerCertStream());
                 params.put("file.cert.root", cfg.openRootCertStream());
                 params.put("file.key", cfg.openKeyStream());
 
@@ -100,7 +123,25 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                 }
             });
 
-        serverBootstrap = boot;
+        this.serverBootstrap = boot;
+
+        ServerBootstrap certBoot = new ServerBootstrap();
+        certBoot.group(getParentComponent().getConnectionReceiveWorker(), getParentComponent().getRequestProcessWorker())
+                .channel(NioServerSocketChannel.class)
+                .option(ChannelOption.AUTO_CLOSE, true)
+                .childHandler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    protected void initChannel(SocketChannel ch) {
+                        ChannelPipeline cp = ch.pipeline();
+                        int l = CertRequestMessage.END_MARK.length;
+                        ByteBuf buf = Unpooled.buffer(l);
+                        buf.writeBytes(CertRequestMessage.END_MARK);
+                        cp.addLast(new DelimiterBasedFrameDecoder(16 + l + 2, buf));
+                        cp.addLast(new CertRequestHandler());
+                    }
+                });
+
+        this.certBootstrap = certBoot;
     }
 
     @Override
@@ -114,10 +155,92 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                     throw new ComponentException(t);
                 }
             }).sync();
+
+            certBootstrap.bind(parent.getCertPort()).addListener(future -> {
+                if (!future.isSuccess()) {
+                    Throwable t = future.cause();
+                    if (log.isErrorEnabled())
+                        log.error("CertServer occur a error when bind port " + getParentComponent().getPort(), t);
+                    throw new ComponentException(t);
+                }
+            }).sync();
+
         } catch (InterruptedException e) {
             // Should not be happend.
         }
     }
+
+    @Override
+    protected void stopInternal() {
+        super.stopInternal();
+    }
+
+    /**
+     * 对客户端认证报文进行比对
+     * @param msg 客户端认证报文
+     * @return 是否通过认证
+     */
+    private boolean doAuth(AuthMessage msg) {
+        ServerConfig.Node n = getParentComponent().getServerConfig();
+        if(n.authType.authMethod != msg.getAuthMethod()) { //如果认证方式不匹配
+            return false;
+        }
+
+        if(n.authType == ServerConfig.AuthType.SIMPLE) {
+            List<String> keys = msg.getAuthMethod().getContainsKey();
+            for(String key : keys) {
+                if(!n.getArgument(key).equals(msg.getContent(key)))
+                    return false;
+            }
+            return true;
+        } else if(n.authType == ServerConfig.AuthType.USER) {
+            String group = n.getArgument("group");
+            UserDatabase db = parent.getParentComponent().getUserDatabase();
+
+            return db.doAuth(group, msg.getContent("user"), msg.getContent("pass"));
+        }
+
+        return false;
+    }
+
+
+    private final class CertRequestHandler extends SimpleChannelInboundHandler<ByteBuf> {
+
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+            if(cause instanceof IOException)
+                return;
+            if(log.isWarnEnabled())
+                log.warn("Exception occur at CertRequestHandler", cause);
+            ctx.close();
+        }
+
+        @Override
+        protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
+            CertRequestMessage req = new CertRequestMessage(msg);
+            boolean auth = doAuth(req);
+            if(!auth)
+                ctx.close();
+
+            byte[] src = req.getCertMD5();
+            boolean update = false;
+            for(int i = 0; i < 16; i++) {
+                if(certMD5[i] != src[i]) {
+                    update = true;
+                    break;
+                }
+            }
+
+            if(update) {
+                CertResponseMessage resp = new CertResponseMessage(true, cert);
+                ctx.writeAndFlush(resp.serialize());
+            } else {
+                CertResponseMessage resp = new CertResponseMessage(false, null);
+                ctx.writeAndFlush(resp.serialize());
+            }
+        }
+    }
+
 
     private final class InitialHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
@@ -143,7 +266,6 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             cp.addLast(new DelimiterBasedFrameDecoder(102400, keyBuf));
             cp.addLast(new AuthHandler(state));
         }
-
     }
 
     private final class DelimiterOutboundHandler extends ChannelOutboundHandlerAdapter {
@@ -216,33 +338,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             cp.addLast(new ProxyHandler(clientSession));
         }
 
-        /**
-         * 对客户端认证报文进行比对
-         * @param msg 客户端认证报文
-         * @return 是否通过认证
-         */
-        private boolean doAuth(AuthMessage msg) {
-            ServerConfig.Node n = getParentComponent().getServerConfig();
-            if(n.authType.authMethod != msg.getAuthMethod()) { //如果认证方式不匹配
-                return false;
-            }
 
-            if(n.authType == ServerConfig.AuthType.SIMPLE) {
-                List<String> keys = msg.getAuthMethod().getContainsKey();
-                for(String key : keys) {
-                    if(!n.getArgument(key).equals(msg.getContent(key)))
-                        return false;
-                }
-                return true;
-            } else if(n.authType == ServerConfig.AuthType.USER) {
-                String group = n.getArgument("group");
-                UserDatabase db = parent.getParentComponent().getUserDatabase();
-
-                return db.doAuth(group, msg.getContent("user"), msg.getContent("pass"));
-            }
-
-            return false;
-        }
     }
 
     private final class ProxyHandler extends SimpleChannelInboundHandler<ByteBuf> {
@@ -273,4 +369,6 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             getParentComponent().publish(task);
         }
     }
+
+
 }

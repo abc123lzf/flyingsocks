@@ -75,12 +75,13 @@ public class ServerConfig extends AbstractConfig implements Config {
                     JSONObject obj = arr.getJSONObject(i);
                     String name = obj.getString("name");
                     int port = obj.getIntValue("port");
+                    int certPort = obj.getIntValue("cert-port");
                     int client = obj.getIntValue("max-client");
 
                     EncryptType encryptType = EncryptType.valueOf(obj.getString("encrypt"));
                     AuthType authType = AuthType.valueOf(obj.getString("auth-type").toUpperCase());
 
-                    Node n = new Node(name, port, client, authType, encryptType);
+                    Node n = new Node(name, port, certPort, client, authType, encryptType);
 
                     switch (authType) {
                         case SIMPLE: {
@@ -156,6 +157,7 @@ public class ServerConfig extends AbstractConfig implements Config {
     public static class Node {
         public final String name;   //节点名称
         public final int port;      //绑定端口
+        public final int certPort;  //收发CA证书端口
         public final int maxClient; //最大客户端连接数
         public final AuthType authType; //认证方式
         public final EncryptType encryptType;   //加密方式
@@ -163,9 +165,10 @@ public class ServerConfig extends AbstractConfig implements Config {
         //认证参数
         private final Map<String, String> args = new HashMap<>(4);
 
-        private Node(String name, int port, int maxClient, AuthType authType, EncryptType encryptType) {
+        private Node(String name, int port, int certPort, int maxClient, AuthType authType, EncryptType encryptType) {
             this.name = Objects.requireNonNull(name);
             this.port = port;
+            this.certPort = certPort;
             this.maxClient = maxClient;
             this.authType = Objects.requireNonNull(authType);
             this.encryptType = Objects.requireNonNull(encryptType);

@@ -55,6 +55,8 @@ public class AuthMessage implements Message {
         }
     }
 
+    AuthMessage() { }
+
     public AuthMessage(ByteBuf serialBuf) throws SerializationException {
         deserialize(serialBuf);
     }
@@ -138,5 +140,6 @@ public class AuthMessage implements Message {
         this.authMethod = type;
         this.authInfo = map;
     }
+
 
 }
