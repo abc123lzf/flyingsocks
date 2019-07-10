@@ -6,7 +6,7 @@ public interface ConfigManager<T extends Component<?>> extends Module<T>, Enviro
      * 注册配置
      * @param config 配置对象
      */
-    void registerConfig(Config config);
+    void registerConfig(Config config) throws ConfigInitializationException;
 
     /**
      * 更新配置

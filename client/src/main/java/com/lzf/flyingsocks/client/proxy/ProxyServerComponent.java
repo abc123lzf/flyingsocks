@@ -7,6 +7,7 @@ import com.lzf.flyingsocks.encrypt.EncryptSupport;
 import com.lzf.flyingsocks.encrypt.OpenSSLEncryptProvider;
 import com.lzf.flyingsocks.protocol.*;
 
+import com.lzf.flyingsocks.util.FSMessageChannelOutboundHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
@@ -72,14 +73,48 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
     @Override
     protected void initInternal() {
+        ConfigManager<?> cm = parent.getParentComponent().getConfigManager();
+        GlobalConfig cfg = cm.getConfig(GlobalConfig.NAME, GlobalConfig.class);
+
         EncryptProvider provider;
         //目前仅支持OpenSSL加密和不加密(测试性质)
         if(config.getEncryptType() == ProxyServerConfig.EncryptType.NONE) {
             provider = null;
         } else if(config.getEncryptType() == ProxyServerConfig.EncryptType.SSL) {
-            ConfigManager<?> manager = parent.getParentComponent().getConfigManager();
-            OpenSSLConfig sslcfg = new OpenSSLConfig(manager, config.getHost());
-            manager.registerConfig(sslcfg);
+            OpenSSLConfig sslcfg = new OpenSSLConfig(cm, config.getHost());
+            try {
+                cm.registerConfig(sslcfg);
+            } catch (ConfigInitializationException e) {
+                //尝试从服务器上获取SSL证书
+                final EventLoopGroup sslGroup = new NioEventLoopGroup(1);
+                Bootstrap sslBoot = new Bootstrap()
+                        .channel(NioSocketChannel.class)
+                        .option(ChannelOption.SO_KEEPALIVE, true)
+                        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, cfg.getConnectionTimeout())
+                        .handler(new ChannelInitializer<SocketChannel>() {
+                            @Override
+                            protected void initChannel(SocketChannel ch) throws Exception {
+                                ChannelPipeline cp = ch.pipeline();
+                                cp.addLast(new FSMessageChannelOutboundHandler());
+                                cp.addLast(new DelimiterBasedFrameDecoder(1024 * 100,
+                                        Unpooled.copiedBuffer(CertResponseMessage.END_MARK)));
+
+                                cp.addLast(new ChannelHandlerAdapter() {
+                                    @Override
+                                    public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
+
+                                    }
+                                });
+
+                                cp.addLast(new SimpleChannelInboundHandler<ByteBuf>() {
+                                    @Override
+                                    protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
+
+                                    }
+                                });
+                            }
+                        });
+            }
 
             provider = EncryptSupport.lookupProvider("OpenSSL", OpenSSLEncryptProvider.class);
             Map<String, Object> params = new HashMap<>();
@@ -94,9 +129,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         } else {
             throw new ComponentException("Unsupport encrypt type " + config.getEncryptType());
         }
-
-        ConfigManager<?> cm = parent.getParentComponent().getConfigManager();
-        GlobalConfig cfg = cm.getConfig(GlobalConfig.NAME, GlobalConfig.class);
 
         taskWaitLatch = new CountDownLatch(1);
 

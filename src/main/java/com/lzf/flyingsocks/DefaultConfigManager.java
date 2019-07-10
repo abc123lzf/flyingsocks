@@ -39,7 +39,7 @@ public class DefaultConfigManager<T extends Component<?> & Environment> extends 
         try {
             config.initialize();
         } catch (ConfigInitializationException e) {
-            throw new ComponentException(e);
+            throw e;
         } catch (Exception e) {
             synchronized (configMap) {
                 configMap.remove(name);
