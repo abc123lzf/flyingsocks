@@ -22,9 +22,12 @@ import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 
-import java.io.IOException;
+import java.io.*;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * flyingsocks服务器的连接管理组件，每个ProxyServerComponent对象代表一个服务器节点
@@ -32,7 +35,19 @@ import java.util.concurrent.*;
  *
  */
 public class ProxyServerComponent extends AbstractComponent<ProxyComponent> implements ProxyRequestSubscriber {
-    private static final int DEFAULT_PROCESSOR_THREAD = 4;
+
+    private static final int DEFAULT_PROCESSOR_THREAD;
+
+    static {
+        int cpus = Runtime.getRuntime().availableProcessors();
+        if(cpus >= 8) {
+            DEFAULT_PROCESSOR_THREAD = 4;
+        } else if(cpus >= 4) {
+            DEFAULT_PROCESSOR_THREAD = 2;
+        } else {
+            DEFAULT_PROCESSOR_THREAD = 1;
+        }
+    }
 
     //该服务器节点配置信息
     private final ProxyServerConfig.Node config;
@@ -81,40 +96,89 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         if(config.getEncryptType() == ProxyServerConfig.EncryptType.NONE) {
             provider = null;
         } else if(config.getEncryptType() == ProxyServerConfig.EncryptType.SSL) {
-            OpenSSLConfig sslcfg = new OpenSSLConfig(cm, config.getHost());
-            try {
-                cm.registerConfig(sslcfg);
-            } catch (ConfigInitializationException e) {
-                //尝试从服务器上获取SSL证书
-                final EventLoopGroup sslGroup = new NioEventLoopGroup(1);
-                Bootstrap sslBoot = new Bootstrap()
-                        .channel(NioSocketChannel.class)
-                        .option(ChannelOption.SO_KEEPALIVE, true)
-                        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, cfg.getConnectionTimeout())
-                        .handler(new ChannelInitializer<SocketChannel>() {
-                            @Override
-                            protected void initChannel(SocketChannel ch) throws Exception {
-                                ChannelPipeline cp = ch.pipeline();
-                                cp.addLast(new FSMessageChannelOutboundHandler());
-                                cp.addLast(new DelimiterBasedFrameDecoder(1024 * 100,
-                                        Unpooled.copiedBuffer(CertResponseMessage.END_MARK)));
-
-                                cp.addLast(new ChannelHandlerAdapter() {
-                                    @Override
-                                    public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-
-                                    }
-                                });
-
-                                cp.addLast(new SimpleChannelInboundHandler<ByteBuf>() {
-                                    @Override
-                                    protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
-
-                                    }
-                                });
-                            }
-                        });
+            //首先计算证书文件的MD5
+            final byte[] md5 = calcuateCertFileMD5(cfg.configLocation());
+            if(md5 == null) {
+                throw new ComponentException();
             }
+
+            final Thread thread = Thread.currentThread();
+
+            String host = config.getHost();
+            //尝试从服务器上获取SSL证书
+            final EventLoopGroup sslGroup = new NioEventLoopGroup(1);
+            Bootstrap sslBoot = new Bootstrap()
+                    .group(sslGroup)
+                    .channel(NioSocketChannel.class)
+                    .option(ChannelOption.SO_KEEPALIVE, true)
+                    .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, cfg.getConnectionTimeout())
+                    .handler(new ChannelInitializer<SocketChannel>() {
+                        @Override
+                        protected void initChannel(SocketChannel ch) throws Exception {
+                            ChannelPipeline cp = ch.pipeline();
+                            cp.addLast(new FSMessageChannelOutboundHandler());
+                            cp.addLast(new DelimiterBasedFrameDecoder(1024 * 100,
+                                    Unpooled.copiedBuffer(CertResponseMessage.END_MARK)));
+
+                            cp.addLast(new ChannelHandlerAdapter() {
+                                @Override
+                                public void handlerAdded(ChannelHandlerContext ctx) {
+                                    CertRequestMessage msg;
+                                    switch (config.getAuthType()) {
+                                        case SIMPLE: msg = new CertRequestMessage(AuthMessage.AuthMethod.SIMPLE, md5); break;
+                                        case USER: msg = new CertRequestMessage(AuthMessage.AuthMethod.USER, md5); break;
+                                        default:
+                                            throw new IllegalArgumentException("Auth method: " + config.getAuthType() + " Not support.");
+                                    }
+
+                                    List<String> keys = msg.getAuthMethod().getContainsKey();
+                                    for(String key : keys) {
+                                        msg.putContent(key, config.getAuthArgument(key));
+                                    }
+
+                                    ctx.writeAndFlush(msg);
+                                }
+
+                            });
+
+                            cp.addLast(new SimpleChannelInboundHandler<ByteBuf>() {
+                                @Override
+                                protected void channelRead0(ChannelHandlerContext ctx, ByteBuf buf) throws Exception {
+                                    CertResponseMessage msg = new CertResponseMessage(buf);
+                                    if(msg.needUpdate()) {
+                                        InputStream is = msg.getFile();
+                                        int len = msg.getLength();
+                                        writeCertFile(cfg.configLocation(), is, len);
+                                    }
+
+                                    ctx.close();
+                                }
+
+                                @Override
+                                public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+                                    LockSupport.unpark(thread);
+                                    super.channelInactive(ctx);
+                                }
+                            });
+                        }
+                    });
+
+            ChannelFuture future = sslBoot.connect(host, config.getCertPort()).addListener(f -> {
+                if(!f.isSuccess())
+                    LockSupport.unpark(thread);
+            });
+
+            LockSupport.park();
+
+            if(!future.isSuccess()) {
+                if(log.isWarnEnabled())
+                    log.warn("Can not connect to cert service {}:{}", host, config.getCertPort());
+                return;
+            }
+
+
+            OpenSSLConfig sslcfg = new OpenSSLConfig(cm, host);
+            cm.registerConfig(sslcfg);
 
             provider = EncryptSupport.lookupProvider("OpenSSL", OpenSSLEncryptProvider.class);
             Map<String, Object> params = new HashMap<>();
@@ -219,7 +283,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     getParentComponent().registerSubscriber(ProxyServerComponent.this);
                     f.removeListener(this);
                 } else {
-                    log.warn("Can not connect to flyingsocks server, cause:", future.cause());
+                    if(log.isWarnEnabled())
+                        log.warn("Can not connect to flyingsocks server, cause:", future.cause());
                     f.removeListener(this);
                     afterChannelInactive(); //重新尝试连接
                 }
@@ -299,6 +364,69 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             this.loopGroup = new NioEventLoopGroup(2);
             this.clientMessageProcessor = createMessageExecutor();
             doConnect(false);
+        }
+    }
+
+    /**
+     * 计算证书文件MD5值
+     * @param location 存放证书文件的路径
+     * @return MD5值，若文件不存在则返回一个长度为16，值全部为0的byte数组
+     */
+    private byte[] calcuateCertFileMD5(String location) {
+        String host = config.getHost();
+        File folder = new File(location, host);
+
+        if(!folder.exists()) {
+            if(!folder.mkdirs()) {
+                log.error("Can not create folder at {}", folder.getAbsolutePath());
+                return null;
+            }
+            return new byte[16];
+        } else if(folder.isFile()) {
+            if(!folder.delete()) {
+                log.error("Location {} exists a file and can not delete.", folder.getName());
+                return null;
+            }
+        }
+
+        if(folder.isDirectory()) {
+            File file = new File(folder, OpenSSLConfig.CERT_FILE_NAME);
+            if(!file.exists())
+                return new byte[16];
+
+            if(file.isDirectory() && !file.delete()) {
+                log.error("location {} exists a folder and can not delete.", file.getAbsolutePath());
+                return null;
+            }
+
+            try(FileInputStream fis = new FileInputStream(file)) {
+                byte[] b = new byte[10240];
+                int len = fis.read(b);
+                byte[] rb = new byte[len];
+                System.arraycopy(b, 0, rb, 0, len);
+                MessageDigest md = MessageDigest.getInstance("MD5");
+                return md.digest(rb);
+            } catch (IOException e) {
+                log.error("Read file ca.crt occur a exception", e);
+                return null;
+            } catch (NoSuchAlgorithmException e) {
+                throw new Error(e);
+            }
+        }
+
+        return null;
+    }
+
+    private void writeCertFile(String location, final InputStream is, final int len) throws IOException {
+        File file = new File(new File(location, config.getHost()), OpenSSLConfig.CERT_FILE_NAME);
+        byte[] b = new byte[len];
+        int r = is.read(b);
+        if(r != len) {
+            throw new IOException("File real size is different from server message");
+        }
+
+        try(FileOutputStream fos = new FileOutputStream(file)) {
+            fos.write(b);
         }
     }
 

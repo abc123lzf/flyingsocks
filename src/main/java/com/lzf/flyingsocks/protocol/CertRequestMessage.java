@@ -22,7 +22,7 @@ public class CertRequestMessage extends AuthMessage implements Message {
 
     public CertRequestMessage(AuthMethod method, byte[] certMD5) {
         super(method);
-        this.certMD5 = Arrays.copyOf(certMD5, certMD5.length);
+        this.certMD5 = certMD5 != null ? Arrays.copyOf(certMD5, certMD5.length) : new byte[16];
     }
 
     public CertRequestMessage(ByteBuf buf) throws SerializationException {

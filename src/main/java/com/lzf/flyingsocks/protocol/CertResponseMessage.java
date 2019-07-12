@@ -82,6 +82,10 @@ public class CertResponseMessage implements Message {
         this.update = update;
     }
 
+    public int getLength() {
+        return length;
+    }
+
     public InputStream getFile() {
         return new ByteArrayInputStream(file);
     }
