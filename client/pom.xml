@@ -5,7 +5,7 @@
     <parent>
         <artifactId>flyingsocks</artifactId>
         <groupId>com.lzf</groupId>
-        <version>1.0</version>
+        <version>1.1</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -14,8 +14,8 @@
     <dependencies>
         <dependency>
             <groupId>com.lzf</groupId>
-            <artifactId>flyingsocks</artifactId>
-            <version>1.0</version>
+            <artifactId>flyingsocks-common</artifactId>
+            <version>1.1</version>
         </dependency>
     </dependencies>
 </project>

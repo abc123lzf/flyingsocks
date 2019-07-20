@@ -99,13 +99,15 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
      */
     private class SocksRequestHandler extends SimpleChannelInboundHandler<SocksRequest> {
         @Override
-        protected void channelRead0(ChannelHandlerContext ctx, SocksRequest request) {
+        protected void channelRead0(final ChannelHandlerContext ctx, final SocksRequest request) {
+            final ChannelPipeline cp = ctx.pipeline();
+
             switch (request.requestType()) {
                 case INIT: {
                     if(log.isTraceEnabled())
                         log.trace("Socks init, thread:" + Thread.currentThread().getName());
 
-                    ctx.pipeline().addFirst(new SocksCmdRequestDecoder());
+                    cp.addFirst(new SocksCmdRequestDecoder());
 
                     if(!auth)
                         ctx.writeAndFlush(new SocksInitResponse(SocksAuthScheme.NO_AUTH));
@@ -117,12 +119,12 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                 case AUTH: {
                     if(log.isTraceEnabled())
                         log.trace("Socks auth, thread:" + Thread.currentThread().getName());
+                    if(!(cp.first() instanceof SocksCmdRequestDecoder))
+                        cp.addFirst(new SocksCmdRequestDecoder());
 
-                    ctx.pipeline().addFirst(new SocksCmdRequestDecoder());
-
-                    if(!auth)
+                    if(!auth) {
                         ctx.writeAndFlush(new SocksAuthResponse(SocksAuthStatus.SUCCESS));
-                    else {
+                    } else {
                         SocksAuthRequest req = (SocksAuthRequest) request;
                         if(req.username().equals(username) && req.password().equals(password)) {
                             ctx.writeAndFlush(new SocksAuthResponse(SocksAuthStatus.SUCCESS));
@@ -136,16 +138,20 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                 case CMD: {
                     SocksCmdRequest req = (SocksCmdRequest) request;
 
-
-                    if(req.cmdType() != SocksCmdType.CONNECT) {
+                    SocksCmdType type = req.cmdType();
+                    if(type == SocksCmdType.CONNECT) {
+                        cp.addLast(new SocksCommandRequestHandler()).remove(this);
+                        ctx.fireChannelRead(req);
+                    } else if(type == SocksCmdType.UDP) {
+                        //TODO
+                    } else {
                         if(log.isInfoEnabled())
                             log.info("Socks command request is not connect.");
+                        ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.COMMAND_NOT_SUPPORTED, SocksAddressType.IPv4));
                         ctx.close();
                         return;
                     }
 
-                    ctx.pipeline().addLast(new SocksCommandRequestHandler()).remove(this);
-                    ctx.fireChannelRead(req);
 
                     break;
                 }
@@ -174,18 +180,19 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
             SocksProxyRequest spq = new SocksProxyRequest(host, port, ctx.channel());
 
             ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.SUCCESS, SocksAddressType.IPv4));
-            ctx.pipeline().addLast(new ProxyMessageHandler(spq)).remove(this);
+            ctx.pipeline().addLast(new TCPProxyMessageHandler(spq)).remove(this);
+
         }
     }
 
     /**
      * 负责接收客户端要求代理的数据
      */
-    private class ProxyMessageHandler extends SimpleChannelInboundHandler<ByteBuf> {
+    private class TCPProxyMessageHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
         private final SocksProxyRequest proxyRequest;
 
-        private ProxyMessageHandler(SocksProxyRequest request) {
+        private TCPProxyMessageHandler(SocksProxyRequest request) {
             super(false);
             this.proxyRequest = request;
             getParentComponent().publish(request);
@@ -206,6 +213,13 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
         public void channelInactive(ChannelHandlerContext ctx) {
             ctx.pipeline().remove(this);
             ctx.fireChannelInactive();
+        }
+    }
+
+    private class UDPProxyMessageHandler extends SimpleChannelInboundHandler<ByteBuf> {
+        @Override
+        protected void channelRead0(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf) throws Exception {
+
         }
     }
 }

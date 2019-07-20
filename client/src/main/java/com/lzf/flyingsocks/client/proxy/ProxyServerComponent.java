@@ -169,6 +169,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             });
 
             LockSupport.park();
+            sslGroup.shutdownGracefully();
 
             if(!future.isSuccess()) {
                 if(log.isWarnEnabled())
