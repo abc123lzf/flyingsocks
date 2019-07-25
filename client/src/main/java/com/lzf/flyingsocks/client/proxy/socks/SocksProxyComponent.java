@@ -35,7 +35,7 @@ public class SocksProxyComponent extends ProxyComponent {
         int cpus = getParentComponent().getAvailableProcessors();
         nettyWorkerLoopGroup = new NioEventLoopGroup(cpus < 4 ? 4 : cpus);
 
-        clientMessageProcessor = new ThreadPoolExecutor(4, 4, 0, TimeUnit.MILLISECONDS,
+        clientMessageProcessor = new ThreadPoolExecutor(0, 12, 180, TimeUnit.SECONDS,
                 new SynchronousQueue<>());
 
         addComponent(new SocksReceiverComponent(this));
@@ -98,13 +98,13 @@ public class SocksProxyComponent extends ProxyComponent {
                     SocksProxyRequest req = it.next();
                     Channel sc;
                     Channel cc;
-                    if((cc = req.getClientChannel()) != null && !cc.isActive()) {
+                    if((cc = req.clientChannel()) != null && !cc.isActive()) {
                         it.remove();
                         clearProxyRequest(req);
                         continue;
                     }
 
-                    if((sc = req.getServerChannel()) == null) {
+                    if((sc = req.serverChannel()) == null) {
                         continue;
                     }
 
@@ -114,7 +114,7 @@ public class SocksProxyComponent extends ProxyComponent {
                         continue;
                     }
 
-                    BlockingQueue<ByteBuf> queue = req.getMessageQueue();
+                    BlockingQueue<ByteBuf> queue = req.messageQueue();
                     ByteBuf buf;
                     try { //之所以采用循环是为了转发客户端请求时避免消息不完整
                         while ((buf = queue.poll(1, TimeUnit.MILLISECONDS)) != null) {
@@ -135,10 +135,17 @@ public class SocksProxyComponent extends ProxyComponent {
                     break;
                 }
             }
+
+            for(SocksProxyRequest request : requests) {
+                clearProxyRequest(request);
+            }
+
+            requests.clear();
+            newRequestQueue.clear();
         }
 
         private void clearProxyRequest(SocksProxyRequest request) {
-            BlockingQueue<ByteBuf> queue = request.getMessageQueue();
+            BlockingQueue<ByteBuf> queue = request.messageQueue();
             ByteBuf buf;
             try {
                 while ((buf = queue.poll(1, TimeUnit.MILLISECONDS)) != null) {

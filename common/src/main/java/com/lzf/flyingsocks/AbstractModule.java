@@ -14,7 +14,7 @@ public abstract class AbstractModule<T extends Component<?>> implements Module<T
     /**
      * 所属的组件名称
      */
-    private final T belongComponent;
+    protected final T belongComponent;
 
     protected AbstractModule(T component) {
         this.name = getClass().getName();

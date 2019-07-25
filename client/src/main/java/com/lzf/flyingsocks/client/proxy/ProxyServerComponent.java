@@ -114,7 +114,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, cfg.getConnectionTimeout())
                     .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
-                        protected void initChannel(SocketChannel ch) throws Exception {
+                        protected void initChannel(SocketChannel ch) {
                             ChannelPipeline cp = ch.pipeline();
                             cp.addLast(new FSMessageChannelOutboundHandler());
                             cp.addLast(new DelimiterBasedFrameDecoder(1024 * 100,
@@ -610,7 +610,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                         if (req == null)
                             return;
                         Channel cc;
-                        if ((cc = req.getClientChannel()).isActive())
+                        if ((cc = req.clientChannel()).isActive())
                             cc.writeAndFlush(resp.getMessage());
                     }
                 } finally {
@@ -631,7 +631,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     @Override
     public void receive(ProxyRequest request) {
         proxyRequestQueue.add(request);
-        activeProxyRequestMap.put(request.getClientChannel().id().asShortText(), request);
+        activeProxyRequestMap.put(request.clientChannel().id().asShortText(), request);
     }
 
 
@@ -657,7 +657,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     ProxyRequest pr;
                     try {
                         while ((pr = proxyRequestQueue.poll(1, TimeUnit.MILLISECONDS)) != null) {
-                            if(pr.sureMessageOnlyOne()) {
+                            if(pr.ensureMessageOnlyOne()) {
                                 ByteBuf buf = pr.getClientMessage();
                                 sendToProxyServer(pr, buf);
                                 ReferenceCountUtil.release(buf);
@@ -672,10 +672,10 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     ListIterator<ProxyRequest> it = requests.listIterator();
                     while (it.hasNext()) {
                         ProxyRequest req = it.next();
-                        Channel cc = req.getClientChannel();
+                        Channel cc = req.clientChannel();
                         if (!cc.isActive()) {
                             it.remove();
-                            activeProxyRequestMap.remove(req.getClientChannel().id().asShortText());
+                            activeProxyRequestMap.remove(req.clientChannel().id().asShortText());
                             continue;
                         }
 
@@ -704,7 +704,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             }
 
             for(ProxyRequest request : requests) {
-                request.getClientChannel().close();
+                request.clientChannel().close();
             }
 
         }
@@ -714,7 +714,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 ReferenceCountUtil.release(buf);
                 return;
             }
-            ProxyRequestMessage prm = new ProxyRequestMessage(request.getClientChannel().id().asShortText());
+            ProxyRequestMessage prm = new ProxyRequestMessage(request.clientChannel().id().asShortText());
             prm.setHost(request.getHost());
             prm.setPort(request.getPort());
             prm.setMessage(buf);
@@ -724,7 +724,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             } catch (SerializationException e) {
                 if(log.isWarnEnabled())
                     log.warn("Serialize ProxyRequestMessage occur a exception");
-                request.getClientChannel().close();
+                request.clientChannel().close();
             }
         }
     }

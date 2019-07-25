@@ -2,6 +2,8 @@ package com.lzf.flyingsocks.client.proxy;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
+import io.netty.channel.socket.DatagramChannel;
+import io.netty.channel.socket.SocketChannel;
 
 /**
  * 代理请求
@@ -11,26 +13,37 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
     /**
      * 目标服务器
      */
-    protected String host;
+    protected final String host;
 
     /**
      * 目标服务器端口
      */
-    protected int port;
+    protected final int port;
 
     /**
      * 客户端Channel通道
      */
-    protected Channel clientChannel;
+    protected final Channel clientChannel;
 
+    /**
+     * 代理协议
+     */
+    protected final Protocol protocol;
 
-    protected ProxyRequest() {
+    /**
+     * 代理协议枚举，目前支持UDP、TCP
+     */
+    public enum Protocol {
+        TCP, UDP
     }
 
-    protected ProxyRequest(String host, int port, Channel channel) {
+
+    protected ProxyRequest(String host, int port, Channel channel, Protocol protocol) {
         this.host = host;
         this.port = port;
+        assertChannel(channel, protocol);
         this.clientChannel = channel;
+        this.protocol = protocol;
     }
 
     public final String getHost() {
@@ -41,8 +54,11 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
         return port;
     }
 
+    public final Protocol protocol() {
+        return protocol;
+    }
 
-    protected Channel getClientChannel() {
+    protected Channel clientChannel() {
         return clientChannel;
     }
 
@@ -61,7 +77,7 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
      * @return 是否确定客户端发送的消息仅有一条，例如调用
      * 一次getClientMessage()方法后不可能再次调用getClientMessage()方法后获取到ByteBuf实例
      */
-    public abstract boolean sureMessageOnlyOne();
+    public abstract boolean ensureMessageOnlyOne();
 
 
     @Override
@@ -95,9 +111,16 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
     }
 
     @Override
-    protected Object clone() throws CloneNotSupportedException {
-        ProxyRequest req = (ProxyRequest) super.clone();
-        req.clientChannel = this.clientChannel;
-        return req;
+    protected ProxyRequest clone() throws CloneNotSupportedException {
+        return (ProxyRequest) super.clone();
+    }
+
+    protected static void assertChannel(Channel channel, Protocol protocol) {
+        switch (protocol) {
+            case TCP: assert channel instanceof SocketChannel; break;
+            case UDP: assert channel instanceof DatagramChannel; break;
+            default:
+                throw new AssertionError("Illegal protocol");
+        }
     }
 }

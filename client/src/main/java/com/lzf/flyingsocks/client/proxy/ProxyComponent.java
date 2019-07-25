@@ -96,7 +96,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
 
     @Override
     public void publish(ProxyRequest request) {
-        if(requestSubscribers.size() == 0)
+        if(requestSubscribers.isEmpty() && log.isWarnEnabled())
             log.warn("No RequestSubscriber found in manager");
         //根据PAC文件的配置自动选择代理模式
         boolean np = needProxy(request.getHost());

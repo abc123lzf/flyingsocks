@@ -190,7 +190,7 @@ class TrayModule extends AbstractModule<ViewComponent> {
             public void mouseClicked(MouseEvent e) {
                 switch (e.getButton()) {
                     case MouseEvent.BUTTON1 : {
-                        getComponent().getModuleByName(ServerSettingModule.NAME, ServerSettingModule.class)
+                        belongComponent.getModuleByName(ServerSettingModule.NAME, ServerSettingModule.class)
                                 .setVisible(true);
                     } break;
                 }
@@ -230,15 +230,15 @@ class TrayModule extends AbstractModule<ViewComponent> {
         }
 
 
-        serverItem.addActionListener(e -> getComponent().getModuleByName(ServerSettingModule.NAME,
+        serverItem.addActionListener(e -> belongComponent.getModuleByName(ServerSettingModule.NAME,
                 ServerSettingModule.class).setVisible(true));
 
-        socksItem.addActionListener(e -> getComponent().getModuleByName(SocksSettingModule.NAME,
+        socksItem.addActionListener(e -> belongComponent.getModuleByName(SocksSettingModule.NAME,
                 SocksSettingModule.class).setVisiable(true));
 
         exitItem.addActionListener(e -> {
             SystemTray.getSystemTray().remove(icon);
-            getComponent().getParentComponent().stop();
+            belongComponent.getParentComponent().stop();
         });
 
         configManager.registerConfigEventListener(event -> {

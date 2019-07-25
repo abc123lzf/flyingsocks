@@ -9,5 +9,11 @@ public interface Client extends Component<VoidComponent>, Environment {
 
     String DEFAULT_COMPONENT_NAME = "flyingsocks-client";
 
+    /**
+     * @return 配置管理器
+     */
     ConfigManager<?> getConfigManager();
+
+
+
 }

@@ -17,16 +17,25 @@ public final class SocksProxyRequest extends ProxyRequest {
      */
     private Channel serverChannel;
 
+    /**
+     * 消息队列
+     */
     private final BlockingQueue<ByteBuf> messageQueue;
 
-    SocksProxyRequest(String host, int port, Channel channel) {
-        super(Objects.requireNonNull(host), port, Objects.requireNonNull(channel));
+    /**
+     * @param host 目标服务器主机名/IP
+     * @param port 目标服务器
+     * @param channel 客户端Channel通道
+     * @param protocol 代理协议
+     */
+    SocksProxyRequest(String host, int port, Channel channel, Protocol protocol) {
+        super(Objects.requireNonNull(host), port, Objects.requireNonNull(channel), Objects.requireNonNull(protocol));
         messageQueue = new LinkedBlockingQueue<>();
     }
 
     @Override
-    protected Channel getClientChannel() {
-        return super.getClientChannel();
+    protected Channel clientChannel() {
+        return super.clientChannel();
     }
 
     @Override
@@ -36,14 +45,15 @@ public final class SocksProxyRequest extends ProxyRequest {
 
 
     void setServerChannel(Channel channel) {
+        assertChannel(channel, protocol);
         this.serverChannel = channel;
     }
 
-    Channel getServerChannel() {
+    Channel serverChannel() {
         return serverChannel;
     }
 
-    BlockingQueue<ByteBuf> getMessageQueue() {
+    BlockingQueue<ByteBuf> messageQueue() {
         return messageQueue;
     }
 
@@ -57,7 +67,7 @@ public final class SocksProxyRequest extends ProxyRequest {
     }
 
     @Override
-    public boolean sureMessageOnlyOne() {
+    public boolean ensureMessageOnlyOne() {
         return false;
     }
 
