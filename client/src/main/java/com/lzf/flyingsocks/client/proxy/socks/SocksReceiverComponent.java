@@ -56,7 +56,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
     // Socks5认证密码，如果无需认证则为null
     private String password;
 
-    public SocksReceiverComponent(SocksProxyComponent proxyComponent) {
+    SocksReceiverComponent(SocksProxyComponent proxyComponent) {
         super("SocksRequestReceiver", Objects.requireNonNull(proxyComponent));
     }
 
@@ -137,7 +137,8 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
      * @return 本地UDP代理端口号
      */
     private int processUDPProxyRequest(String host, int port) {
-        Bootstrap boot = udpProxyBootstrap.clone().handler(new ChannelInitializer<DatagramChannel>() {
+        Bootstrap boot = udpProxyBootstrap.clone()
+                .handler(new ChannelInitializer<DatagramChannel>() {
             @Override
             protected void initChannel(DatagramChannel channel) {
                 UDPProxySession session = new UDPProxySession(host, port, channel);
@@ -199,7 +200,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
             final ChannelPipeline cp = ctx.pipeline();
 
             switch (request.requestType()) {
-                case INIT: {
+                case INIT: {  //如果是Socks5初始化请求
                     if(log.isTraceEnabled())
                         log.trace("Socks init, thread:" + Thread.currentThread().getName());
 
@@ -212,7 +213,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
 
                     break;
                 }
-                case AUTH: {
+                case AUTH: {  //如果是Socks5认证请求
                     if(log.isTraceEnabled())
                         log.trace("Socks auth, thread:" + Thread.currentThread().getName());
                     if(!(cp.first() instanceof SocksCmdRequestDecoder))
@@ -231,9 +232,9 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
 
                     break;
                 }
-                case CMD: {
+                case CMD: {  //如果是Socks5命令请求
                     SocksCmdRequest req = (SocksCmdRequest) request;
-                    if(!vaildateAddress(req.host())) {  //如果主机名/IP地址格式有问题
+                    if(!vaildateAddress(req.host())) {  //如果主机名/IP地址格式有误
                         ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.ADDRESS_NOT_SUPPORTED, SocksAddressType.IPv4));
                         ctx.close();
                         return;
@@ -268,7 +269,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
 
                     break;
                 }
-                case UNKNOWN: {
+                case UNKNOWN: {  //未知请求关闭连接
                     if(log.isInfoEnabled())
                         log.info("Unknow socks command, from ip: {}", ctx.channel().localAddress().toString());
                     ctx.close();
@@ -354,17 +355,18 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
         }
 
         @Override
-        protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket packet) throws Exception {
+        protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket packet) {
             proxyRequest.messageQueue().offer(packet.content());
         }
 
         @Override
-        public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-            super.channelInactive(ctx);
+        public void channelInactive(ChannelHandlerContext ctx) {
+            if(proxyRequest.serverChannel() != null)
+                proxyRequest.serverChannel().close();
         }
 
         @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             if(log.isWarnEnabled())
                 log.warn("Exception caught in UDPProxyMessageHandler", cause);
         }

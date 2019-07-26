@@ -104,12 +104,13 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
         int count = 0;
         for(ProxyRequestSubscriber sub : requestSubscribers) {
             if(sub.requestType().isAssignableFrom(request.getClass()) &&
-                    (sub.receiveNeedProxy() && np || sub.receiveNeedlessProxy() && !np)) {
+                    (sub.receiveNeedProxy() && np || sub.receiveNeedlessProxy() && !np) &&
+                    sub.requestProtcol().contains(request.protocol())) {
                 if(count == 0) {
                     sub.receive(request);
                 } else {
                     try {
-                        sub.receive((ProxyRequest) request.clone());
+                        sub.receive(request.clone());
                     } catch (CloneNotSupportedException e) {
                         throw new Error(e);
                     }
@@ -127,6 +128,11 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
         }
     }
 
+    /**
+     * 根据PAC配置判断是否需要进行代理
+     * @param host 主机名
+     * @return 是否需要代理
+     */
     protected boolean needProxy(String host) {
         return proxyAutoConfig.needProxy(host);
     }
@@ -144,6 +150,10 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
         activeProxyServers.add(component);
     }
 
+    /**
+     * 移除flyingsocks服务器实例
+     * @param component ProxyServerComponent实例
+     */
     void removeProxyServer(ProxyServerComponent component) {
         Objects.requireNonNull(component);
         boolean success = activeProxyServers.remove(component);

@@ -16,15 +16,26 @@ import java.util.concurrent.*;
 
 public class SocksProxyComponent extends ProxyComponent {
 
+    /**
+     * Worker线程池
+     */
     private EventLoopGroup nettyWorkerLoopGroup;
 
+    /**
+     * 转发任务列表
+     */
     private List<ClientMessageTransferTask> transferTaskList = new CopyOnWriteArrayList<>();
 
+    /**
+     * 转发任务执行线程池
+     */
     private ExecutorService clientMessageProcessor;
+
 
     public SocksProxyComponent(Client client) {
         super(Objects.requireNonNull(client));
     }
+
 
     @Override
     protected void initInternal() {
@@ -44,6 +55,7 @@ public class SocksProxyComponent extends ProxyComponent {
         super.initInternal();
     }
 
+
     @Override
     protected void startInternal() {
         List<ClientMessageTransferTask> tasks = new ArrayList<>();
@@ -58,10 +70,12 @@ public class SocksProxyComponent extends ProxyComponent {
         super.startInternal();
     }
 
+
     @Override
     protected void stopInternal() {
         super.stopInternal();
     }
+
 
     EventLoopGroup getWorkerEventLoopGroup() {
         return nettyWorkerLoopGroup;
