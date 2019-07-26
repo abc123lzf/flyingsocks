@@ -105,12 +105,13 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                     if(log.isTraceEnabled())
                         log.trace("Socks init, thread:" + Thread.currentThread().getName());
 
-                    ctx.pipeline().addFirst(new SocksCmdRequestDecoder());
-
-                    if(!auth)
+                    if(!auth) {
+                        ctx.pipeline().addFirst(new SocksCmdRequestDecoder());
                         ctx.writeAndFlush(new SocksInitResponse(SocksAuthScheme.NO_AUTH));
-                    else
+                    } else {
+                        ctx.pipeline().addFirst(new SocksAuthRequestDecoder());
                         ctx.writeAndFlush(new SocksInitResponse(SocksAuthScheme.AUTH_PASSWORD));
+                    }
 
                     break;
                 }
@@ -125,6 +126,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                     else {
                         SocksAuthRequest req = (SocksAuthRequest) request;
                         if(req.username().equals(username) && req.password().equals(password)) {
+                            ctx.pipeline().addFirst(new SocksCmdRequestDecoder()).remove(SocksAuthRequestDecoder.class);
                             ctx.writeAndFlush(new SocksAuthResponse(SocksAuthStatus.SUCCESS));
                         } else {
                             ctx.writeAndFlush(new SocksAuthResponse(SocksAuthStatus.FAILURE));
@@ -174,18 +176,18 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
             SocksProxyRequest spq = new SocksProxyRequest(host, port, ctx.channel());
 
             ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.SUCCESS, SocksAddressType.IPv4));
-            ctx.pipeline().addLast(new ProxyMessageHandler(spq)).remove(this);
+            ctx.pipeline().addLast(new TCPProxyMessageHandler(spq)).remove(this);
         }
     }
 
     /**
      * 负责接收客户端要求代理的数据
      */
-    private class ProxyMessageHandler extends SimpleChannelInboundHandler<ByteBuf> {
+    private class TCPProxyMessageHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
         private final SocksProxyRequest proxyRequest;
 
-        private ProxyMessageHandler(SocksProxyRequest request) {
+        private TCPProxyMessageHandler(SocksProxyRequest request) {
             super(false);
             this.proxyRequest = request;
             getParentComponent().publish(request);
