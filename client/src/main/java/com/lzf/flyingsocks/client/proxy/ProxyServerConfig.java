@@ -205,7 +205,6 @@ public class ProxyServerConfig extends AbstractConfig {
             this.host = host;
         }
 
-
         public int getPort() {
             return port;
         }

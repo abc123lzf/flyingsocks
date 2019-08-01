@@ -1,5 +1,8 @@
 package com.lzf.flyingsocks.server;
 
+/**
+ * 用于实现用户认证方式
+ */
 public interface UserDatabase {
 
     /**

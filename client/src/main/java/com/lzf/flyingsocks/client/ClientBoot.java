@@ -4,22 +4,29 @@ import com.lzf.flyingsocks.ComponentException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.lzf.flyingsocks.client.Client.VERSION;
+
+/**
+ * 客户端启动引导类
+ */
 public abstract class ClientBoot {
+
     private static final Logger log = LoggerFactory.getLogger(ClientBoot.class);
 
     public static void main(String[] args) {
-        log.info("flyingsocks client v1.0 start...");
+        log.info("flyingsocks client {} start...", VERSION);
 
         try {
             Client client = new StandardClient();
             client.init();
             client.start();
         } catch (ComponentException e) {
-            log.error("flyingsocks client v1.0 start failure, cause:", e);
+            log.error("flyingsocks client {} start failure, cause:", VERSION, e);
+            log.info("If it caused by BUG, please submit issue at https://github.com/abc123lzf/flyingsocks , Thanks");
             System.exit(1);
         }
 
-        log.info("flyingsocks client v1.0 start complete");
+        log.info("flyingsocks client {} start complete.", VERSION);
     }
 
     private ClientBoot() {

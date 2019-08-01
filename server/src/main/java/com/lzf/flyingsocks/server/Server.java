@@ -6,6 +6,12 @@ import com.lzf.flyingsocks.Environment;
 import com.lzf.flyingsocks.VoidComponent;
 
 public interface Server extends Component<VoidComponent>, Environment {
+
+    /**
+     * 服务器版本
+     */
+    String VERSION = "v1.1";
+
     /**
      * @return 服务器配置信息
      */

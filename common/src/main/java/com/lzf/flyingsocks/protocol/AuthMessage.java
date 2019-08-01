@@ -17,10 +17,19 @@ import java.util.*;
  * +---------+---------+---------+
  */
 public class AuthMessage implements Message {
+    /**
+     * Auth Message字段的编码格式
+     */
     public static final Charset DEFAULT_ENCODING = Charset.forName("UTF-8");
 
+    /**
+     * 认证方式
+     */
     private AuthMethod authMethod;
 
+    /**
+     * 认证参数
+     */
     private Map<String, String> authInfo;
 
     public enum AuthMethod {
@@ -46,9 +55,9 @@ public class AuthMessage implements Message {
         }
 
         private static AuthMethod getAuthMethodByHead(byte head) {
-            for(AuthMethod authMethod : AuthMethod.values()) {
-                if(authMethod.head == head)
-                    return authMethod;
+            for(AuthMethod method : AuthMethod.values()) {
+                if(method.head == head)
+                    return method;
             }
 
             return null;
@@ -112,6 +121,7 @@ public class AuthMessage implements Message {
         return buf;
     }
 
+
     @Override
     public void deserialize(ByteBuf buf) throws SerializationException {
         AuthMethod type = AuthMethod.getAuthMethodByHead(buf.readByte());
@@ -140,6 +150,5 @@ public class AuthMessage implements Message {
         this.authMethod = type;
         this.authInfo = map;
     }
-
 
 }

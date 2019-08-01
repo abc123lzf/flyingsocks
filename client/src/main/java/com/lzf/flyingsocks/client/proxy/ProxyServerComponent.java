@@ -36,11 +36,14 @@ import java.util.concurrent.locks.LockSupport;
  */
 public class ProxyServerComponent extends AbstractComponent<ProxyComponent> implements ProxyRequestSubscriber {
 
+    /**
+     * 当前ProxyServerComponent负责传输客户端数据的最大线程数量
+     */
     private static final int DEFAULT_PROCESSOR_THREAD;
 
     static {
         int cpus = Runtime.getRuntime().availableProcessors();
-        if(cpus >= 8) {
+        if(cpus >= 12) {  //最多4个线程
             DEFAULT_PROCESSOR_THREAD = 4;
         } else if(cpus >= 4) {
             DEFAULT_PROCESSOR_THREAD = 2;
@@ -79,12 +82,16 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     //确保可以正式向服务器发送代理请求后释放clientMessageProcessor中的等待线程
     private volatile CountDownLatch taskWaitLatch;
 
-
-    public ProxyServerComponent(ProxyComponent proxyComponent, ProxyServerConfig.Node config) {
+    /**
+     * @param proxyComponent 父组件引用
+     * @param config 该FS服务器的配置对象
+     */
+    ProxyServerComponent(ProxyComponent proxyComponent, ProxyServerConfig.Node config) {
         super(generalName(config.getHost(), config.getPort()), Objects.requireNonNull(proxyComponent));
         this.config = Objects.requireNonNull(config);
         this.use = config.isUse();
     }
+
 
     @Override
     protected void initInternal() {
@@ -116,7 +123,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                         @Override
                         protected void initChannel(SocketChannel ch) {
                             ChannelPipeline cp = ch.pipeline();
-                            cp.addLast(new FSMessageChannelOutboundHandler());
+                            cp.addLast(FSMessageChannelOutboundHandler.INSTANCE);
                             cp.addLast(new DelimiterBasedFrameDecoder(1024 * 100,
                                     Unpooled.copiedBuffer(CertResponseMessage.END_MARK)));
 
@@ -163,11 +170,13 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                         }
                     });
 
+            //连接到服务器的证书端口
             ChannelFuture future = sslBoot.connect(host, config.getCertPort()).addListener(f -> {
                 if(!f.isSuccess())
                     LockSupport.unpark(thread);
             });
 
+            //等待上述证书操作的完成
             LockSupport.park();
             sslGroup.shutdownGracefully();
 
@@ -215,6 +224,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                                 cp.addLast(provider.encodeHandler(params));
                             cp.addLast(provider.decodeHandler(params));
                         }
+                        cp.addLast(FSMessageChannelOutboundHandler.INSTANCE);
                         cp.addLast(new InitialHandler());
                     }
                 });
@@ -281,7 +291,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                         clientMessageProcessor.submit(new ClientMessageTransferTask());
                     }
                     //连接成功后注册
-                    getParentComponent().registerSubscriber(ProxyServerComponent.this);
+                    parent.registerSubscriber(ProxyServerComponent.this);
                     f.removeListener(this);
                 } else {
                     if(log.isWarnEnabled())
@@ -304,14 +314,15 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         }
     }
 
+
     @Override
     protected void stopInternal() {
         if(log.isInfoEnabled())
             log.info("Ready to stop ProxyServerComponent {}:{}...", config.getHost(), config.getPort());
         active = false;
-        getParentComponent().removeSubscriber(this);
-        getParentComponent().removeProxyServer(this);
-        getParentComponent().getParentComponent().getConfigManager()
+        parent.removeSubscriber(this);
+        parent.removeProxyServer(this);
+        parent.getParentComponent().getConfigManager()
                 .removeConfig(OpenSSLConfig.generalName(config.getHost()));
         if(loopGroup != null)
             loopGroup.shutdownGracefully().addListener(future -> {
@@ -338,15 +349,17 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         return active;
     }
 
+
     public boolean isUse() {
         return use;
     }
+
 
     private synchronized void afterChannelInactive() {
         if(log.isInfoEnabled())
             log.info("Disconnect with flyingsocks server {}:{}", config.getHost(), config.getPort());
 
-        getParentComponent().removeSubscriber(this); //移除订阅，防止在此期间请求涌入队列
+        parent.removeSubscriber(this); //移除订阅，防止在此期间请求涌入队列
         active = false;
         //清空队列
         proxyRequestQueue.clear();
@@ -418,6 +431,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         return null;
     }
 
+
     private void writeCertFile(String location, final InputStream is, final int len) throws IOException {
         File file = new File(new File(location, config.getHost()), OpenSSLConfig.CERT_FILE_NAME);
         byte[] b = new byte[len];
@@ -449,13 +463,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             session.setDelimiter(delimiter);
             ProxyServerComponent.this.proxyServerSession = session;
 
-            try {
-                ctx.writeAndFlush(msg.serialize());
-                ctx.fireChannelActive();
-            } catch (SerializationException e) {
-                log.error("Serialize DelimiterMessage occur a exception", e);
-                ctx.close();
-            }
+            ctx.writeAndFlush(msg);
+            ctx.fireChannelActive();
         }
 
         @Override
@@ -549,12 +558,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             for(String key : keys) {
                 msg.putContent(key, config.getAuthArgument(key));
             }
-            try {
-                ctx.writeAndFlush(msg.serialize());
-                ctx.pipeline().remove(this).addLast(new ProxyHandler());
-            } catch (SerializationException e) {
-                log.error("Serialize AuthMessage occur a exception:", e);
-            }
+
+            ctx.writeAndFlush(msg);
+            ctx.pipeline().remove(this).addLast(new ProxyHandler());
         }
 
         @Override
@@ -627,6 +633,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             afterChannelInactive();
         }
     }
+
 
     @Override
     public void receive(ProxyRequest request) {
@@ -738,6 +745,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     synchronized (ProxyServerComponent.this) {
                         if(!ProxyServerComponent.this.getState().after(LifecycleState.STOPING)) {
                             stop();
+                            assert parent != null;
                             parent.removeComponentByName(getName());
                             event.getConfigManager().removeConfigEventListener(this);
                         }
@@ -747,12 +755,11 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         }
     }
 
-    public static String generalName(String host, int port) {
+    static String generalName(String host, int port) {
         return String.format("ProxyServerComponent-%s:%d", host, port);
     }
 
     private static ExecutorService createMessageExecutor() {
-
         return new ThreadPoolExecutor(DEFAULT_PROCESSOR_THREAD, DEFAULT_PROCESSOR_THREAD, 0, TimeUnit.MILLISECONDS,
                 new SynchronousQueue<>());
     }

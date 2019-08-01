@@ -9,7 +9,7 @@ import java.nio.charset.Charset;
 /**
  * 客户端向服务器发起的代理请求报文，其报文格式如下：
  * +--------------+-----------+---------+------+----------+-----------+--------------------+
- * |Channel ID Len| Channel ID|Host Len | Host |   Port   |Message Len|       Message      |
+ * |Channel ID Len| Channel ID|Host Len | Host | Port/Ctr |Message Len|       Message      |
  * |  (2 Bytes)   |           |(2 Bytes)|      | (4 Bytes)| (4 Bytes) |       Content      |
  * +--------------+-----------+---------+------+----------+-----------+--------------------+
  */

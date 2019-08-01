@@ -15,12 +15,22 @@ import java.util.List;
 import java.util.Map;
 
 class ServerSettingModule extends AbstractModule<ViewComponent> {
+
     private static final Logger log = LoggerFactory.getLogger(ServerSettingModule.class);
 
+    /**
+     * 添加服务器配置时GUI左侧选项名称
+     */
     private static final String NEW_CONFIG_NAME = "New config";
 
+    /**
+     * 模块名
+     */
     static final String NAME = "ServerSettingModule";
 
+    /**
+     * 窗口对象
+     */
     private final Frame frame;
 
     private ProxyServerConfig serverConfig;
@@ -28,7 +38,9 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
     //ServerList索引和配置的映射关系，GUI界面为单线程无需保证线程安全问题
     private List<ProxyServerConfig.Node> serverNode = new ArrayList<>();
 
+
     private HostList hostList;
+
 
     private SettingTable settingTable;
 
@@ -187,7 +199,7 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
      */
     private ProxyServerConfig.Node addServerNode(String host, int port, int certPort, ProxyServerConfig.EncryptType encryptType,
                                                  ProxyServerConfig.AuthType authType, String... args) {
-        Map<String, String> param = new HashMap<>(4);
+        Map<String, String> param = new HashMap<>(4, 1);
         switch (authType) {
             case SIMPLE:
                 param.put("password", args[0]); break;
@@ -285,26 +297,36 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
     }
 
     private class SettingTable {
+        //主机名文本框
         private final JTextField hostField;
+
+        //端口号文本框
         private final JTextField portField;
 
+        //加密方式下拉框
         private final JComboBox<String> encryptBox;
         private final DefaultComboBoxModel<String> encryptBoxModel;
 
+        //证书获取端口文本框(仅OpenSSL)
         private final JTextField certPortField;
 
+        //认证方式下拉框
         private final JComboBox<String> authBox;
         private final DefaultComboBoxModel<String> authBoxModel;
 
+        //认证方式为SIMPLE时的密码框
         private final JPasswordField simplePasswordField;
 
+        //认证方式为USER时的用户、密码框
         private final JTextField usernameField;
         private final JPasswordField passwordField;
 
+        //确认按钮
         private final JButton enterButton;
+        //保存按钮
         private final JButton saveButton;
+        //删除按钮
         private final JButton deleteButton;
-
 
         private SettingTable(Frame frame, int x, int y, int width, int height) {
             Font font = new Font("黑体", Font.BOLD, 16);
@@ -340,9 +362,7 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
             certPortField = new JTextField();
             certPortField.setFont(font);
             JLabel cpl = new JLabel("证书端口");
-
-
-
+            cpl.setFont(font);
 
             JComboBox<String> auth = new JComboBox<>();
             JLabel authl = new JLabel("认证方式");
@@ -411,9 +431,6 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
             panel.add(save);
             panel.setBounds(x, y, width, height);
             frame.add(panel);
-
-
-
 
             auth.addItemListener(e -> {
                 if(e.getStateChange() == ItemEvent.SELECTED) {

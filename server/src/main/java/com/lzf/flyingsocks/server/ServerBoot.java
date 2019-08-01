@@ -5,6 +5,11 @@ import com.lzf.flyingsocks.LifecycleState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.lzf.flyingsocks.server.Server.VERSION;
+
+/**
+ * 服务器启动引导类
+ */
 public abstract class ServerBoot {
 
     private static final Logger log = LoggerFactory.getLogger(ServerBoot.class);
@@ -22,13 +27,14 @@ public abstract class ServerBoot {
             if(server.getState() != LifecycleState.NEW)
                 return;
 
-            log.info("flyingsocks server v1.0 start...");
+            log.info("flyingsocks server {} start...", VERSION);
             try {
                 server.init();
                 server.start();
-                log.info("flyingsocks server v1.0 start complete");
+                log.info("flyingsocks server {} start complete", VERSION);
             } catch (ComponentException e) {
-                log.error("flyingsocks server v1.0 start failure, cause:", e);
+                log.error("flyingsocks server {} start failure, cause:", VERSION);
+                log.info("If it caused by BUG, please submit issue at https://github.com/abc123lzf/flyingsocks , Thanks");
             }
         }
     }

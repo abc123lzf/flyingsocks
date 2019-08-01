@@ -15,13 +15,19 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-public class UserDatabaseImpl extends AbstractConfig implements UserDatabase {
-    private static final Logger log = LoggerFactory.getLogger("UserDatabase");
+/**
+ * 基于文本文件实现的用户数据库
+ */
+public class TextUserDatabase extends AbstractConfig implements UserDatabase {
+    private static final Logger log = LoggerFactory.getLogger("TextUserDatabase");
 
     public static final String NAME = "userdatabase";
 
-    private Map<String, UserGroup> groupMap = new ConcurrentHashMap<>(8);
+    private final Map<String, UserGroup> groupMap = new ConcurrentHashMap<>(8);
 
+    /**
+     * 用户组对象
+     */
     private final class UserGroup {
         private final String name;
         private final ConcurrentMap<String, String> userMap = new ConcurrentHashMap<>(8);
@@ -31,7 +37,7 @@ public class UserDatabaseImpl extends AbstractConfig implements UserDatabase {
         }
     }
 
-    public UserDatabaseImpl(ConfigManager<?> configManager) {
+    public TextUserDatabase(ConfigManager<?> configManager) {
         super(configManager, NAME);
     }
 

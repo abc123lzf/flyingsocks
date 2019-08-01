@@ -33,7 +33,7 @@ public class StandardServer extends TopLevelComponent implements Server {
             addComponent(new ProxyProcessor(this, node));
         }
 
-        UserDatabaseImpl db = new UserDatabaseImpl(getConfigManager());
+        TextUserDatabase db = new TextUserDatabase(getConfigManager());
         getConfigManager().registerConfig(db);
 
         this.userDatabase = db;

@@ -11,27 +11,46 @@ import java.io.*;
 import java.nio.charset.Charset;
 import java.util.Properties;
 
+/**
+ * 初始配置文件，用于获取用户配置文件路径、GUI设置以及应用程序超时时间
+ */
 public class GlobalConfig extends AbstractConfig  {
+
     public static final String NAME = "config.global";
+
     private static final String PATH = "classpath://config.properties";
 
+    /**
+     * 用户配置文件路径
+     */
     private String location;
 
+    /**
+     * 是否开启GUI，对于Linux命令行则无需打开GUI
+     */
     private boolean openGUI;
 
+    /**
+     * 应用程序连接超时时间
+     */
     private int connectionTimeout;
 
-    public GlobalConfig(ConfigManager<?> configManager) {
+
+    GlobalConfig(ConfigManager<?> configManager) {
         super(configManager, NAME);
     }
 
+    /**
+     * 加载基本配置文件，并初始化用户存档文件
+     * @throws ConfigInitializationException 如果无法获取基本配置文件或者无法创建用户存档文件
+     */
     @Override
     protected void initInternal() throws ConfigInitializationException {
+        //加载基本配置文件
         try(InputStream is = configManager.loadResource(PATH)) {
             Properties p = new Properties();
             p.load(is);
-            String os = configManager.getSystemProperties("os.name").toLowerCase();
-            boolean windows = os.startsWith("win");
+            boolean windows = File.separatorChar == '\\';  //根据路径分隔符判断当前系统是否是Windows
             String location;
             if(windows) {
                 location = p.getProperty("config.location.windows");
@@ -40,8 +59,8 @@ public class GlobalConfig extends AbstractConfig  {
             }
 
             File folder = new File(location);
-            if(!folder.exists())
-                folder.mkdirs();
+            if(!folder.exists() && !folder.mkdirs())
+                throw new ConfigInitializationException("Can not create folder at " + folder.getAbsolutePath());
 
             if(!location.endsWith("/"))
                 location += "/";
@@ -49,19 +68,19 @@ public class GlobalConfig extends AbstractConfig  {
             location += "config.json";
 
             File file = new File(location);
-            if(!file.exists()) {
+            if(!file.exists()) {  //如果用户配置文件不存在，则初始化用户配置
                 makeTemplateConfigFile(file);
             }
 
-
+            //加载用户配置文件
             try(InputStream cis = file.toURI().toURL().openStream()) {
                 byte[] b = new byte[512000];
                 int len = cis.read(b);
                 String json = new String(b, 0, len, Charset.forName("UTF-8"));
 
                 JSONObject obj = JSON.parseObject(json);
-                openGUI = obj.getBooleanValue("gui");
-                connectionTimeout = obj.getIntValue("connect-timeout");
+                this.openGUI = obj.getBooleanValue("gui");
+                this.connectionTimeout = obj.getIntValue("connect-timeout");
             }
 
             this.location = location;
@@ -71,22 +90,39 @@ public class GlobalConfig extends AbstractConfig  {
         }
     }
 
+    /**
+     * @return 用户配置文件的URL
+     */
     public String configLocationURL() {
         return "file:///" + location;
     }
 
+    /**
+     * @return 用户配置文件的路径
+     */
     public String configLocation() {
         return location;
     }
 
+    /**
+     * @return 是否开启GUI
+     */
     public boolean isOpenGUI() {
         return openGUI;
     }
 
+    /**
+     * @return 应用程序连接超时时间
+     */
     public int getConnectionTimeout() {
         return connectionTimeout;
     }
 
+    /**
+     * 生成一个默认配置文件
+     * @param file 文件路径
+     * @throws IOException 如果路径不存在
+     */
     private void makeTemplateConfigFile(File file) throws IOException {
         JSONObject obj = new JSONObject();
         obj.put("connect-timeout", 10000);

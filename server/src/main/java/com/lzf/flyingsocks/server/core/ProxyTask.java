@@ -26,9 +26,10 @@ class ProxyTask implements Cloneable {
         return session;
     }
 
-    @Override @SuppressWarnings("CloneDoesntCallSuperClone")
+    @Override
+    @SuppressWarnings("CloneDoesntCallSuperClone")
     public ProxyTask clone() throws CloneNotSupportedException {
-        return new ProxyTask((ProxyRequestMessage) proxyRequestMessage.clone(), session);
+        return new ProxyTask(proxyRequestMessage.clone(), session);
     }
 
     @Override

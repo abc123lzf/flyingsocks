@@ -23,6 +23,7 @@ public abstract class AbstractSession implements Session {
      */
     protected volatile long lastActiveTime;
 
+
     protected AbstractSession(SocketChannel socketChannel) {
         this.socketChannel = socketChannel;
         this.connectionTime = System.currentTimeMillis();

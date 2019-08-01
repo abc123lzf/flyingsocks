@@ -12,10 +12,24 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.Objects;
 
+/**
+ * Swing GUI组件
+ */
 public class ViewComponent extends AbstractComponent<Client> {
 
+    /**
+     * 服务器设置界面
+     */
     private ServerSettingModule serverSettingModule;
+
+    /**
+     * 系统托盘模块
+     */
     private TrayModule trayModule;
+
+    /**
+     * Socks代理设置界面
+     */
     private SocksSettingModule socksSettingModule;
 
     public ViewComponent(Client client) {

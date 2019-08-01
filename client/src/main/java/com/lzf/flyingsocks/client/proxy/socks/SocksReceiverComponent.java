@@ -14,11 +14,11 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.socks.*;
-import io.netty.util.ReferenceCountUtil;
 
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 public final class SocksReceiverComponent extends AbstractComponent<SocksProxyComponent> {
@@ -36,7 +36,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
     private Bootstrap udpProxyBootstrap;
 
     //UDP代理会话MAP
-    private final Map<Integer, UDPProxySession> udpSessionMap = new ConcurrentHashMap<>(32);
+    private final ConcurrentMap<Integer, UDPProxySession> udpSessionMap = new ConcurrentHashMap<>(32);
 
     // Netty线程池
     private EventLoopGroup socksReceiveGroup;
@@ -100,8 +100,8 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
             serverBootstrap.clone().bind(bindAddress, port).addListener(f -> {
                 if(!f.isSuccess()) {
                     Throwable t = f.cause();
-                    log.error("bind socks server error.", t);
-                    throw new ComponentException(t);
+                    log.error("bind socks server error, address:[{}:{}]", bindAddress, port, t);
+                    System.exit(1);
                 } else {
                     log.info("Netty socks server complete");
                 }
@@ -143,24 +143,31 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
             protected void initChannel(DatagramChannel channel) {
                 UDPProxySession session = new UDPProxySession(host, port, channel);
                 int port = channel.localAddress().getPort();
-                udpSessionMap.put(port, session);
+
+                if(udpSessionMap.putIfAbsent(port, session) != null) { //如果原Socks5 TCP连接已中断
+                    channel.close();
+                    udpSessionMap.remove(port);
+                    return;
+                }
+
                 channel.pipeline().addFirst(new UDPProxyMessageHandler(session));
             }
         });
 
-        class Port { private int value = 0; }
-        Port p = new Port();
+        //端口号，这里不采用Integer是因为Integer是不可变类，无法在Lambda表达式中修改
+        AtomicInteger p = new AtomicInteger(0);
 
         try {
             boot.bind(0).addListener((ChannelFuture future) -> {
                 if(future.isSuccess()) {
-                    p.value = ((DatagramChannel)future.channel()).localAddress().getPort();
+                    p.set(((DatagramChannel)future.channel()).localAddress().getPort());
                 } else {
                     log.warn("Bind proxy UDP port occur a exception", future.cause());
-                    p.value = -1;
+                    p.set(-1);
                 }
             }).sync();
-            return p.value;
+
+            return p.get();
         } catch (InterruptedException e) {
             return -1;
         }
@@ -170,6 +177,9 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
      * UDP代理会话，每个UDP代理端口和UDPProxySession对象一一对应
      */
     static final class UDPProxySession {
+
+        static final UDPProxySession VOID = new UDPProxySession();
+
         //目标服务器主机名
         final String host;
         //目标服务器IP
@@ -181,7 +191,17 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
         //UDP Channel对象
         final DatagramChannel channel;
 
-        private UDPProxySession(String host, int port, DatagramChannel channel) {
+        private UDPProxySession() {
+            if(VOID != null)
+                throw new UnsupportedOperationException();
+            this.host = null;
+            this.port = 0;
+            this.buildTime = 0L;
+            this.bindPort = 0;
+            this.channel = null;
+        }
+
+        UDPProxySession(String host, int port, DatagramChannel channel) {
             this.host = Objects.requireNonNull(host);
             this.port = port;
             this.buildTime = System.currentTimeMillis();
@@ -204,12 +224,12 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                     if(log.isTraceEnabled())
                         log.trace("Socks init, thread:" + Thread.currentThread().getName());
 
-                    cp.addFirst(new SocksCmdRequestDecoder());
-
-                    if(!auth)
+                    if(!auth) {
+                        cp.addFirst(new SocksCmdRequestDecoder());
                         ctx.writeAndFlush(new SocksInitResponse(SocksAuthScheme.NO_AUTH));
-                    else
+                    } else {
                         ctx.writeAndFlush(new SocksInitResponse(SocksAuthScheme.AUTH_PASSWORD));
+                    }
 
                     break;
                 }
@@ -250,8 +270,17 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                             String host = ((SocketChannel)ctx.channel()).localAddress().getHostName();
                             int port = processUDPProxyRequest(req.host(), req.port());
                             if(port > 0) {
-                                ctx.pipeline().addLast(new UDPStatusHandler(port)).remove(this);
+                                ctx.pipeline().remove(this);
                                 ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.SUCCESS, SocksAddressType.IPv4, host, port));
+
+                                ctx.channel().closeFuture().addListener(future -> {  //确保这个连接断开后UDP端口能够释放
+                                    UDPProxySession s = udpSessionMap.putIfAbsent(port, UDPProxySession.VOID);
+                                    if(s != null) {  //s不为null说明当前UDP端口已经就绪
+                                        assert s.channel != null;
+                                        s.channel.close();
+                                        udpSessionMap.remove(port);
+                                    }
+                                });
                             } else {
                                 ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.FAILURE, SocksAddressType.IPv4));
                                 ctx.close();
@@ -291,29 +320,8 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
         }
     }
 
-    private class UDPStatusHandler extends ChannelInboundHandlerAdapter {
-
-        private final int bindPort;
-
-        private UDPStatusHandler(int bindPort) {
-            this.bindPort = bindPort;
-        }
-
-        @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) {
-            log.warn("Unsupport message");
-            ReferenceCountUtil.release(msg);
-        }
-
-        @Override
-        public void channelInactive(ChannelHandlerContext ctx)  {
-            udpSessionMap.get(bindPort).channel.close();
-            udpSessionMap.remove(bindPort);
-        }
-    }
-
     /**
-     * 负责接收客户端要求代理的数据
+     * 负责接收客户端要求代理的数据，仅TCP代理
      */
     private class TCPProxyMessageHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
@@ -343,6 +351,9 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
         }
     }
 
+    /**
+     * 负责接收客户端要求代理的数据，仅UDP代理
+     */
     private class UDPProxyMessageHandler extends SimpleChannelInboundHandler<DatagramPacket> {
         private final UDPProxySession proxySession;
         private final SocksProxyRequest proxyRequest;

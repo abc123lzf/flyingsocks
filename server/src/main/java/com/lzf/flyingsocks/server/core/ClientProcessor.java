@@ -27,20 +27,36 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
-
+/**
+ * 用于处理FS客户端连接的组件
+ */
 public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
+    /**
+     * 接收客户端代理连接的引导模板
+     */
     private ServerBootstrap serverBootstrap;
 
+    /**
+     * 接收客户端证书的引导模板
+     */
     private ServerBootstrap certBootstrap;
 
+    /**
+     * 证书文件内容
+     */
     private byte[] cert;
 
+    /**
+     * 证书文件MD5
+     */
     private byte[] certMD5;
+
 
     ClientProcessor(ProxyProcessor proxyProcessor) {
         super("ClientProcessor", Objects.requireNonNull(proxyProcessor));
     }
+
 
     @Override
     protected void initInternal() {
@@ -100,13 +116,11 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             }
         }
 
-
-        Map<String, Object> m = new HashMap<>(2);
-        m.put("alloc", PooledByteBufAllocator.DEFAULT);
+        Map<String, Object> m = Collections.singletonMap("alloc", PooledByteBufAllocator.DEFAULT);
         final Map<String, Object> params = Collections.unmodifiableMap(m);
 
         ServerBootstrap boot = new ServerBootstrap();
-        boot.group(getParentComponent().getConnectionReceiveWorker(), getParentComponent().getRequestProcessWorker())
+        boot.group(parent.getConnectionReceiveWorker(), parent.getRequestProcessWorker())
             .channel(NioServerSocketChannel.class)
             .childHandler(new ChannelInitializer<SocketChannel>() {
                 @Override
@@ -117,7 +131,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                             cp.addLast(provider.encodeHandler(params));
                         cp.addLast(provider.decodeHandler(params));
                     }
-                    cp.addLast(getParentComponent().clientSessionHandler());
+                    cp.addLast(parent.clientSessionHandler());
                     cp.addLast(new FixedLengthFrameDecoder(DelimiterMessage.DEFAULT_SIZE));
                     cp.addLast(new InitialHandler());
                 }
@@ -126,7 +140,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
         this.serverBootstrap = boot;
 
         ServerBootstrap certBoot = new ServerBootstrap();
-        certBoot.group(getParentComponent().getConnectionReceiveWorker(), getParentComponent().getRequestProcessWorker())
+        certBoot.group(parent.getConnectionReceiveWorker(), parent.getRequestProcessWorker())
                 .channel(NioServerSocketChannel.class)
                 .option(ChannelOption.AUTO_CLOSE, true)
                 .childHandler(new ChannelInitializer<SocketChannel>() {
@@ -147,11 +161,11 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
     @Override
     protected void startInternal() {
         try {
-            serverBootstrap.bind(getParentComponent().getPort()).addListener(future -> {
+            serverBootstrap.bind(parent.getPort()).addListener(future -> {
                 if (!future.isSuccess()) {
                     Throwable t = future.cause();
                     if (log.isErrorEnabled())
-                        log.error("Server occur a error when bind port " + getParentComponent().getPort(), t);
+                        log.error("Server occur a error when bind port " + parent.getPort(), t);
                     throw new ComponentException(t);
                 }
             }).sync();
@@ -160,7 +174,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                 if (!future.isSuccess()) {
                     Throwable t = future.cause();
                     if (log.isErrorEnabled())
-                        log.error("CertServer occur a error when bind port " + getParentComponent().getPort(), t);
+                        log.error("CertServer occur a error when bind port " + parent.getPort(), t);
                     throw new ComponentException(t);
                 }
             }).sync();
@@ -181,7 +195,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
      * @return 是否通过认证
      */
     private boolean doAuth(AuthMessage msg) {
-        ServerConfig.Node n = getParentComponent().getServerConfig();
+        ServerConfig.Node n = parent.getServerConfig();
         if(n.authType.authMethod != msg.getAuthMethod()) { //如果认证方式不匹配
             return false;
         }
@@ -207,7 +221,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
     private final class CertRequestHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
         @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             if(cause instanceof IOException)
                 return;
             if(log.isWarnEnabled())
@@ -252,7 +266,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             if(log.isTraceEnabled())
                 log.trace("Receive DelimiterMessage from client.");
 
-            ClientSession state = getParentComponent().getClientSession(ctx.channel());
+            ClientSession state = parent.getClientSession(ctx.channel());
             state.setDelimiterKey(key);
 
             ChannelPipeline cp = ctx.pipeline();
@@ -267,6 +281,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             cp.addLast(new AuthHandler(state));
         }
     }
+
 
     private final class DelimiterOutboundHandler extends ChannelOutboundHandlerAdapter {
         private final ByteBuf delimiter;
@@ -330,15 +345,13 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             ChannelPipeline cp = ctx.pipeline();
             cp.remove(this).remove(DelimiterBasedFrameDecoder.class);
 
-            byte[] b = getParentComponent().getClientSession(ctx.channel()).getDelimiterKey();
+            byte[] b = parent.getClientSession(ctx.channel()).getDelimiterKey();
 
             cp.addLast(new DelimiterBasedFrameDecoder(1024 * 1000 * 50,
                     Unpooled.buffer(DelimiterMessage.DEFAULT_SIZE).writeBytes(b)));
 
             cp.addLast(new ProxyHandler(clientSession));
         }
-
-
     }
 
     private final class ProxyHandler extends SimpleChannelInboundHandler<ByteBuf> {
@@ -366,9 +379,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
             ProxyTask task = new ProxyTask(msg, clientSession);
             //发布代理任务
-            getParentComponent().publish(task);
+            parent.publish(task);
         }
     }
-
-
 }
