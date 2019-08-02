@@ -30,5 +30,21 @@ public interface Client extends Component<VoidComponent>, Environment {
      */
     void addServerConfig(ProxyServerConfig.Node node);
 
+    /**
+     * 更新代理服务器的配置
+     * @param node 服务器配置
+     */
+    void updateServerConfig(ProxyServerConfig.Node node);
 
+
+    /**
+     * 移除代理服务器配置
+     * @param node 服务器配置
+     */
+    void removeServer(ProxyServerConfig.Node node);
+
+    /**
+     * @return 服务器配置
+     */
+    ProxyServerConfig.Node[] getServerNodes();
 }

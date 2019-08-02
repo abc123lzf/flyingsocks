@@ -17,16 +17,19 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ProxyServerConfig extends AbstractConfig {
+
     public static final String DEFAULT_NAME = "config.proxyserver";
 
-    private static final String DEFAULT_CONFIG_PATH = "classpath://config.json";
-
-    private List<Node> nodes = new CopyOnWriteArrayList<>();
+    /**
+     * 服务器节点集合
+     */
+    private final List<Node> nodes = new CopyOnWriteArrayList<>();
 
 
     public ProxyServerConfig(ConfigManager<?> configManager) {
         super(configManager, DEFAULT_NAME);
     }
+
 
     @Override
     protected void initInternal() throws ConfigInitializationException {
@@ -127,7 +130,7 @@ public class ProxyServerConfig extends AbstractConfig {
     }
 
     public Node[] getProxyServerConfig() {
-        return nodes.toArray(new Node[nodes.size()]);
+        return nodes.toArray(new Node[0]);
     }
 
 

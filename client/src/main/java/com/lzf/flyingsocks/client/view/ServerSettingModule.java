@@ -1,6 +1,7 @@
 package com.lzf.flyingsocks.client.view;
 
 import com.lzf.flyingsocks.*;
+import com.lzf.flyingsocks.client.Client;
 import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,23 +30,37 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
     static final String NAME = "ServerSettingModule";
 
     /**
+     * 客户端
+     */
+    private final Client client;
+
+    /**
      * 窗口对象
      */
     private final Frame frame;
 
-    private ProxyServerConfig serverConfig;
+    /**
+     * ServerList索引和配置的映射关系，GUI界面为单线程无需保证线程安全问题
+     */
+    private final List<ProxyServerConfig.Node> serverNode = new ArrayList<>();
 
-    //ServerList索引和配置的映射关系，GUI界面为单线程无需保证线程安全问题
-    private List<ProxyServerConfig.Node> serverNode = new ArrayList<>();
-
-
+    /**
+     * GUI界面服务器列表
+     */
     private HostList hostList;
 
-
+    /**
+     * 服务器编辑表单
+     */
     private SettingTable settingTable;
 
+    /**
+     * @param component 父组件
+     * @param icon 界面左上角图片
+     */
     ServerSettingModule(ViewComponent component, Image icon) {
         super(component, NAME);
+        this.client = component.getParentComponent();
         this.frame = initFrame(icon);
         initConfig();
     }
@@ -154,23 +169,21 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
 
 
     private void initConfig() {
-        ConfigManager<?> manager = getComponent().getParentComponent().getConfigManager();
-        ProxyServerConfig cfg = (ProxyServerConfig) manager.getConfig(ProxyServerConfig.DEFAULT_NAME);
-        if(cfg == null) {
+        ProxyServerConfig.Node[] nodes = client.getServerNodes();
+        if(nodes == null) {
+            ConfigManager<?> manager = getComponent().getParentComponent().getConfigManager();
             manager.registerConfigEventListener(new ConfigEventListener() {
                 @Override
                 public void configEvent(ConfigEvent e) {
                     if(e.getEvent().equals(Config.REGISTER_EVENT) && e.getSource() instanceof ProxyServerConfig) {
                         ProxyServerConfig psc = (ProxyServerConfig) e.getSource();
-                        ServerSettingModule.this.serverConfig = psc;
                         initServerNode(psc.getProxyServerConfig());
                         manager.removeConfigEventListener(this);
                     }
                 }
             });
         } else {
-            this.serverConfig = cfg;
-            initServerNode(cfg.getProxyServerConfig());
+            initServerNode(nodes);
         }
     }
 
@@ -192,7 +205,8 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
     /**
      * 更新服务器节点
      * @param host 服务器IP/主机名
-     * @param port 端口号
+     * @param port 代理连接端口
+     * @param certPort 用于获取证书的端口
      * @param encryptType 加密方式
      * @param authType 认证方式
      * @param args 认证参数
@@ -209,7 +223,8 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
                 break;
         }
         ProxyServerConfig.Node node = new ProxyServerConfig.Node(host, port, certPort, authType, encryptType, param, false);
-        this.serverConfig.addProxyServerNode(node);
+
+        client.addServerConfig(node);
         return node;
     }
 
@@ -227,7 +242,9 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
                 break;
         }
 
-        src.setCertPort(certPort);
+        if(encryptType == ProxyServerConfig.EncryptType.SSL)
+            src.setCertPort(certPort);
+
         src.setHost(host);
         src.setPort(port);
         src.setCertPort(certPort);
@@ -235,7 +252,7 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
         src.setAuthType(authType);
         src.setAuthArgument(param);
 
-        this.serverConfig.updateProxyServerNode(src);
+        client.updateServerConfig(src);
     }
 
 
@@ -244,7 +261,8 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
             log.warn("Node is null");
             return;
         }
-        this.serverConfig.removeProxyServerNode(node);
+
+        client.removeServer(node);
     }
 
 
@@ -343,7 +361,14 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
             JLabel portl = new JLabel("端口");
             portl.setFont(font);
             portl.setBounds(0, 40, 100, 30);
-            portField.setBounds(105, 40, 335, 30);
+            portField.setBounds(105, 40, 120, 30);
+
+            certPortField = new JTextField();
+            certPortField.setFont(font);
+            JLabel cpl = new JLabel(" 证书端口");
+            cpl.setFont(font);
+            cpl.setBounds(225, 40, 100, 30);
+            certPortField.setBounds(330, 40, 110, 30);
 
             JComboBox<String> encrypt = new JComboBox<>();
             JLabel encryptl = new JLabel("加密方式");
@@ -358,11 +383,6 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
             encrypt.setFont(font);
             this.encryptBox = encrypt;
             this.encryptBoxModel = encryptModel;
-
-            certPortField = new JTextField();
-            certPortField.setFont(font);
-            JLabel cpl = new JLabel("证书端口");
-            cpl.setFont(font);
 
             JComboBox<String> auth = new JComboBox<>();
             JLabel authl = new JLabel("认证方式");
@@ -421,6 +441,8 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
             panel.add(hostl);
             panel.add(portField);
             panel.add(portl);
+            panel.add(certPortField);
+            panel.add(cpl);
             panel.add(encryptBox);
             panel.add(encryptl);
             panel.add(authBox);
@@ -451,7 +473,17 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
                         panel.add(upl);
                     }
 
-                    frame.repaint();
+                    panel.repaint();
+                }
+            });
+
+            encrypt.addItemListener(e -> {
+                if(e.getStateChange() == ItemEvent.SELECTED) {
+                    if(encrypt.getSelectedIndex() == 0) {
+                        certPortField.setEditable(true);
+                    } else {
+                        certPortField.setEditable(false);
+                    }
                 }
             });
         }
@@ -498,7 +530,7 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
             try {
                 return Integer.valueOf(certPortField.getText());
             } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(frame, "端口必须为数字", "提示", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(frame, "证书端口必须为数字", "提示", JOptionPane.WARNING_MESSAGE);
                 return -1;
             }
         }

@@ -16,12 +16,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * 基于文本文件实现的用户数据库
+ * 轻量级用户数据库实现：基于文本文件实现
  */
 public class TextUserDatabase extends AbstractConfig implements UserDatabase {
     private static final Logger log = LoggerFactory.getLogger("TextUserDatabase");
 
-    public static final String NAME = "userdatabase";
+    public static final String NAME = "userdatabase.text";
 
     private final Map<String, UserGroup> groupMap = new ConcurrentHashMap<>(8);
 

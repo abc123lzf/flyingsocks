@@ -59,12 +59,32 @@ public class StandardClient extends TopLevelComponent implements Client {
         return super.getConfigManager();
     }
 
-
     @Override
     public void addServerConfig(ProxyServerConfig.Node node) {
         ProxyServerConfig cfg = getConfigManager().getConfig(ProxyServerConfig.DEFAULT_NAME, ProxyServerConfig.class);
-        cfg.updateProxyServerNode(node);
+        if(cfg != null)
+            cfg.addProxyServerNode(node);
     }
 
+    @Override
+    public void updateServerConfig(ProxyServerConfig.Node node) {
+        ProxyServerConfig cfg = getConfigManager().getConfig(ProxyServerConfig.DEFAULT_NAME, ProxyServerConfig.class);
+        if(cfg != null)
+            cfg.updateProxyServerNode(node);
+    }
 
+    @Override
+    public void removeServer(ProxyServerConfig.Node node) {
+        ProxyServerConfig cfg = getConfigManager().getConfig(ProxyServerConfig.DEFAULT_NAME, ProxyServerConfig.class);
+        if(cfg != null)
+            cfg.removeProxyServerNode(node);
+    }
+
+    @Override
+    public ProxyServerConfig.Node[] getServerNodes() {
+        ProxyServerConfig cfg = getConfigManager().getConfig(ProxyServerConfig.DEFAULT_NAME, ProxyServerConfig.class);
+        if(cfg == null)
+            return null;
+        return cfg.getProxyServerConfig();
+    }
 }

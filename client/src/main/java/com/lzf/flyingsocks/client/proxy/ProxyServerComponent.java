@@ -73,6 +73,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     //与flyingsocks服务器会话对象
     private volatile ProxyServerSession proxyServerSession;
 
+    //下次重连的时间(绝对时间戳)
+    private volatile long nextReconnectTime = -1L;
+
     //代理请求消息队列
     private final BlockingQueue<ProxyRequest> proxyRequestQueue = new LinkedBlockingQueue<>();
 
@@ -92,7 +95,11 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         this.use = config.isUse();
     }
 
-
+    /**
+     * 代理服务器连接初始化逻辑，执行步骤为:
+     * 1.获取与服务器的加密方式，如果需要SSL加密，则建立一个证书连接接收服务器证书
+     * 2.
+     */
     @Override
     protected void initInternal() {
         ConfigManager<?> cm = parent.getParentComponent().getConfigManager();
@@ -177,7 +184,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             });
 
             //等待上述证书操作的完成
-            LockSupport.park();
+            LockSupport.parkNanos((cfg.getConnectionTimeout() + 2000) * 1_000_000L);
             sslGroup.shutdownGracefully();
 
             if(!future.isSuccess()) {
@@ -185,7 +192,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     log.warn("Can not connect to cert service {}:{}", host, config.getCertPort());
                 return;
             }
-
 
             OpenSSLConfig sslcfg = new OpenSSLConfig(cm, host);
             cm.registerConfig(sslcfg);
@@ -246,23 +252,33 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         super.startInternal();
 
         if(active)
-            getParentComponent().addActiveProxyServer(this);
+            parent.addActiveProxyServer(this);
     }
 
+    /**
+     * @return 只接收需要代理的请求
+     */
     @Override
     public boolean receiveNeedProxy() {
         return true;
     }
 
+    /**
+     * @return 不接收无需代理的请求
+     */
     @Override
     public boolean receiveNeedlessProxy() {
         return false;
     }
 
+    /**
+     * @return 可以处理所有类型的ProxyRequest
+     */
     @Override
     public Class<? extends ProxyRequest> requestType() {
         return ProxyRequest.class;
     }
+
 
     private void doConnect(boolean sync) {
         if(active)
@@ -290,6 +306,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     for(int i = 0; i < DEFAULT_PROCESSOR_THREAD; i++) {
                         clientMessageProcessor.submit(new ClientMessageTransferTask());
                     }
+
+                    nextReconnectTime = -1L;
                     //连接成功后注册
                     parent.registerSubscriber(ProxyServerComponent.this);
                     f.removeListener(this);
@@ -343,18 +361,22 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     }
 
     /**
-     * 判断该服务器连接是否活跃
+     * @return 判断该服务器连接是否活跃
      */
     public boolean isActive() {
         return active;
     }
 
-
+    /**
+     * @return 该服务器是否处于启用状态
+     */
     public boolean isUse() {
         return use;
     }
 
-
+    /**
+     * 连接失效后的处理逻辑
+     */
     private synchronized void afterChannelInactive() {
         if(log.isInfoEnabled())
             log.info("Disconnect with flyingsocks server {}:{}", config.getHost(), config.getPort());
@@ -371,6 +393,24 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         //处理掉线重连
         //如果父组件没有处于正在停止状态并且用户还希望继续使用该节点
         if(!parent.getState().after(LifecycleState.STOPING) && use) {
+            if(nextReconnectTime != -1L) {
+                long d = nextReconnectTime - System.currentTimeMillis();
+                if(d > 2000L) {
+                    if(log.isInfoEnabled())
+                        log.info("Waiting {}ms before reconnect server {}:{}", d, config.getHost(), config.getPort());
+                    Thread.interrupted(); //上述clientMessageProcessor和loopGroup调用了
+                    try {
+                        wait(d);
+                    } catch (InterruptedException ignore) {
+                    }
+                    //wait会释放锁所以再一次检查
+                    if(parent.getState().after(LifecycleState.STOPING) || !use)
+                        return;
+                }
+            } else {
+                nextReconnectTime = System.currentTimeMillis() + 15 * 1000;
+            }
+
             if(log.isInfoEnabled())
                 log.info("Retry to connect flyingsocks server {}:{}", config.getHost(), config.getPort());
             this.proxyServerSession = null;
@@ -589,7 +629,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         }
 
         @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             if(cause instanceof IOException && log.isInfoEnabled()) {
                 log.info("flyingsocks server {}:{} force closure of connections", config.getHost(), config.getPort());
             } else if(log.isWarnEnabled())
@@ -760,7 +800,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     }
 
     private static ExecutorService createMessageExecutor() {
-        return new ThreadPoolExecutor(DEFAULT_PROCESSOR_THREAD, DEFAULT_PROCESSOR_THREAD, 0, TimeUnit.MILLISECONDS,
+        return new ThreadPoolExecutor(DEFAULT_PROCESSOR_THREAD, DEFAULT_PROCESSOR_THREAD + 2, 2, TimeUnit.MINUTES,
                 new SynchronousQueue<>());
     }
 }

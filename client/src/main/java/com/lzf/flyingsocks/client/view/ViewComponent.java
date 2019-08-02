@@ -74,4 +74,5 @@ public class ViewComponent extends AbstractComponent<Client> {
         this.socksSettingModule = new SocksSettingModule(this, image);
         addModule(socksSettingModule);
     }
+
 }
