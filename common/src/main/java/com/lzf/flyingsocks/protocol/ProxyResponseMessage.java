@@ -4,6 +4,17 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
 
+/**
+ * 服务器代理响应报文
+ * 0              16
+ * +--------------+-----------+--------+-----------------+
+ * |Channel ID Len| Channel ID| State  |  Message Length |
+ * |  (2 Bytes)   |           |(1 Byte)|     (4 Bytes)   |
+ * +--------------+-----------+--------+-----------------+
+ * |                     Message                         |
+ * |                     Content                         |
+ * +-----------------------------------------------------+
+ */
 public class ProxyResponseMessage extends ProxyMessage implements Message {
 
     private State state;

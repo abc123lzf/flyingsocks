@@ -26,6 +26,11 @@ public class GlobalConfig extends AbstractConfig  {
     private String location;
 
     /**
+     * 配置文件所在目录
+     */
+    private String path;
+
+    /**
      * 是否开启GUI，对于Linux命令行则无需打开GUI
      */
     private boolean openGUI;
@@ -65,6 +70,7 @@ public class GlobalConfig extends AbstractConfig  {
             if(!location.endsWith("/"))
                 location += "/";
 
+            this.path = location;
             location += "config.json";
 
             File file = new File(location);
@@ -102,6 +108,10 @@ public class GlobalConfig extends AbstractConfig  {
      */
     public String configLocation() {
         return location;
+    }
+
+    public String configPath() {
+        return path;
     }
 
     /**

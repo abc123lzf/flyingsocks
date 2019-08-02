@@ -171,7 +171,7 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
     private void initConfig() {
         ProxyServerConfig.Node[] nodes = client.getServerNodes();
         if(nodes == null) {
-            ConfigManager<?> manager = getComponent().getParentComponent().getConfigManager();
+            ConfigManager<?> manager = belongComponent.getParentComponent().getConfigManager();
             manager.registerConfigEventListener(new ConfigEventListener() {
                 @Override
                 public void configEvent(ConfigEvent e) {

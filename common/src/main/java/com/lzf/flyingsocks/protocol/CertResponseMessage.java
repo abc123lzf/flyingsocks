@@ -7,6 +7,14 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Objects;
 
+/**
+ * 证书响应报文
+ * 0 1                        4                                  Length + 4
+ * +-+------------------------+----------------------------------+
+ * |U|        Length          |              File                |
+ * |P|        31 bit          |                                  |
+ * +-+------------------------+----------------------------------+
+ */
 public class CertResponseMessage implements Message {
 
     public static final byte[] END_MARK = CertRequestMessage.END_MARK;
@@ -39,7 +47,7 @@ public class CertResponseMessage implements Message {
     }
 
     @Override
-    public ByteBuf serialize() throws SerializationException {
+    public ByteBuf serialize() {
         ByteBuf buf;
         if(update)
             buf = Unpooled.buffer(4 + file.length + END_MARK.length);
@@ -66,6 +74,7 @@ public class CertResponseMessage implements Message {
             if (update) {
                 int length = val ^ (1 << 31);
                 byte[] b = new byte[length];
+                this.length = length;
                 buf.readBytes(b);
                 this.file = b;
             }

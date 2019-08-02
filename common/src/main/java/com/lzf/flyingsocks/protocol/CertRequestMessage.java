@@ -6,6 +6,16 @@ import io.netty.buffer.Unpooled;
 
 import java.util.Arrays;
 
+/**
+ * 证书请求报文
+ * +---------+---------+-------------------------+
+ * |Auth Type| Length  |           Auth          |
+ * | (1 byte)|(2 bytes)|         Message         |
+ * +---------+---------+-------------+-----------+
+ * |           Cert File MD5         |  END_MARK |
+ * |             (16 bytes)          | 0x00FF00FF|
+ * +---------------------------------+-----------+
+ */
 public class CertRequestMessage extends AuthMessage implements Message {
 
     public static final byte[] END_MARK;

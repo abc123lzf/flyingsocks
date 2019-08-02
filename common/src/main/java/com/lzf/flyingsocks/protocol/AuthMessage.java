@@ -11,10 +11,11 @@ import java.util.*;
 
 /**
  * 客户端发送给服务器的认证消息，其报文格式为：
- * +---------+---------+---------+
- * |Auth Type| Length  |   Auth  |
- * | (1 byte)|(2 bytes)|  Message|
- * +---------+---------+---------+
+ * 0                   24                        24 + Length
+ * +---------+---------+-------------------------+
+ * |Auth Type| Length  |           Auth          |
+ * | (1 byte)|(2 bytes)|         Message         |
+ * +---------+---------+-------------------------+
  */
 public class AuthMessage implements Message {
     /**
@@ -95,11 +96,12 @@ public class AuthMessage implements Message {
     }
 
 
-    @Override @SuppressWarnings("unchecked")
+    @Override
     public ByteBuf serialize() throws SerializationException {
         if(authMethod == null)
             throw new SerializationException("Auth type should not be null");
 
+        @SuppressWarnings("unchecked")
         JSONObject msg = new JSONObject((Map)authInfo);
         List<String> keys = authMethod.getContainsKey();
 

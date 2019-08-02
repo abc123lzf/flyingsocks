@@ -87,7 +87,7 @@ class SocksSettingModule extends AbstractModule<ViewComponent> {
         this.userField = user;
         this.passwordField = pwd;
 
-        ConfigManager<?> cm = getComponent().getParentComponent().getConfigManager();
+        ConfigManager<?> cm = belongComponent.getParentComponent().getConfigManager();
         SocksConfig cfg = cm.getConfig(SocksConfig.NAME, SocksConfig.class);
         if(cfg == null) {
             cm.registerConfigEventListener(new ConfigEventListener() {

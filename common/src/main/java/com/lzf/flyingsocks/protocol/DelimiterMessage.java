@@ -5,6 +5,14 @@ import io.netty.buffer.Unpooled;
 
 import java.util.Arrays;
 
+/**
+ * 分隔符握手报文
+ * 0                                       128
+ * +---------------------------------------+
+ * |                Delimiter              |
+ * |            128 Bit / 16 bytes         |
+ * +---------------------------------------+
+ */
 public class DelimiterMessage implements Message {
 
     /**

@@ -72,8 +72,11 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             case None:
                 provider = null;
                 break;
-            default:
-                throw new ComponentException("Unsupport encrypt type");
+            default: {
+                log.error("Unsupport encrypt type");
+                System.exit(1);
+                return;
+            }
         }
 
         if(provider != null) {
@@ -84,7 +87,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
                 Map<String, Object> params = new HashMap<>(8);
 
-                try(InputStream certIs = cfg.openServerCertStream()) {
+                try(InputStream certIs = cfg.openRootCertStream()) {
                     byte[] b = new byte[10240];
                     int r = certIs.read(b);
                     byte[] nb = new byte[r];
@@ -97,22 +100,31 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                     ByteArrayInputStream bais = new ByteArrayInputStream(nb);
                     params.put("file.cert", bais);
                 } catch (IOException | NoSuchAlgorithmException e) {
-                    throw new ComponentException(e);
+                    log.error("Exception occur at CA cert MD5 calcuate", e);
+                    System.exit(1);
                 }
 
-                params.put("client", false);
-                params.put("file.cert.root", cfg.openRootCertStream());
-                params.put("file.key", cfg.openKeyStream());
+                try {
+                    params.put("client", false);
+                    params.put("file.cert.root", cfg.openRootCertStream());
+                    params.put("file.key", cfg.openKeyStream());
+                } catch (IOException e) {
+                    log.error("Can not open CA file stream", e);
+                    System.exit(1);
+                }
 
                 try {
                     provider.initialize(params);
                 } catch (Exception e) {
-                    throw new ComponentException("Load OpenSSL Module occur a exception", e);
+                    log.error("Load OpenSSL Module occur a exception", e);
+                    System.exit(1);
                 }
             } else if (provider instanceof JksSSLEncryptProvider) {
-                throw new ComponentException("Unsupport JKS encrypt method");
+                log.error("Unsupport JKS encrypt method");
+                System.exit(1);
             } else {
-                throw new ComponentException("Unsupport other encrypt method");
+                log.error("Unsupport other encrypt method");
+                System.exit(1);
             }
         }
 
@@ -150,7 +162,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                         int l = CertRequestMessage.END_MARK.length;
                         ByteBuf buf = Unpooled.buffer(l);
                         buf.writeBytes(CertRequestMessage.END_MARK);
-                        cp.addLast(new DelimiterBasedFrameDecoder(16 + l + 2, buf));
+                        cp.addLast(new DelimiterBasedFrameDecoder(512 + l, buf));
                         cp.addLast(new CertRequestHandler());
                     }
                 });

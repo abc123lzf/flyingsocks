@@ -111,14 +111,14 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             provider = null;
         } else if(config.getEncryptType() == ProxyServerConfig.EncryptType.SSL) {
             //首先计算证书文件的MD5
-            final byte[] md5 = calcuateCertFileMD5(cfg.configLocation());
+            final byte[] md5 = calcuateCertFileMD5(cfg.configPath());
             if(md5 == null) {
                 throw new ComponentException();
             }
 
             final Thread thread = Thread.currentThread();
-
-            String host = config.getHost();
+            final String host = config.getHost();
+            final int certPort = config.getCertPort();
             //尝试从服务器上获取SSL证书
             final EventLoopGroup sslGroup = new NioEventLoopGroup(1);
             Bootstrap sslBoot = new Bootstrap()
@@ -134,9 +134,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                             cp.addLast(new DelimiterBasedFrameDecoder(1024 * 100,
                                     Unpooled.copiedBuffer(CertResponseMessage.END_MARK)));
 
-                            cp.addLast(new ChannelHandlerAdapter() {
+                            cp.addLast(new ChannelInboundHandlerAdapter() {
                                 @Override
-                                public void handlerAdded(ChannelHandlerContext ctx) {
+                                public void channelActive(ChannelHandlerContext ctx) {
                                     CertRequestMessage msg;
                                     switch (config.getAuthType()) {
                                         case SIMPLE: msg = new CertRequestMessage(AuthMessage.AuthMethod.SIMPLE, md5); break;
@@ -150,9 +150,10 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                                         msg.putContent(key, config.getAuthArgument(key));
                                     }
 
+                                    log.trace("Ready to send CertRequest to remote server {}:{}", host, certPort);
+
                                     ctx.writeAndFlush(msg);
                                 }
-
                             });
 
                             cp.addLast(new SimpleChannelInboundHandler<ByteBuf>() {
@@ -162,8 +163,12 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                                     if(msg.needUpdate()) {
                                         InputStream is = msg.getFile();
                                         int len = msg.getLength();
-                                        writeCertFile(cfg.configLocation(), is, len);
-                                    }
+                                        writeCertFile(cfg.configPath(), is, len);
+                                        if(log.isInfoEnabled())
+                                            log.info("Update cert file from remote flyingsocks server {}:{}", host, certPort);
+
+                                    } else if(log.isTraceEnabled())
+                                        log.trace("Remote server cert file is same as local, from {}:{}", host, certPort);
 
                                     ctx.close();
                                 }
@@ -178,13 +183,13 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     });
 
             //连接到服务器的证书端口
-            ChannelFuture future = sslBoot.connect(host, config.getCertPort()).addListener(f -> {
+            ChannelFuture future = sslBoot.connect(host, certPort).addListener(f -> {
                 if(!f.isSuccess())
                     LockSupport.unpark(thread);
             });
 
             //等待上述证书操作的完成
-            LockSupport.parkNanos((cfg.getConnectionTimeout() + 2000) * 1_000_000L);
+            LockSupport.parkNanos((cfg.getConnectionTimeout() + 1000 * 20) * 1_000_000L);  //20秒加上连接超时时间
             sslGroup.shutdownGracefully();
 
             if(!future.isSuccess()) {
@@ -199,7 +204,13 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             provider = EncryptSupport.lookupProvider("OpenSSL", OpenSSLEncryptProvider.class);
             Map<String, Object> params = new HashMap<>();
             params.put("client", true);
-            params.put("file.cert.root", sslcfg.openRootCertStream());
+            try {
+                params.put("file.cert.root", sslcfg.openRootCertStream());
+            } catch (IOException e) {
+                log.error("Read CA cert file occur a exception, from {}:{}", host, config.getPort(), e);
+                stop();
+                return;
+            }
 
             try {
                 provider.initialize(params);
@@ -353,7 +364,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 }
             });
 
-        clientMessageProcessor.shutdownNow();
+        if(clientMessageProcessor != null)
+            clientMessageProcessor.shutdownNow();
+
         activeProxyRequestMap.clear();
         super.stopInternal();
         if(log.isInfoEnabled())
@@ -393,22 +406,20 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         //处理掉线重连
         //如果父组件没有处于正在停止状态并且用户还希望继续使用该节点
         if(!parent.getState().after(LifecycleState.STOPING) && use) {
-            if(nextReconnectTime != -1L) {
-                long d = nextReconnectTime - System.currentTimeMillis();
-                if(d > 2000L) {
-                    if(log.isInfoEnabled())
-                        log.info("Waiting {}ms before reconnect server {}:{}", d, config.getHost(), config.getPort());
-                    Thread.interrupted(); //上述clientMessageProcessor和loopGroup调用了
-                    try {
-                        wait(d);
-                    } catch (InterruptedException ignore) {
-                    }
-                    //wait会释放锁所以再一次检查
-                    if(parent.getState().after(LifecycleState.STOPING) || !use)
-                        return;
-                }
-            } else {
+            if(nextReconnectTime == -1L)
                 nextReconnectTime = System.currentTimeMillis() + 15 * 1000;
+            long d = nextReconnectTime - System.currentTimeMillis();
+            if(d > 2000L) {
+                if(log.isInfoEnabled())
+                    log.info("Waiting {}ms before reconnect server {}:{}", d, config.getHost(), config.getPort());
+                Thread.interrupted(); //上述clientMessageProcessor和loopGroup调用了
+                try {
+                    wait(d);
+                } catch (InterruptedException ignore) {
+                }
+                //wait会释放锁所以再一次检查
+                if(parent.getState().after(LifecycleState.STOPING) || !use)
+                    return;
             }
 
             if(log.isInfoEnabled())
@@ -445,7 +456,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         if(folder.isDirectory()) {
             File file = new File(folder, OpenSSLConfig.CERT_FILE_NAME);
-            if(!file.exists())
+            if(!file.exists() || file.length() == 0L)
                 return new byte[16];
 
             if(file.isDirectory() && !file.delete()) {
@@ -482,6 +493,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         try(FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(b);
+            fos.flush();
         }
     }
 
