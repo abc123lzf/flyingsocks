@@ -25,13 +25,6 @@ public class ClientSession extends AbstractSession implements Session {
      */
     private boolean auth = false;
 
-    /**
-     * 本次连接产生的流量
-     */
-    private final AtomicLong traffic = new AtomicLong(0);
-
-
-
 
     public ClientSession(Channel channel) {
         super((SocketChannel) channel);
@@ -79,14 +72,6 @@ public class ClientSession extends AbstractSession implements Session {
         auth = true;
     }
 
-    public void addTraffic(long traffic) {
-        this.traffic.addAndGet(traffic);
-    }
-
-    public long getTraffic() {
-        return this.traffic.get();
-    }
-
     public void updateLastActiveTime() {
         lastActiveTime = System.currentTimeMillis();
     }
@@ -96,15 +81,11 @@ public class ClientSession extends AbstractSession implements Session {
             throw new IllegalStateException("Channel has been closed");
     }
 
-
     @Override
     public String toString() {
         return "ClientSession{" +
-                "channel=" + socketChannel +
+                "delimiterKey=" + Arrays.toString(delimiterKey) +
                 ", auth=" + auth +
-                ", connectionTime=" + connectionTime +
-                ", lastActiveTime=" + lastActiveTime +
-                ", traffic=" + traffic +
                 '}';
     }
 }

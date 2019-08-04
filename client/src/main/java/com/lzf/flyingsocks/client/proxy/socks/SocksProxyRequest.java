@@ -26,10 +26,9 @@ public final class SocksProxyRequest extends ProxyRequest {
      * @param host 目标服务器主机名/IP
      * @param port 目标服务器
      * @param channel 客户端Channel通道
-     * @param protocol 代理协议
      */
-    SocksProxyRequest(String host, int port, Channel channel, Protocol protocol) {
-        super(Objects.requireNonNull(host), port, Objects.requireNonNull(channel), Objects.requireNonNull(protocol));
+    SocksProxyRequest(String host, int port, Channel channel) {
+        super(Objects.requireNonNull(host), port, Objects.requireNonNull(channel), Protocol.TCP);
         messageQueue = new LinkedBlockingQueue<>();
     }
 
@@ -58,7 +57,7 @@ public final class SocksProxyRequest extends ProxyRequest {
     }
 
     @Override
-    public ByteBuf getClientMessage() {
+    public ByteBuf takeClientMessage() {
         try {
             return messageQueue.poll(1, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {

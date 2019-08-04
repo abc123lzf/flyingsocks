@@ -3,29 +3,58 @@ package com.lzf.flyingsocks.server.core;
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
 import com.lzf.flyingsocks.protocol.ProxyResponseMessage;
+import com.lzf.flyingsocks.protocol.SerializationException;
 import com.lzf.flyingsocks.util.ReturnableLinkedHashSet;
 import com.lzf.flyingsocks.util.ReturnableSet;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
+import io.netty.channel.socket.DatagramChannel;
+import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.ReferenceCountUtil;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
 
 public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
-    private final Bootstrap bootstrap;
+    /**
+     * 对于长时间没有通信的活跃TCP连接/UDP通信端口，当超出这个时间时关闭连接
+     */
+    private static final long DEFAULT_TIMEOUT = 90 * 1000L;
 
+    /**
+     * TCP客户端连接引导模板
+     */
+    private final Bootstrap tcpBootstrap;
+
+    /**
+     * UDP引导模板
+     */
+    private final Bootstrap udpBootstrap;
+
+    /**
+     * 该模块核心线程池
+     */
     private ExecutorService requestReceiver;
 
-    public DispatchProceessor(ProxyProcessor parent) {
+    DispatchProceessor(ProxyProcessor parent) {
         super("DispatcherProcessor", parent);
-        this.bootstrap = initBootstrap();
+        this.tcpBootstrap = new Bootstrap().group(parent.getRequestProcessWorker())
+                .channel(NioSocketChannel.class)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 8000)
+                .option(ChannelOption.SO_KEEPALIVE, true)
+                .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
+
+        this.udpBootstrap = new Bootstrap().group(parent.getRequestProcessWorker())
+                .channel(NioDatagramChannel.class)
+                .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
     }
 
     @Override
@@ -48,29 +77,24 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
         super.stopInternal();
     }
 
-    private Bootstrap initBootstrap() {
-        return new Bootstrap().group(getParentComponent().getRequestProcessWorker())
-            .channel(NioSocketChannel.class)
-            .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 8000)
-            .option(ChannelOption.SO_KEEPALIVE, true)
-            .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
-    }
 
     /**
      * 实现连接复用，可以预防客户端代理消息半包的现象
      */
     static final class ActiveConnection {
-        final String host;          //目标主机IP/域名
-        final int port;             //目标主机端口号
-        final String clientId;      //客户端的客户端的ChannelID
-        ChannelFuture future;       //该连接的ChannelFuture
-        final Queue<ByteBuf> msgQueue;    //若上述future持有的Channel尚未Active，则该队列负责保存该连接的客户端数据
+        final String host;              //目标主机IP/域名
+        final int port;                 //目标主机端口号
+        final String clientId;          //客户端的客户端的ChannelID
+        ChannelFuture future;           //该连接的ChannelFuture
+        final Queue<ByteBuf> msgQueue;  //若上述future持有的Channel尚未Active，则该队列负责保存该连接的客户端数据
+        long lastActiveTime;            //最近一次的数据发送/接收时间，对长时间无数据发送、接收的连接采取关闭策略
 
         ActiveConnection(String host, int port, String clientId) {
             this.host = host;
             this.port = port;
             this.clientId = clientId;
             msgQueue = new LinkedList<>();
+            lastActiveTime = System.currentTimeMillis();
         }
 
         @Override
@@ -101,9 +125,9 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
         @Override
         public void run() {
             try {
-                Thread thread = Thread.currentThread();
+                final Thread thread = Thread.currentThread();
                 while (!thread.isInterrupted()) {
-                    ProxyTask task = taskQueue.poll(2500, TimeUnit.MILLISECONDS);
+                    final ProxyTask task = taskQueue.poll(1000, TimeUnit.MILLISECONDS);
                     if(task == null) {
                         checkoutConnection();
                         continue;
@@ -113,13 +137,14 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                         log.trace("Receive ProxyTask at DispatcherTask thread");
 
                     try {
-                        ProxyRequestMessage prm = task.getProxyRequestMessage();
-                        ClientSession cs = task.getSession();
+                        final ProxyRequestMessage prm = task.getProxyRequestMessage();
+                        final ClientSession cs = task.getSession();
 
                         if(!cs.isActive())
                             continue;
 
-                        ReturnableSet<ActiveConnection> set = activeConnectionMap.computeIfAbsent(cs, key -> new ReturnableLinkedHashSet<>(128));
+                        ReturnableSet<ActiveConnection> set = activeConnectionMap.computeIfAbsent(cs,
+                                key -> new ReturnableLinkedHashSet<>(128));
 
                         String host = prm.getHost();
                         int port = prm.getPort();
@@ -138,6 +163,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                                         c.write(buf);
                                     }
                                     c.writeAndFlush(prm.getMessage());
+                                    conn.lastActiveTime = System.currentTimeMillis();
                                 }
                             } else if(!f.isDone()) { //如果正处于连接状态
                                 conn.msgQueue.add(prm.getMessage());
@@ -145,37 +171,51 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                                 set.remove(conn);
                             }
                         } else {
-                            Bootstrap b = bootstrap.clone();
-                            b.handler(new ChannelInitializer<SocketChannel>() {
-                                @Override
-                                protected void initChannel(SocketChannel ch) {
-                                    ch.pipeline().addLast(new DispatchHandler(task));
-                                }
-                            });
-
-                            conn.future = b.connect(host, port).addListener(future -> {
-                                if (!future.isSuccess()) { //如果连接没有建立成功，那么向客户端返回一个错误的消息
-                                    if(log.isWarnEnabled())
-                                        log.warn("Can not connect to {}:{}", host, port);
-                                    ProxyResponseMessage resp = new ProxyResponseMessage(prm.getChannelId());
-                                    resp.setState(ProxyResponseMessage.State.FAILURE);
-                                    try {
-                                        cs.writeAndFlushMessage(resp.serialize());
-                                    } catch (IllegalStateException e) {
-                                        if (log.isTraceEnabled())
-                                            log.trace("Client from {} has disconnect.", cs.remoteAddress().getAddress());
+                            if (prm.getProtocol() == ProxyRequestMessage.Protocol.TCP) {
+                                Bootstrap b = tcpBootstrap.clone();
+                                b.handler(new ChannelInitializer<SocketChannel>() {
+                                    @Override
+                                    protected void initChannel(SocketChannel ch) {
+                                        ch.pipeline().addLast(new TCPDispatchHandler(task));
                                     }
-                                } else {
-                                    if(log.isTraceEnabled())
-                                        log.trace("Connect to {}:{} success", host, port);
-                                }
-                            });
+                                });
+
+                                conn.future = b.connect(host, port).addListener(future -> {
+                                    if (!future.isSuccess()) { //如果连接没有建立成功，那么向客户端返回一个错误的消息
+                                        if (log.isWarnEnabled())
+                                            log.warn("Can not connect to {}:{}", host, port);
+                                        writeFailureResponse(cs, prm);
+                                    } else {
+                                        if (log.isTraceEnabled())
+                                            log.trace("Connect to {}:{} success", host, port);
+                                    }
+                                });
+                            } else {
+                                Bootstrap b = udpBootstrap.clone();
+                                b.handler(new ChannelInitializer<DatagramChannel>() {
+                                    @Override
+                                    protected void initChannel(DatagramChannel ch) {
+                                        ch.pipeline().addLast(new UDPDisaptchHandler(task));
+                                    }
+                                });
+
+                                conn.future = b.bind(0).addListener(future -> {
+                                    if (!future.isSuccess()) {
+                                        if (log.isWarnEnabled())
+                                            log.warn("Can not bind UDP Port");
+                                        writeFailureResponse(cs, prm);
+                                    } else {
+                                        if (log.isTraceEnabled()) {
+                                            log.trace("Bind UDP Port success, ready to send packet to {}:{}", host, port);
+                                        }
+                                    }
+                                });
+                            }
 
                             set.add(conn);
                         }
 
                         checkoutConnection();
-
                     } catch (Exception e) {
                         if(log.isWarnEnabled())
                             log.warn("Exception occur, at RequestReceiver thread", e);
@@ -194,36 +234,69 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
             taskQueue.add(task);
         }
 
+
+        private void writeFailureResponse(ClientSession session, ProxyRequestMessage request) {
+            ProxyResponseMessage resp = new ProxyResponseMessage(request.getChannelId());
+            resp.setState(ProxyResponseMessage.State.FAILURE);
+            try {
+                session.writeAndFlushMessage(resp.serialize());
+            } catch (SerializationException e) {  //不应该发生
+                log.error("Serialize FailureResponse occur a exception", e);
+            } catch (IllegalStateException e) {
+                if (log.isTraceEnabled())
+                    log.trace("Client from {} has disconnect.", session.remoteAddress().getAddress());
+            }
+        }
+
         /**
          * 检查ActiveConnection对象
          */
         private void checkoutConnection() {
             Iterator<Map.Entry<ClientSession, ReturnableSet<ActiveConnection>>> it = activeConnectionMap.entrySet().iterator();
             it.forEachRemaining(e -> {
-                if(!e.getKey().isActive()) {
+                final ClientSession cs = e.getKey();
+                final ReturnableSet<ActiveConnection> val = e.getValue();
+
+                if(!cs.isActive()) {
                     it.remove();
-                    Iterator<ActiveConnection> sit = e.getValue().iterator();
-                    sit.forEachRemaining(ac -> {
-                        ByteBuf buf;
-                        while((buf = ac.msgQueue.poll()) != null)
-                            ReferenceCountUtil.release(buf);
+                    //清除连接中断的客户端中所有ActiveConnection的msgQueue队列中的ByteBuf对象
+                    val.forEach(ac -> {
+                        if(!ac.msgQueue.isEmpty())
+                            ac.msgQueue.forEach(ReferenceCountUtil::release);
                     });
                 } else {
-                    Iterator<ActiveConnection> sit = e.getValue().iterator();
+                    long now = System.currentTimeMillis();
+                    Iterator<ActiveConnection> sit = val.iterator();
                     sit.forEachRemaining(ac -> {
-                        //如果已经建立过连接但是该连接已经不活跃了，那么清除这个ActiveConnection
                         if (ac.future.isDone()) {
+                             //如果已经建立过连接但是该连接已经不活跃了，那么清除这个ActiveConnection
                              if(!ac.future.channel().isActive()) {
-                                 ByteBuf buf;
-                                 while((buf = ac.msgQueue.poll()) != null)
-                                     ReferenceCountUtil.release(buf);
+                                 if(!ac.msgQueue.isEmpty())
+                                    ac.msgQueue.forEach(ReferenceCountUtil::release);
                                  sit.remove();
                              } else {
                                  Channel ch = ac.future.channel();
-                                 ByteBuf buf;
-                                 while((buf = ac.msgQueue.poll()) != null)
-                                     ch.write(buf);
-                                 ch.flush();
+                                 if(ac.msgQueue.isEmpty() && now - ac.lastActiveTime > DEFAULT_TIMEOUT) {
+                                     ch.close();
+                                     sit.remove();
+                                 } else {
+                                     if (ch instanceof SocketChannel) {
+                                         ByteBuf buf;
+                                         while ((buf = ac.msgQueue.poll()) != null)
+                                             ch.write(buf);
+                                         ch.flush();
+                                         ac.lastActiveTime = now;
+                                     } else if (ch instanceof DatagramChannel) {
+                                         InetSocketAddress addr = new InetSocketAddress(ac.host, ac.port);
+                                         ByteBuf buf;
+                                         while ((buf = ac.msgQueue.poll()) != null)
+                                             ch.write(new DatagramPacket(buf, addr));
+                                         ch.flush();
+                                         ac.lastActiveTime = now;
+                                     } else {
+                                         log.error("Unsupport Channel type: {}", ch.getClass().getName());
+                                     }
+                                 }
                              }
                         }
                     });
@@ -233,20 +306,24 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
     }
 
     /**
-     * 将来自客户端的请求内容转发给目标服务器
+     * 将来自客户端的TCP协议请求内容转发给目标服务器
      */
-    private class DispatchHandler extends SimpleChannelInboundHandler<ByteBuf> {
+    private class TCPDispatchHandler extends SimpleChannelInboundHandler<ByteBuf> {
         private final ProxyTask proxyTask;
+        private final String host;
+        private final int port;
 
-        private DispatchHandler(ProxyTask task) {
+        private TCPDispatchHandler(ProxyTask task) {
             super(false);
             this.proxyTask = task;
+            this.host = proxyTask.getProxyRequestMessage().getHost();
+            this.port = proxyTask.getProxyRequestMessage().getPort();
         }
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             if(cause instanceof IOException && log.isInfoEnabled())
-                log.info("Target remote host {}:{} close, cause IOException", proxyTask.getProxyRequestMessage().getHost(), proxyTask.getProxyRequestMessage().getPort());
+                log.info("Target remote host {}:{} close, cause IOException", host, port);
             else if(log.isWarnEnabled())
                 log.warn("DispathcerHandelr occur a exception", cause);
         }
@@ -254,8 +331,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
             if(log.isTraceEnabled())
-                log.trace("Connection close by {}:{}", proxyTask.getProxyRequestMessage().getHost(),
-                        proxyTask.getProxyRequestMessage().getPort());
+                log.trace("Connection close by {}:{}", host, port);
         }
 
         @Override
@@ -268,12 +344,52 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
             if(log.isTraceEnabled())
-                log.trace("Receive from {}:{} response.", proxyTask.getProxyRequestMessage().getHost(),
-                        proxyTask.getProxyRequestMessage().getPort());
+                log.trace("Receive from {}:{} response.", host, port);
 
             ProxyResponseMessage prm = new ProxyResponseMessage(proxyTask.getProxyRequestMessage().getChannelId());
             prm.setState(ProxyResponseMessage.State.SUCCESS);
             prm.setMessage(msg);
+            try {
+                proxyTask.getSession().writeAndFlushMessage(prm.serialize());
+            } catch (IllegalStateException e) {
+                ctx.close();
+            } finally {
+                ReferenceCountUtil.release(msg);
+            }
+        }
+    }
+
+    /**
+     * 将来自客户端的UDP协议请求内容转发给目标服务器
+     */
+    private class UDPDisaptchHandler extends SimpleChannelInboundHandler<DatagramPacket> {
+        private final ProxyTask proxyTask;
+        private final String host;
+        private final int port;
+
+        private UDPDisaptchHandler(ProxyTask task) {
+            super(false);
+            this.proxyTask = task;
+            this.host = proxyTask.getProxyRequestMessage().getHost();
+            this.port = proxyTask.getProxyRequestMessage().getPort();
+        }
+
+        @Override
+        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+            ByteBuf buf = proxyTask.getProxyRequestMessage().getMessage();
+            DatagramPacket packet = new DatagramPacket(buf, new InetSocketAddress(host, port));
+            ctx.writeAndFlush(packet);
+            super.channelActive(ctx);
+        }
+
+        @Override
+        protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket msg) throws Exception {
+            if(log.isTraceEnabled())
+                log.trace("Receive from {}:{} Datagram.", host, port);
+
+            ProxyResponseMessage prm = new ProxyResponseMessage(proxyTask.getProxyRequestMessage().getChannelId());
+            prm.setState(ProxyResponseMessage.State.SUCCESS);
+            prm.setMessage(msg.content());
             try {
                 proxyTask.getSession().writeAndFlushMessage(prm.serialize());
             } catch (IllegalStateException e) {

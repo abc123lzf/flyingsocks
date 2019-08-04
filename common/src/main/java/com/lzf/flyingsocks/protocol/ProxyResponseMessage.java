@@ -17,6 +17,9 @@ import io.netty.util.ReferenceCountUtil;
  */
 public class ProxyResponseMessage extends ProxyMessage implements Message {
 
+    /**
+     * 连接状态
+     */
     private State state;
 
     public ProxyResponseMessage(String channelId) {

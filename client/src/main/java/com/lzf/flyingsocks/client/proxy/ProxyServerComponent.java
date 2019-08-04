@@ -98,7 +98,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     /**
      * 代理服务器连接初始化逻辑，执行步骤为:
      * 1.获取与服务器的加密方式，如果需要SSL加密，则建立一个证书连接接收服务器证书
-     * 2.
+     * 2.收取证书后，与服务器建立正式的代理连接
      */
     @Override
     protected void initInternal() {
@@ -717,7 +717,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     try {
                         while ((pr = proxyRequestQueue.poll(1, TimeUnit.MILLISECONDS)) != null) {
                             if(pr.ensureMessageOnlyOne()) {
-                                ByteBuf buf = pr.getClientMessage();
+                                ByteBuf buf = pr.takeClientMessage();
                                 sendToProxyServer(pr, buf);
                                 ReferenceCountUtil.release(buf);
                                 continue begin;
@@ -728,29 +728,27 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                         break;
                     }
 
-                    ListIterator<ProxyRequest> it = requests.listIterator();
-                    while (it.hasNext()) {
-                        ProxyRequest req = it.next();
+                    Iterator<ProxyRequest> it = requests.iterator();
+                    it.forEachRemaining(req -> {
                         Channel cc = req.clientChannel();
                         if (!cc.isActive()) {
                             it.remove();
                             activeProxyRequestMap.remove(req.clientChannel().id().asShortText());
-                            continue;
-                        }
+                        } else {
+                            boolean isWrite = false;
+                            CompositeByteBuf buf = Unpooled.compositeBuffer();
+                            ByteBuf b;
+                            while ((b = req.takeClientMessage()) != null) {
+                                buf.addComponent(true, b);
+                                isWrite = true;
+                                releaseList.add(b);
+                            }
 
-                        boolean isWrite = false;
-                        CompositeByteBuf buf = Unpooled.compositeBuffer();
-                        ByteBuf b;
-                        while ((b = req.getClientMessage()) != null) {
-                            buf.addComponent(true, b);
-                            isWrite = true;
-                            releaseList.add(b);
+                            if (isWrite) {
+                                sendToProxyServer(req, buf);
+                            }
                         }
-
-                        if (isWrite) {
-                            sendToProxyServer(req, buf);
-                        }
-                    }
+                    });
 
                     releaseList.forEach(bf -> {
                         if(ReferenceCountUtil.refCnt(bf) > 0)
@@ -773,7 +771,10 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 ReferenceCountUtil.release(buf);
                 return;
             }
-            ProxyRequestMessage prm = new ProxyRequestMessage(request.clientChannel().id().asShortText());
+
+            ProxyRequestMessage prm = new ProxyRequestMessage(request.clientChannel().id().asShortText(),
+                    request.protocol.toMessageType());
+
             prm.setHost(request.getHost());
             prm.setPort(request.getPort());
             prm.setMessage(buf);

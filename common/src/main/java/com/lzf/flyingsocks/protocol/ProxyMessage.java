@@ -4,6 +4,9 @@ import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
 
+/**
+ * 代理消息抽象类
+ */
 abstract class ProxyMessage implements Message {
 
     static final Charset CHANNEL_ENCODING = Charset.forName("ASCII");

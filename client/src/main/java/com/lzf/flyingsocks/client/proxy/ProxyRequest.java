@@ -1,5 +1,6 @@
 package com.lzf.flyingsocks.client.proxy;
 
+import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.socket.DatagramChannel;
@@ -34,7 +35,14 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
      * 代理协议枚举，目前支持UDP、TCP
      */
     public enum Protocol {
-        TCP, UDP
+        TCP, UDP;
+
+        public ProxyRequestMessage.Protocol toMessageType() {
+            if(this == TCP)
+                return ProxyRequestMessage.Protocol.TCP;
+            else
+                return ProxyRequestMessage.Protocol.UDP;
+        }
     }
 
 
@@ -71,7 +79,7 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
      * 获取客户端发送的请求信息
      * @return 字节容器
      */
-    public abstract ByteBuf getClientMessage();
+    public abstract ByteBuf takeClientMessage();
 
     /**
      * @return 是否确定客户端发送的消息仅有一条，例如调用

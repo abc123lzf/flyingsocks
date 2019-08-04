@@ -122,7 +122,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
         }
 
         if(!consume) {
-            ReferenceCountUtil.release(request.getClientMessage());
+            ReferenceCountUtil.release(request.takeClientMessage());
             if(log.isWarnEnabled())
                 log.warn("ProxyRequest was not consume");
         }

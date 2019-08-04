@@ -5,6 +5,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
 
 import java.nio.charset.Charset;
+import java.util.Objects;
 
 /**
  * 客户端向服务器发起的代理请求报文，其报文格式如下：
@@ -31,9 +32,20 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
      */
     private int port;
 
+    /**
+     * 传输层协议
+     */
+    private Protocol protocol;
 
-    public ProxyRequestMessage(String channelId) {
+
+    public enum Protocol {
+        TCP, UDP
+    }
+
+
+    public ProxyRequestMessage(String channelId, Protocol protocol) {
         super(channelId);
+        this.protocol = Objects.requireNonNull(protocol);
     }
 
     public ProxyRequestMessage(ByteBuf buf) throws SerializationException {
@@ -66,6 +78,10 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
         this.message = message;
     }
 
+    public Protocol getProtocol() {
+        return protocol;
+    }
+
     @Override
     public ByteBuf serialize() throws SerializationException {
         if(channelId == null || host == null || port <= 0 || port >= 65535 || message == null)
@@ -83,7 +99,11 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
         buf.writeShort(h.length);
         buf.writeBytes(h);
 
-        buf.writeInt(port);
+        if(protocol == Protocol.UDP)
+            buf.writeInt(1 << 31 | port);  //端口字段首位为1表示UDP协议
+        else
+            buf.writeInt(1);
+
         buf.writeInt(message.readableBytes());
         buf.writeBytes(message);
 
@@ -106,7 +126,17 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
             buf.readBytes(hb);
             String host = new String(hb, HOST_ENCODING);
 
-            int port = buf.readInt();
+            int val = buf.readInt();
+
+            int port;
+            if(val < 0) {  //最高位为1代表为UDP协议
+                port = val ^ (1 << 31);
+                protocol = Protocol.UDP;
+            } else {
+                port = val;
+                protocol = Protocol.TCP;
+            }
+
             int msglen = buf.readInt();
 
             if(port <= 0 || port >= 65535)
