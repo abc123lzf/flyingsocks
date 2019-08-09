@@ -3,7 +3,7 @@ package com.lzf.flyingsocks.client;
 import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksProxyComponent;
-import com.lzf.flyingsocks.client.view.ViewComponent;
+import com.lzf.flyingsocks.client.gui.ViewComponent;
 
 /**
  * 客户端类

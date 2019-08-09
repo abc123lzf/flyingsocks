@@ -9,12 +9,10 @@ import java.nio.charset.Charset;
  */
 abstract class ProxyMessage implements Message {
 
-    static final Charset CHANNEL_ENCODING = Charset.forName("ASCII");
-
     /**
-     * 客户端发起代理请求的Channel Id，编码格式为ASCII
+     * 客户端发起代理请求的序列ID
      */
-    String channelId;
+    int serialId;
 
     /**
      * 请求/响应内容
@@ -22,8 +20,8 @@ abstract class ProxyMessage implements Message {
     ByteBuf message;
 
 
-    ProxyMessage(String channelId) {
-        this.channelId = channelId;
+    ProxyMessage(int serialId) {
+        this.serialId = serialId;
     }
 
     ProxyMessage(ByteBuf serialBuf) throws SerializationException {
@@ -31,10 +29,10 @@ abstract class ProxyMessage implements Message {
     }
 
     /**
-     * @return 客户端发起代理请求的Channel ID，编码为ASCII
+     * @return 客户端发起代理请求的序列ID
      */
-    public final String getChannelId() {
-        return channelId;
+    public final int serialId() {
+        return serialId;
     }
 
     /**

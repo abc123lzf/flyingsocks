@@ -84,22 +84,22 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
     static final class ActiveConnection {
         final String host;              //目标主机IP/域名
         final int port;                 //目标主机端口号
-        final String clientId;          //客户端的客户端的ChannelID
+        final int clientSerialId;          //客户端的客户端的ChannelID
         ChannelFuture future;           //该连接的ChannelFuture
         final Queue<ByteBuf> msgQueue;  //若上述future持有的Channel尚未Active，则该队列负责保存该连接的客户端数据
         long lastActiveTime;            //最近一次的数据发送/接收时间，对长时间无数据发送、接收的连接采取关闭策略
 
-        ActiveConnection(String host, int port, String clientId) {
+        ActiveConnection(String host, int port, int clientSerialId) {
             this.host = host;
             this.port = port;
-            this.clientId = clientId;
+            this.clientSerialId = clientSerialId;
             msgQueue = new LinkedList<>();
             lastActiveTime = System.currentTimeMillis();
         }
 
         @Override
         public int hashCode() {
-            return host.hashCode() ^ port ^ clientId.hashCode();
+            return host.hashCode() ^ port ^ clientSerialId;
         }
 
         @Override
@@ -108,7 +108,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                 return true;
             if(obj instanceof ActiveConnection) {
                 ActiveConnection c = (ActiveConnection) obj;
-                return this.host.equals(c.host) && this.port == c.port && this.clientId.equals(c.clientId);
+                return this.host.equals(c.host) && this.port == c.port && this.clientSerialId == c.clientSerialId;
             }
             return false;
         }
@@ -149,7 +149,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                         String host = prm.getHost();
                         int port = prm.getPort();
 
-                        ActiveConnection conn = new ActiveConnection(host, port, prm.getChannelId());
+                        ActiveConnection conn = new ActiveConnection(host, port, prm.serialId());
                         ActiveConnection sconn;
                         if((sconn = set.getIfContains(conn)) != null)
                             conn = sconn;
@@ -236,7 +236,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
 
         private void writeFailureResponse(ClientSession session, ProxyRequestMessage request) {
-            ProxyResponseMessage resp = new ProxyResponseMessage(request.getChannelId());
+            ProxyResponseMessage resp = new ProxyResponseMessage(request.serialId());
             resp.setState(ProxyResponseMessage.State.FAILURE);
             try {
                 session.writeAndFlushMessage(resp.serialize());
@@ -346,7 +346,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
             if(log.isTraceEnabled())
                 log.trace("Receive from {}:{} response.", host, port);
 
-            ProxyResponseMessage prm = new ProxyResponseMessage(proxyTask.getProxyRequestMessage().getChannelId());
+            ProxyResponseMessage prm = new ProxyResponseMessage(proxyTask.getProxyRequestMessage().serialId());
             prm.setState(ProxyResponseMessage.State.SUCCESS);
             prm.setMessage(msg);
             try {
@@ -387,7 +387,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
             if(log.isTraceEnabled())
                 log.trace("Receive from {}:{} Datagram.", host, port);
 
-            ProxyResponseMessage prm = new ProxyResponseMessage(proxyTask.getProxyRequestMessage().getChannelId());
+            ProxyResponseMessage prm = new ProxyResponseMessage(proxyTask.getProxyRequestMessage().serialId());
             prm.setState(ProxyResponseMessage.State.SUCCESS);
             prm.setMessage(msg.content());
             try {

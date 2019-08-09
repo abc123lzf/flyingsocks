@@ -27,6 +27,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -77,10 +78,13 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     private volatile long nextReconnectTime = -1L;
 
     //代理请求消息队列
-    private final BlockingQueue<ProxyRequest> proxyRequestQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<SerialProxyRequest> proxyRequestQueue = new LinkedBlockingQueue<>();
 
     //活跃的代理请求Map
-    private final Map<String, ProxyRequest> activeProxyRequestMap = new ConcurrentHashMap<>(512);
+    private final Map<Integer, SerialProxyRequest> activeProxyRequestMap = new ConcurrentHashMap<>(512);
+
+    //代理请求ID生成器
+    private final AtomicInteger serialBuilder = new AtomicInteger(0);
 
     //确保可以正式向服务器发送代理请求后释放clientMessageProcessor中的等待线程
     private volatile CountDownLatch taskWaitLatch;
@@ -94,6 +98,31 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         this.config = Objects.requireNonNull(config);
         this.use = config.isUse();
     }
+
+
+    private static final class SerialProxyRequest extends ProxyRequest {
+
+        private final int serialId;
+
+        private final ProxyRequest request;
+
+        public SerialProxyRequest(int serialId, ProxyRequest request) {
+            super(request.host, request.port, request.clientChannel, request.protocol);
+            this.serialId = serialId;
+            this.request = request;
+        }
+
+        @Override
+        public ByteBuf takeClientMessage() {
+            return request.takeClientMessage();
+        }
+
+        @Override
+        public boolean ensureMessageOnlyOne() {
+            return request.ensureMessageOnlyOne();
+        }
+    }
+
 
     /**
      * 代理服务器连接初始化逻辑，执行步骤为:
@@ -664,9 +693,10 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     }
 
                     if (resp.getState() == ProxyResponseMessage.State.SUCCESS) {
-                        ProxyRequest req = activeProxyRequestMap.get(resp.getChannelId());
-                        if (req == null)
+                        ProxyRequest req = activeProxyRequestMap.get(resp.serialId());
+                        if (req == null) {
                             return;
+                        }
                         Channel cc;
                         if ((cc = req.clientChannel()).isActive())
                             cc.writeAndFlush(resp.getMessage());
@@ -689,13 +719,16 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
     @Override
     public void receive(ProxyRequest request) {
-        proxyRequestQueue.add(request);
-        activeProxyRequestMap.put(request.clientChannel().id().asShortText(), request);
+        final int id = serialBuilder.getAndIncrement();
+        final SerialProxyRequest req = new SerialProxyRequest(id, request);
+        proxyRequestQueue.add(req);
+        activeProxyRequestMap.put(id, req);
     }
 
 
     private final class ClientMessageTransferTask implements Runnable {
-        private final List<ProxyRequest> requests = new LinkedList<>();
+        private final List<SerialProxyRequest> requests = new LinkedList<>();
+
 
         @Override
         public void run() {
@@ -709,11 +742,10 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 log.trace("Server: {}:{} ClientMessageTransferTask start", config.getHost(), config.getPort());
 
             Thread t = Thread.currentThread();
-            List<ByteBuf> releaseList = new ArrayList<>(256);
             begin:
             while(!t.isInterrupted()) {
                 try {
-                    ProxyRequest pr;
+                    SerialProxyRequest pr;
                     try {
                         while ((pr = proxyRequestQueue.poll(1, TimeUnit.MILLISECONDS)) != null) {
                             if(pr.ensureMessageOnlyOne()) {
@@ -728,12 +760,13 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                         break;
                     }
 
-                    Iterator<ProxyRequest> it = requests.iterator();
-                    it.forEachRemaining(req -> {
+                    Iterator<SerialProxyRequest> it = requests.iterator();
+                    while (it.hasNext()) {
+                        SerialProxyRequest req = it.next();
                         Channel cc = req.clientChannel();
                         if (!cc.isActive()) {
                             it.remove();
-                            activeProxyRequestMap.remove(req.clientChannel().id().asShortText());
+                            activeProxyRequestMap.remove(req.serialId);
                         } else {
                             boolean isWrite = false;
                             CompositeByteBuf buf = Unpooled.compositeBuffer();
@@ -741,38 +774,32 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                             while ((b = req.takeClientMessage()) != null) {
                                 buf.addComponent(true, b);
                                 isWrite = true;
-                                releaseList.add(b);
                             }
 
                             if (isWrite) {
                                 sendToProxyServer(req, buf);
                             }
                         }
-                    });
+                    }
 
-                    releaseList.forEach(bf -> {
-                        if(ReferenceCountUtil.refCnt(bf) > 0)
-                            ReferenceCountUtil.release(bf);
-                    });
-                    releaseList.clear();
                 } catch (Exception e) {
                     log.error("Exception cause at ClientMessageTransferTask", e);
                 }
             }
 
-            for(ProxyRequest request : requests) {
+            for(SerialProxyRequest request : requests) {
                 request.clientChannel().close();
             }
 
         }
 
-        private void sendToProxyServer(ProxyRequest request, ByteBuf buf) {
+        private void sendToProxyServer(SerialProxyRequest request, ByteBuf buf) {
             if(proxyServerSession == null) {
-                ReferenceCountUtil.release(buf);
+                buf.release();
                 return;
             }
 
-            ProxyRequestMessage prm = new ProxyRequestMessage(request.clientChannel().id().asShortText(),
+            ProxyRequestMessage prm = new ProxyRequestMessage(request.serialId,
                     request.protocol.toMessageType());
 
             prm.setHost(request.getHost());
@@ -785,6 +812,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 if(log.isWarnEnabled())
                     log.warn("Serialize ProxyRequestMessage occur a exception");
                 request.clientChannel().close();
+            } finally {
+                buf.release();
             }
         }
     }

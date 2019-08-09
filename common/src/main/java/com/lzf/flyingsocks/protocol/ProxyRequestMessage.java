@@ -10,13 +10,13 @@ import java.util.Objects;
 /**
  * 客户端向服务器发起的代理请求报文，其报文格式如下：
  * 0              16        Clen+16
- * +--------------+-----------+---------+---------+----------+-----------+
- * |Channel ID Len| Channel ID|Host Len |   Host  | Port/Ctr |Message Len|
- * |  (2 Bytes)   |           |(2 Bytes)|         | (4 Bytes)| (4 Bytes) |
- * +--------------+-----------+---------+---------+----------+-----------+
- * |                              Message                                |
- * |                              Content                                |
- * +---------------------------------------------------------------------+
+ * +--------------+---------+---------+----------+-----------+
+ * |  Serial ID   |Host Len |   Host  | Port/Ctr |Message Len|
+ * |  (4 Bytes)   |(2 Bytes)|         | (4 Bytes)| (4 Bytes) |
+ * +--------------+---------+---------+----------+-----------+
+ * |                              Message                    |
+ * |                              Content                    |
+ * +---------------------------------------------------------+
  */
 public class ProxyRequestMessage extends ProxyMessage implements Message, Cloneable {
 
@@ -43,8 +43,8 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
     }
 
 
-    public ProxyRequestMessage(String channelId, Protocol protocol) {
-        super(channelId);
+    public ProxyRequestMessage(int serialId, Protocol protocol) {
+        super(serialId);
         this.protocol = Objects.requireNonNull(protocol);
     }
 
@@ -84,17 +84,15 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
 
     @Override
     public ByteBuf serialize() throws SerializationException {
-        if(channelId == null || host == null || port <= 0 || port >= 65535 || message == null)
+        if(host == null || port <= 0 || port >= 65535 || message == null)
             throw new SerializationException("ProxyRequestMessage is not complete, or port is illegal, message detail: \n" + toString());
 
-        byte[] cid = channelId.getBytes(CHANNEL_ENCODING);
         byte[] h = host.getBytes(HOST_ENCODING);
 
-        int size = 2 + cid.length + 2 + h.length + 4 + 4 + message.readableBytes();
+        int size = 4 + 2 + h.length + 4 + 4 + message.readableBytes();
         ByteBuf buf = Unpooled.buffer(size);
 
-        buf.writeShort(cid.length);
-        buf.writeBytes(cid);
+        buf.writeInt(serialId);
 
         buf.writeShort(h.length);
         buf.writeBytes(h);
@@ -102,7 +100,7 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
         if(protocol == Protocol.UDP)
             buf.writeInt(1 << 31 | port);  //端口字段首位为1表示UDP协议
         else
-            buf.writeInt(1);
+            buf.writeInt(port);
 
         buf.writeInt(message.readableBytes());
         buf.writeBytes(message);
@@ -112,14 +110,8 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
 
     @Override
     public void deserialize(ByteBuf buf) throws SerializationException {
-        short cidlen = buf.readShort();
-        if(cidlen <= 0)
-            throw new SerializationException("Illegal ProxyRequestMessage, client channel id length < 0");
         try {
-            byte[] bid = new byte[cidlen];
-            buf.readBytes(bid);
-            String cid = new String(bid, CHANNEL_ENCODING);
-
+            int sid = buf.readInt();
             short hostlen = buf.readShort();
             byte[] hb = new byte[hostlen];
 
@@ -151,7 +143,7 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
             ByteBuf msg = Unpooled.buffer(msglen);
             buf.readBytes(msg);
 
-            this.channelId = cid;
+            this.serialId = sid;
             this.host = host;
             this.port = port;
             this.message = msg;
@@ -176,10 +168,9 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
     @Override
     public String toString() {
         return "ProxyRequestMessage{" +
-                "channelId='" + channelId + '\'' +
-                ", host='" + host + '\'' +
+                "host='" + host + '\'' +
                 ", port=" + port +
-                ", message=" + message +
+                ", protocol=" + protocol +
                 '}';
     }
 }

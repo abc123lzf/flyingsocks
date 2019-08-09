@@ -1,4 +1,4 @@
-package com.lzf.flyingsocks.client.view;
+package com.lzf.flyingsocks.client.gui;
 
 import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;

@@ -22,8 +22,8 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
      */
     private State state;
 
-    public ProxyResponseMessage(String channelId) {
-        super(channelId);
+    public ProxyResponseMessage(int serialId) {
+        super(serialId);
     }
 
     public ProxyResponseMessage(ByteBuf serialBuf) throws SerializationException {
@@ -61,19 +61,16 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
 
     @Override
     public ByteBuf serialize() throws SerializationException {
-        if(channelId == null || state == null)
+        if(state == null)
             throw new SerializationException("ProxyResponseMessage is not complete, message detail: \n" + toString());
 
-        byte[] cid = channelId.getBytes(CHANNEL_ENCODING);
         byte h = state.head;
 
         if(state == State.SUCCESS) {
             if(message == null)
                 throw new SerializationException("When ProxyResponseMessage's state is SUCCESS, message must not be null");
-            ByteBuf buf = Unpooled.buffer(2 + cid.length + 1 + 4 + message.readableBytes());
-            buf.writeShort(cid.length);
-            buf.writeBytes(cid);
-
+            ByteBuf buf = Unpooled.buffer(4 + 1 + 4 + message.readableBytes());
+            buf.writeInt(serialId);
             buf.writeByte(h);
             buf.writeInt(message.readableBytes());
             buf.writeBytes(getMessage());
@@ -82,13 +79,12 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
         } else {
             ByteBuf buf;
             if(message == null) {
-                buf = Unpooled.buffer(2 + cid.length + 1 + 4);
+                buf = Unpooled.buffer(4 + 1 + 4);
             } else {
-                buf = Unpooled.buffer(2 + cid.length + 1 + 4 + message.readableBytes());
+                buf = Unpooled.buffer(4 + 1 + 4 + message.readableBytes());
             }
 
-            buf.writeShort(cid.length);
-            buf.writeBytes(cid);
+            buf.writeInt(serialId);
 
             buf.writeByte(h);
             if(message != null) {
@@ -104,14 +100,8 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
 
     @Override
     public void deserialize(ByteBuf buf) throws SerializationException {
-        short cidlen = buf.readShort();
-        if(cidlen <= 0)
-            throw new SerializationException("Illegal ProxyResponseMessage, client channel id length < 0");
-
         try {
-            byte[] bid = new byte[cidlen];
-            buf.readBytes(bid);
-            String cid = new String(bid, CHANNEL_ENCODING);
+            int sid = buf.readInt();
 
             byte h = buf.readByte();
             State state = State.getStateByHead(h);
@@ -131,7 +121,7 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
                 throw new SerializationException("Unknown ProxyResponseMessage type " + h);
             }
 
-            this.channelId = cid;
+            this.serialId = sid;
             this.message = msg;
             this.state = state;
         } catch (IndexOutOfBoundsException e) {
@@ -143,8 +133,6 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
     public String toString() {
         return "ProxyResponseMessage{" +
                 "state=" + state +
-                ", channelId='" + channelId + '\'' +
-                ", message=" + message +
                 '}';
     }
 
