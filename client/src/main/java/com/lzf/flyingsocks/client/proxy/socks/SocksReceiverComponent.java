@@ -6,6 +6,8 @@ import com.lzf.flyingsocks.util.BaseUtils;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.CompositeByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.DatagramChannel;
@@ -14,14 +16,16 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.socks.*;
-import io.netty.util.ReferenceCountUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
 import java.util.Objects;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
 public final class SocksReceiverComponent extends AbstractComponent<SocksProxyComponent> {
@@ -42,7 +46,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
     private EventLoopGroup socksReceiveGroup;
 
     //活跃的UDP代理端口
-    private volatile DatagramChannel udpProxyChannel;
+    private final ConcurrentMap<String, DatagramChannel> udpProxyChannelMap = new ConcurrentHashMap<>(128);
 
     // 是否进行Socks认证
     private boolean auth;
@@ -100,26 +104,6 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
     @Override
     protected void startInternal() {
         try {
-            CountDownLatch latch = new CountDownLatch(2);
-
-            Bootstrap boot = udpProxyBootstrap.clone()
-                    .handler(new ChannelInitializer<DatagramChannel>() {
-                        @Override
-                        protected void initChannel(DatagramChannel channel) {
-                            channel.pipeline().addFirst(new UDPProxyMessageHandler());
-                        }
-                    });
-
-            boot.bind(0).addListener((ChannelFuture future) -> {
-                if(future.isSuccess()) {
-                    log.info("Bind proxy UDP receive port has done");
-                } else {
-                    log.warn("Bind proxy UDP port occur a exception", future.cause());
-                }
-
-                latch.countDown();
-            });
-
             serverBootstrap.clone().bind(bindAddress, port).addListener(f -> {
                 if(!f.isSuccess()) {
                     Throwable t = f.cause();
@@ -128,11 +112,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                 } else {
                     log.info("Netty socks server complete");
                 }
-
-                latch.countDown();
-            });
-
-            latch.await();
+            }).await();
         } catch (InterruptedException e) {
             throw new ComponentException(e);
         }
@@ -160,15 +140,37 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
      * 构造一个UDP代理端口
      * @param host 客户端IP地址/主机名
      * @param port 客户端端口
-     * @return 本地UDP代理端口号
+     * @return 本地UDP代理端口Channel
      */
-    private int processUDPProxyRequest(String host, int port) {
-        return udpProxyChannel.localAddress().getPort();
+    private DatagramChannel processUDPProxyRequest(String host, int port) {
+        Bootstrap boot = udpProxyBootstrap.clone()
+                .handler(new ChannelInitializer<DatagramChannel>() {
+                    @Override
+                    protected void initChannel(DatagramChannel channel) {
+                        channel.pipeline().addFirst(UDPProxyMessageDirectSendOutboundHandler.INSTANCE,
+                                new UDPProxyMessageHandler(host, port));
+                    }
+                });
+
+        ChannelFuture future = boot.bind(0).addListener((ChannelFuture f) -> {
+            if(f.isSuccess()) {
+                log.trace("Bind proxy UDP receive port has done");
+            } else {
+                log.warn("Bind proxy UDP port occur a exception", f.cause());
+            }
+        });
+
+        future.awaitUninterruptibly();
+        if(future.isSuccess())
+            return ((DatagramChannel)future.channel());
+        else
+            return null;
     }
 
     /**
      * 负责接收Socks请求
      */
+    @ChannelHandler.Sharable
     private class SocksRequestHandler extends SimpleChannelInboundHandler<SocksRequest> {
         @Override
         protected void channelRead0(final ChannelHandlerContext ctx, final SocksRequest request) {
@@ -223,10 +225,20 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
 
                         case UDP: {
                             String localHost = ((SocketChannel)ctx.channel()).localAddress().getHostString();
-                            int port = processUDPProxyRequest(req.host(), req.port());
-                            if(port > 0) {
+                            DatagramChannel udpCh = processUDPProxyRequest(req.host(), req.port());
+                            if(udpCh != null) {
                                 ctx.pipeline().remove(this);
-                                ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.SUCCESS, SocksAddressType.IPv4, localHost, port));
+                                ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.SUCCESS, SocksAddressType.IPv4, localHost, udpCh.localAddress().getPort()));
+                                String id = ctx.channel().id().asShortText();
+                                udpProxyChannelMap.put(id, udpCh);
+                                cp.addLast(new ChannelInboundHandlerAdapter() {  //用于释放UDP端口
+                                    @Override
+                                    public void channelInactive(ChannelHandlerContext chc) {
+                                        Channel ch = udpProxyChannelMap.get(id);
+                                        ch.close();
+                                        udpProxyChannelMap.remove(id);
+                                    }
+                                });
                             } else {
                                 ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.FAILURE, SocksAddressType.IPv4));
                                 ctx.close();
@@ -246,7 +258,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                 }
                 case UNKNOWN: {  //未知请求关闭连接
                     if(log.isInfoEnabled())
-                        log.info("Unknow socks command, from ip: {}", ctx.channel().localAddress().toString());
+                        log.info("Unknown socks command, from ip: {}", ctx.channel().localAddress().toString());
                     ctx.close();
                 }
             }
@@ -306,57 +318,104 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
      */
     private class UDPProxyMessageHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
-        private UDPProxyMessageHandler() {
+        private final InetSocketAddress receiveAddress;
+
+        private UDPProxyMessageHandler(String host, int port) {
             super(false);
+            this.receiveAddress = new InetSocketAddress(host, port);
         }
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
             log.info("Local UDP Proxy receive port is active");
-            udpProxyChannel = (DatagramChannel) ctx.channel();
         }
 
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket packet) {
             InetSocketAddress sender = packet.sender();
-            ByteBuf buf = packet.content();
+            if(sender.equals(receiveAddress)) {  //如果该UDP包是本地应用程序发出的
+                ByteBuf buf = packet.content();
 
-            int head = buf.readInt();
-            String ip;
-            int port;
-            if(head == 0x01) {
-                ip = BaseUtils.parseIntToIPv4Address(buf.readInt());
-                port = BaseUtils.parseUnsignedShortToInteger(buf.readShort());
-            } else if(head == 0x03) {
-                int len = BaseUtils.parseByteToInteger(buf.readByte());
-                String host = buf.readCharSequence(len, Charset.forName("ASCII")).toString();
-                port = BaseUtils.parseUnsignedShortToInteger(buf.readShort());
-                InetSocketAddress haddr = new InetSocketAddress(host, port);
-                InetAddress add = haddr.getAddress();
-                if(add != null) {
-                    ip = BaseUtils.parseByteArrayToIPv4Address(add.getAddress());
+                final int head = buf.readInt();
+                final String ip;
+                final int port;
+                String host;
+
+                if (head == 0x01) {
+                    ip = BaseUtils.parseIntToIPv4Address(buf.readInt());
+                    host = ip;
+                    port = BaseUtils.parseUnsignedShortToInteger(buf.readShort());
+                } else if (head == 0x03) {
+                    int len = BaseUtils.parseByteToInteger(buf.readByte());
+                    host = buf.readCharSequence(len, Charset.forName("ASCII")).toString();
+                    port = BaseUtils.parseUnsignedShortToInteger(buf.readShort());
+                    InetSocketAddress haddr = new InetSocketAddress(host, port);
+                    InetAddress add = haddr.getAddress();
+                    if (add != null) {
+                        ip = BaseUtils.parseByteArrayToIPv4Address(add.getAddress());
+                    } else {
+                        if (log.isWarnEnabled())
+                            log.warn("Unknown domain name: {}", host);
+                        return;
+                    }
                 } else {
-                    if(log.isWarnEnabled())
-                        log.warn("Unknown domain name: {}", host);
+                    packet.release();
                     return;
                 }
+
+                DatagramProxyRequest request = new DatagramProxyRequest(ip, port, (DatagramChannel) ctx.channel(), sender);
+                request.setContent(buf);
+                assert parent != null;
+                if (parent.needProxy(host)) {
+                    parent.publish(request);
+                } else {
+                    ctx.writeAndFlush(request);
+                }
+
+                if (log.isTraceEnabled())
+                    log.trace("UDP Packet send to SenderComponent, content: {}", request.toString());
             } else {
-                ReferenceCountUtil.release(packet);
-                return;
+                int ip = BaseUtils.parseByteArrayToIPv4Integer(sender.getAddress().getAddress());
+                CompositeByteBuf buf = Unpooled.compositeBuffer();
+                ByteBuf head = Unpooled.buffer(4 + 4 + 2);
+                head.writeInt(0x01);
+                head.writeInt(ip);
+                head.writeShort(sender.getPort());
+                buf.addComponents(true, head, packet.content());
+
+                DatagramPacket dp = new DatagramPacket(buf, receiveAddress);
+                ctx.writeAndFlush(dp);
+                buf.release();
             }
-
-            DatagramProxyRequest request = new DatagramProxyRequest(ip, port, (DatagramChannel) ctx.channel(), sender);
-            request.setContent(buf);
-            getParentComponent().publish(request);
-
-            if(log.isTraceEnabled())
-                log.trace("UDP Packet send to SenderComponent, content: {}", request.toString());
         }
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
             log.info("Local UDP Proxy receive port are close");
-            udpProxyChannel = null;
+        }
+    }
+
+    @ChannelHandler.Sharable
+    private static class UDPProxyMessageDirectSendOutboundHandler extends ChannelOutboundHandlerAdapter {
+        private static final UDPProxyMessageDirectSendOutboundHandler INSTANCE = new UDPProxyMessageDirectSendOutboundHandler();
+
+        @Override
+        public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
+            if(msg instanceof DatagramProxyRequest) {
+                DatagramProxyRequest req = (DatagramProxyRequest) msg;
+                InetSocketAddress remote = new InetSocketAddress(req.getHost(), req.getPort());
+                ByteBuf buf = req.takeClientMessage();
+                assert buf != null;
+                DatagramPacket packet = new DatagramPacket(buf, remote);
+                ctx.write(packet, ctx.voidPromise());
+            } else {
+                ctx.write(msg, ctx.voidPromise());
+            }
+        }
+
+        private UDPProxyMessageDirectSendOutboundHandler() {
+            if(INSTANCE != null)
+                throw new UnsupportedOperationException();
         }
     }
 }

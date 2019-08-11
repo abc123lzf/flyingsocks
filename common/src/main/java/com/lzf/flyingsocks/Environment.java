@@ -1,8 +1,12 @@
 package com.lzf.flyingsocks;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 
+/**
+ * 系统环境相关API
+ */
 public interface Environment {
 
     /**
@@ -37,7 +41,15 @@ public interface Environment {
      * 获取可用的处理器数量
      * @return
      */
-    default int getAvailableProcessors() {
+    default int availableProcessors() {
         return Runtime.getRuntime().availableProcessors();
+    }
+
+    /**
+     * 根据路径分隔符判断当前操作系统是否是Windows
+     * @return 当前系统是否是Windows系统
+     */
+    default boolean isWindows() {
+        return File.separatorChar == '\\';
     }
 }

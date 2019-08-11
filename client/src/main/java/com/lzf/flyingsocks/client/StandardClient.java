@@ -3,7 +3,7 @@ package com.lzf.flyingsocks.client;
 import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksProxyComponent;
-import com.lzf.flyingsocks.client.gui.ViewComponent;
+import com.lzf.flyingsocks.client.gui.swing.SwingViewComponent;
 
 /**
  * 客户端类
@@ -23,7 +23,7 @@ public class StandardClient extends TopLevelComponent implements Client {
         getConfigManager().registerConfig(cfg);
 
         addComponent(new SocksProxyComponent(this));
-        addComponent(new ViewComponent(this));
+        addComponent(new SwingViewComponent(this));
         super.initInternal();
     }
 

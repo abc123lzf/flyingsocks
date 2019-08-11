@@ -1,4 +1,4 @@
-package com.lzf.flyingsocks.client.gui;
+package com.lzf.flyingsocks.client.gui.swing;
 
 import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.client.proxy.ProxyAutoConfig;
@@ -12,7 +12,7 @@ import java.awt.event.MouseEvent;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-class TrayModule extends AbstractModule<ViewComponent> {
+class TrayModule extends AbstractModule<SwingViewComponent> {
     private static final Logger log = LoggerFactory.getLogger("PopupMenu");
 
     static final String NAME = "module.tray";
@@ -27,7 +27,7 @@ class TrayModule extends AbstractModule<ViewComponent> {
 
     private ServerChooseMenu serverChooseMenu;
 
-    TrayModule(ViewComponent component, Image icon) {
+    TrayModule(SwingViewComponent component, Image icon) {
         super(component, NAME);
         this.configManager = getComponent().getParentComponent().getConfigManager();
         this.icon = icon;

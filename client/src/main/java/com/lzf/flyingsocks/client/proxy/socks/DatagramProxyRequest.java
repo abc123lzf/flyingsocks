@@ -2,7 +2,6 @@ package com.lzf.flyingsocks.client.proxy.socks;
 
 import com.lzf.flyingsocks.client.proxy.ProxyRequest;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.Channel;
 import io.netty.channel.socket.DatagramChannel;
 
 import java.net.InetSocketAddress;
@@ -11,7 +10,7 @@ import java.util.Objects;
 /**
  * UDP代理请求
  */
-public class DatagramProxyRequest extends ProxyRequest {
+public final class DatagramProxyRequest extends ProxyRequest {
 
     /**
      * 来自客户端，去除包头的UDP消息
@@ -37,8 +36,8 @@ public class DatagramProxyRequest extends ProxyRequest {
     }
 
     @Override
-    public Channel clientChannel() {
-        return super.clientChannel();
+    public DatagramChannel clientChannel() {
+        return (DatagramChannel)super.clientChannel();
     }
 
     @Override

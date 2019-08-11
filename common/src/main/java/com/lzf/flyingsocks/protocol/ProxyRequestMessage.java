@@ -9,13 +9,13 @@ import java.util.Objects;
 
 /**
  * 客户端向服务器发起的代理请求报文，其报文格式如下：
- * 0              16        Clen+16
+ * 0              4         6         6+clen     10+clen     14+clen
  * +--------------+---------+---------+----------+-----------+
  * |  Serial ID   |Host Len |   Host  | Port/Ctr |Message Len|
  * |  (4 Bytes)   |(2 Bytes)|         | (4 Bytes)| (4 Bytes) |
  * +--------------+---------+---------+----------+-----------+
- * |                              Message                    |
- * |                              Content                    |
+ * |                       Message                           |
+ * |                       Content                           |
  * +---------------------------------------------------------+
  */
 public class ProxyRequestMessage extends ProxyMessage implements Message, Cloneable {

@@ -43,7 +43,7 @@ public class SocksProxyComponent extends ProxyComponent {
         SocksConfig cfg = new SocksConfig(manager);
         manager.registerConfig(cfg);
 
-        int cpus = getParentComponent().getAvailableProcessors();
+        int cpus = getParentComponent().availableProcessors();
         nettyWorkerLoopGroup = new NioEventLoopGroup(cpus < 4 ? 4 : cpus);
 
         clientMessageProcessor = new ThreadPoolExecutor(0, 12, 180, TimeUnit.SECONDS,
@@ -79,6 +79,11 @@ public class SocksProxyComponent extends ProxyComponent {
 
     EventLoopGroup getWorkerEventLoopGroup() {
         return nettyWorkerLoopGroup;
+    }
+
+    @Override
+    protected boolean needProxy(String host) {
+        return super.needProxy(host);
     }
 
     /**

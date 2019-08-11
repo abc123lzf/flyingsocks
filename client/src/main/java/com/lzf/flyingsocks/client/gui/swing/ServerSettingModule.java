@@ -1,4 +1,4 @@
-package com.lzf.flyingsocks.client.gui;
+package com.lzf.flyingsocks.client.gui.swing;
 
 import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.client.Client;
@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-class ServerSettingModule extends AbstractModule<ViewComponent> {
+class ServerSettingModule extends AbstractModule<SwingViewComponent> {
 
     private static final Logger log = LoggerFactory.getLogger(ServerSettingModule.class);
 
@@ -58,7 +58,7 @@ class ServerSettingModule extends AbstractModule<ViewComponent> {
      * @param component 父组件
      * @param icon 界面左上角图片
      */
-    ServerSettingModule(ViewComponent component, Image icon) {
+    ServerSettingModule(SwingViewComponent component, Image icon) {
         super(component, NAME);
         this.client = component.getParentComponent();
         this.frame = initFrame(icon);

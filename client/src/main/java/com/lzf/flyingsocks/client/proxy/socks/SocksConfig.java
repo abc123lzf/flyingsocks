@@ -11,18 +11,36 @@ import com.lzf.flyingsocks.client.GlobalConfig;
 import java.io.*;
 import java.nio.charset.Charset;
 
+/**
+ * 本地Socks5代理端口配置信息
+ */
 public class SocksConfig extends AbstractConfig {
 
     public static final String NAME = "config.socks";
 
+    /**
+     * 是否需要认证
+     */
     private boolean auth;
 
+    /**
+     * Socks5代理端口
+     */
     private int port;
 
+    /**
+     * 用户名，仅在auth为true时有效
+     */
     private String username;
 
+    /**
+     * 密码，仅在auth为false时有效
+     */
     private String password;
 
+    /**
+     * Socks5端口绑定地址
+     */
     private String address;
 
     public SocksConfig(ConfigManager<?> configManager) {

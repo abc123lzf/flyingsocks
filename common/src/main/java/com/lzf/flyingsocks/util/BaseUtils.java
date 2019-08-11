@@ -39,6 +39,15 @@ public final class BaseUtils {
         return (b[0] & 0x0FF) + "." + (b[1] & 0x0FF) + "." + (b[2] & 0x0FF) + "." + (b[3] & 0x0FF);
     }
 
+    public static int parseByteArrayToIPv4Integer(byte[] b) {
+        if(b.length != 4)
+            throw new IllegalArgumentException("illegal ipv4 byte array");
+        int num = b[0] << 24;
+        num |= b[1] << 16;
+        num |= b[2] << 8;
+        return num | b[3];
+    }
+
     /**
      * 将无符号short转换为Int数字
      * @param val 无符号short

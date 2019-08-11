@@ -1,4 +1,4 @@
-package com.lzf.flyingsocks.client.gui;
+package com.lzf.flyingsocks.client.gui.swing;
 
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.ComponentException;
@@ -15,7 +15,7 @@ import java.util.Objects;
 /**
  * Swing GUI组件
  */
-public class ViewComponent extends AbstractComponent<Client> {
+public class SwingViewComponent extends AbstractComponent<Client> {
 
     /**
      * 服务器设置界面
@@ -32,8 +32,8 @@ public class ViewComponent extends AbstractComponent<Client> {
      */
     private SocksSettingModule socksSettingModule;
 
-    public ViewComponent(Client client) {
-        super("ViewComponent", Objects.requireNonNull(client));
+    public SwingViewComponent(Client client) {
+        super("SwingViewComponent", Objects.requireNonNull(client));
     }
 
     @Override

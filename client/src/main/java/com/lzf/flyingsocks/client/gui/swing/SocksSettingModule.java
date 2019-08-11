@@ -1,4 +1,4 @@
-package com.lzf.flyingsocks.client.gui;
+package com.lzf.flyingsocks.client.gui.swing;
 
 import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
@@ -8,7 +8,7 @@ import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
-class SocksSettingModule extends AbstractModule<ViewComponent> {
+class SocksSettingModule extends AbstractModule<SwingViewComponent> {
     static final String NAME = "module.socks";
 
     private final Frame frame;
@@ -16,7 +16,7 @@ class SocksSettingModule extends AbstractModule<ViewComponent> {
     private JTextField userField;
     private JPasswordField passwordField;
 
-    SocksSettingModule(ViewComponent component, Image icon) {
+    SocksSettingModule(SwingViewComponent component, Image icon) {
         super(component, NAME);
         this.frame = initFrame(icon);
     }

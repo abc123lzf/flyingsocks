@@ -55,9 +55,8 @@ public class GlobalConfig extends AbstractConfig  {
         try(InputStream is = configManager.loadResource(PATH)) {
             Properties p = new Properties();
             p.load(is);
-            boolean windows = File.separatorChar == '\\';  //根据路径分隔符判断当前系统是否是Windows
             String location;
-            if(windows) {
+            if(configManager.isWindows()) {
                 location = p.getProperty("config.location.windows");
             } else {
                 location = p.getProperty("config.location.linux");
