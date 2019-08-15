@@ -1,5 +1,6 @@
 package com.lzf.flyingsocks.protocol;
 
+import com.lzf.flyingsocks.util.BaseUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
@@ -9,14 +10,22 @@ import java.util.Objects;
 
 /**
  * 客户端向服务器发起的代理请求报文，其报文格式如下：
- * 0              4         6         6+clen     10+clen     14+clen
- * +--------------+---------+---------+----------+-----------+
- * |  Serial ID   |Host Len |   Host  | Port/Ctr |Message Len|
- * |  (4 Bytes)   |(2 Bytes)|         | (4 Bytes)| (4 Bytes) |
- * +--------------+---------+---------+----------+-----------+
- * |                       Message                           |
- * |                       Content                           |
- * +---------------------------------------------------------+
+ * 0              4        5        5+clen   6+clen     8+clen
+ * +--------------+--------+--------+--------+----------+-----------+
+ * |  Serial ID   |Host Len|  Host  |  Type  |   Port   |Message Len|
+ * |  (4 Bytes)   |(1 Byte)|        |(1 Byte)| (2 Bytes)| (4 Bytes) |
+ * +--------------+--------+--------+--------+----------+-----------+
+ * |                              Message                           |
+ * |                              Content                           |
+ * +----------------------------------------------------------------+
+ *
+ * Serial ID：客户端消息序列号，用于识别代理消息从哪个应用程序发送
+ * Host Len：目标主机名/IP地址长度
+ * Host：目标主机名
+ * Type：附加字段，当第7位为1时表示为UDP报文
+ * Port：目标端口号
+ * Message Len：消息长度
+ * Message Content：消息体
  */
 public class ProxyRequestMessage extends ProxyMessage implements Message, Cloneable {
 
@@ -39,7 +48,7 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
 
 
     public enum Protocol {
-        TCP, UDP
+        TCP, UDP, CLOSE; //Close表示要求服务器关闭与目标服务器的连接
     }
 
 
@@ -84,24 +93,26 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
 
     @Override
     public ByteBuf serialize() throws SerializationException {
-        if(host == null || port <= 0 || port >= 65535 || message == null)
+        if(host == null || port <= 0 || port > 65535 || message == null)
             throw new SerializationException("ProxyRequestMessage is not complete, or port is illegal, message detail: \n" + toString());
 
         byte[] h = host.getBytes(HOST_ENCODING);
 
-        int size = 4 + 2 + h.length + 4 + 4 + message.readableBytes();
+        int size = 4 + 1 + h.length + 1 + 2 + 4 + message.readableBytes();
         ByteBuf buf = Unpooled.buffer(size);
 
         buf.writeInt(serialId);
 
-        buf.writeShort(h.length);
+        buf.writeByte(h.length);
         buf.writeBytes(h);
 
-        if(protocol == Protocol.UDP)
-            buf.writeInt(1 << 31 | port);  //端口字段首位为1表示UDP协议
-        else
-            buf.writeInt(port);
+        if(protocol == Protocol.UDP) {
+            buf.writeByte(1 << 7);
+        } else if(protocol == Protocol.CLOSE) {
+            buf.writeByte(1 << 6);
+        }
 
+        buf.writeShort(port);
         buf.writeInt(message.readableBytes());
         buf.writeBytes(message);
 
@@ -112,27 +123,26 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
     public void deserialize(ByteBuf buf) throws SerializationException {
         try {
             int sid = buf.readInt();
-            short hostlen = buf.readShort();
+            int hostlen = BaseUtils.parseByteToInteger(buf.readByte());
             byte[] hb = new byte[hostlen];
 
             buf.readBytes(hb);
             String host = new String(hb, HOST_ENCODING);
 
-            int val = buf.readInt();
-
-            int port;
-            if(val < 0) {  //最高位为1代表为UDP协议
-                port = val ^ (1 << 31);
+            byte ctl = buf.readByte();
+            if((ctl & (1 << 7)) != 0) {
                 protocol = Protocol.UDP;
+            } else if((ctl & (1 << 6)) != 0) {
+                protocol = Protocol.CLOSE;
             } else {
-                port = val;
                 protocol = Protocol.TCP;
             }
 
+            int port = BaseUtils.parseUnsignedShortToInteger(buf.readShort());
             int msglen = buf.readInt();
 
-            if(port <= 0 || port >= 65535)
-                throw new SerializationException("Illegal ProxyRequestMessage, port should between 1 and 65534");
+            if(port <= 0 || port > 65535)
+                throw new SerializationException("Illegal ProxyRequestMessage, port should between 1 and 65535");
 
             if(msglen < 0)
                 throw new SerializationException("Illegal ProxyRequestMessage, msglen should be greater than 0");

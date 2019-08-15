@@ -129,7 +129,7 @@ public class SocksProxyComponent extends ProxyComponent {
                         continue;
                     }
 
-                    if(!sc.isActive()) {
+                    if(!sc.isActive() || req.isCtlMark(31)) {
                         it.remove();
                         clearProxyRequest(req);
                         continue;

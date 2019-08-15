@@ -1,6 +1,7 @@
 package com.lzf.flyingsocks.client;
 
 import com.lzf.flyingsocks.*;
+import com.lzf.flyingsocks.client.gui.swt.SWTViewComponent;
 import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksProxyComponent;
 import com.lzf.flyingsocks.client.gui.swing.SwingViewComponent;
@@ -23,7 +24,12 @@ public class StandardClient extends TopLevelComponent implements Client {
         getConfigManager().registerConfig(cfg);
 
         addComponent(new SocksProxyComponent(this));
-        addComponent(new SwingViewComponent(this));
+        if(!isWindows()) {
+            addComponent(new SwingViewComponent(this));
+        } else {
+            addComponent(new SWTViewComponent(this));
+        }
+
         super.initInternal();
     }
 

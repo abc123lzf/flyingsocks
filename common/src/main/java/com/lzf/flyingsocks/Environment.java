@@ -1,6 +1,7 @@
 package com.lzf.flyingsocks;
 
-import java.io.File;
+import io.netty.util.internal.PlatformDependent;
+
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -46,10 +47,17 @@ public interface Environment {
     }
 
     /**
-     * 根据路径分隔符判断当前操作系统是否是Windows
+     * 根据Netty的平台依赖类PlatformDependent获取当前环境是否是Windows
      * @return 当前系统是否是Windows系统
      */
     default boolean isWindows() {
-        return File.separatorChar == '\\';
+        return PlatformDependent.isWindows();
+    }
+
+    /**
+     * @return 当前系统是否是MacOS / OS X
+     */
+    default boolean isMacOS() {
+        return PlatformDependent.isOsx();
     }
 }

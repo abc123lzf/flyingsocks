@@ -15,7 +15,6 @@ import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.util.ReferenceCountUtil;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -27,7 +26,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
     /**
      * 对于长时间没有通信的活跃TCP连接/UDP通信端口，当超出这个时间时关闭连接
      */
-    private static final long DEFAULT_TIMEOUT = 90 * 1000L;
+    private static final long DEFAULT_TIMEOUT = 60 * 1000L;
 
     /**
      * TCP客户端连接引导模板
@@ -143,17 +142,23 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                         if(!cs.isActive())
                             continue;
 
-                        ReturnableSet<ActiveConnection> set = activeConnectionMap.computeIfAbsent(cs,
+                        final ReturnableSet<ActiveConnection> set = activeConnectionMap.computeIfAbsent(cs,
                                 key -> new ReturnableLinkedHashSet<>(128));
 
-                        String host = prm.getHost();
-                        int port = prm.getPort();
+                        final String host = prm.getHost();
+                        final int port = prm.getPort();
 
                         ActiveConnection conn = new ActiveConnection(host, port, prm.serialId());
                         ActiveConnection sconn;
                         if((sconn = set.getIfContains(conn)) != null)
                             conn = sconn;
                         if(sconn != null) {
+                            if(prm.getProtocol() == ProxyRequestMessage.Protocol.CLOSE) {
+                                conn.future.channel().close();
+                                set.remove(conn);
+                                continue;
+                            }
+
                             ChannelFuture f = conn.future;
                             Channel c = f.channel();
                             if(f.isDone() && f.isSuccess()) { //如果连接成功
@@ -171,45 +176,44 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                                 set.remove(conn);
                             }
                         } else {
-                            if (prm.getProtocol() == ProxyRequestMessage.Protocol.TCP) {
-                                Bootstrap b = tcpBootstrap.clone();
-                                b.handler(new ChannelInitializer<SocketChannel>() {
-                                    @Override
-                                    protected void initChannel(SocketChannel ch) {
-                                        ch.pipeline().addLast(new TCPDispatchHandler(task));
-                                    }
-                                });
+                            switch (prm.getProtocol()) {
+                                case TCP: {
+                                    Bootstrap b = tcpBootstrap.clone();
+                                    b.handler(new ChannelInitializer<SocketChannel>() {
+                                        @Override
+                                        protected void initChannel(SocketChannel ch) {
+                                            ch.pipeline().addLast(new TCPDispatchHandler(task));
+                                        }
+                                    });
 
-                                conn.future = b.connect(host, port).addListener(future -> {
-                                    if (!future.isSuccess()) { //如果连接没有建立成功，那么向客户端返回一个错误的消息
-                                        if (log.isWarnEnabled())
+                                    conn.future = b.connect(host, port).addListener(future -> {
+                                        if (!future.isSuccess()) { //如果连接没有建立成功，那么向客户端返回一个错误的消息
                                             log.warn("Can not connect to {}:{}", host, port);
-                                        writeFailureResponse(cs, prm);
-                                    } else {
-                                        if (log.isTraceEnabled())
+                                            writeFailureResponse(cs, prm);
+                                        } else {
                                             log.trace("Connect to {}:{} success", host, port);
-                                    }
-                                });
-                            } else {
-                                Bootstrap b = udpBootstrap.clone();
-                                b.handler(new ChannelInitializer<DatagramChannel>() {
-                                    @Override
-                                    protected void initChannel(DatagramChannel ch) {
-                                        ch.pipeline().addLast(new UDPDisaptchHandler(task));
-                                    }
-                                });
+                                        }
+                                    });
+                                } break;
 
-                                conn.future = b.bind(0).addListener(future -> {
-                                    if (!future.isSuccess()) {
-                                        if (log.isWarnEnabled())
+                                case UDP: {
+                                    Bootstrap b = udpBootstrap.clone();
+                                    b.handler(new ChannelInitializer<DatagramChannel>() {
+                                        @Override
+                                        protected void initChannel(DatagramChannel ch) {
+                                            ch.pipeline().addLast(new UDPDisaptchHandler(task));
+                                        }
+                                    });
+
+                                    conn.future = b.bind(0).addListener(future -> {
+                                        if (!future.isSuccess()) {
                                             log.warn("Can not bind UDP Port");
-                                        writeFailureResponse(cs, prm);
-                                    } else {
-                                        if (log.isTraceEnabled()) {
+                                            writeFailureResponse(cs, prm);
+                                        } else {
                                             log.trace("Bind UDP Port success, ready to send packet to {}:{}", host, port);
                                         }
-                                    }
-                                });
+                                    });
+                                } break;
                             }
 
                             set.add(conn);
@@ -262,7 +266,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                     //清除连接中断的客户端中所有ActiveConnection的msgQueue队列中的ByteBuf对象
                     val.forEach(ac -> {
                         if(!ac.msgQueue.isEmpty())
-                            ac.msgQueue.forEach(ReferenceCountUtil::release);
+                            ac.msgQueue.forEach(ByteBuf::release);
                     });
                 } else {
                     long now = System.currentTimeMillis();
@@ -272,7 +276,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                              //如果已经建立过连接但是该连接已经不活跃了，那么清除这个ActiveConnection
                              if(!ac.future.channel().isActive()) {
                                  if(!ac.msgQueue.isEmpty())
-                                    ac.msgQueue.forEach(ReferenceCountUtil::release);
+                                    ac.msgQueue.forEach(ByteBuf::release);
                                  sit.remove();
                              } else {
                                  Channel ch = ac.future.channel();
@@ -354,7 +358,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
             } catch (IllegalStateException e) {
                 ctx.close();
             } finally {
-                ReferenceCountUtil.release(msg);
+                msg.release();
             }
         }
     }
@@ -395,7 +399,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
             } catch (IllegalStateException e) {
                 ctx.close();
             } finally {
-                ReferenceCountUtil.release(msg);
+                msg.release();
             }
         }
     }

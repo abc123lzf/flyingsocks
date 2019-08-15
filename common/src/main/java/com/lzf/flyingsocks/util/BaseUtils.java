@@ -2,11 +2,30 @@ package com.lzf.flyingsocks.util;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * 字符串、数字处理工具
  */
 public final class BaseUtils {
+
+    //主机名正则表达式
+    private static final Pattern HOST_PATTERN = Pattern.compile("^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$");
+
+    //IP地址正则表达式
+    private static final Pattern IP_PATTERN = Pattern.compile("^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+
+    /**
+     * @param ip 点标记法IPV4字符串
+     * @return 判断该字符串是否符合
+     */
+    public static boolean isIPv4Address(String ip) {
+        return IP_PATTERN.matcher(ip).matches();
+    }
+
+    public static boolean isHostName(String host) {
+        return HOST_PATTERN.matcher(host).matches();
+    }
 
     /**
      * 将点标记法IPV4字符串转换为int

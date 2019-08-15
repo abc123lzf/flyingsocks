@@ -16,8 +16,6 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.socks.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -26,15 +24,9 @@ import java.nio.charset.Charset;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.regex.Pattern;
+
 
 public final class SocksReceiverComponent extends AbstractComponent<SocksProxyComponent> {
-
-    //主机名正则表达式
-    private static final Pattern HOST_PATTERN = Pattern.compile("^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$");
-
-    //IP地址正则表达式
-    private static final Pattern IP_PATTERN = Pattern.compile("^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 
     // 引导类
     private ServerBootstrap serverBootstrap;
@@ -132,8 +124,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
      * @return 是否是合法的主机名/IP地址
      */
     private boolean vaildateAddress(String address) {
-        return HOST_PATTERN.matcher(address).matches() ||
-                IP_PATTERN.matcher(address).matches();
+        return BaseUtils.isHostName(address) || BaseUtils.isIPv4Address(address);
     }
 
     /**
@@ -246,8 +237,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                         } break;
 
                         default: {
-                            if(log.isInfoEnabled())
-                                log.info("Socks command request is not connect.");
+                            log.info("Socks command request is not CONNECT or UDP.");
                             ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.COMMAND_NOT_SUPPORTED, SocksAddressType.IPv4));
                             ctx.close();
                             return;
@@ -308,6 +298,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
+            proxyRequest.setCtl(31, true);
             ctx.pipeline().remove(this);
             ctx.fireChannelInactive();
         }
@@ -327,7 +318,11 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
-            log.info("Local UDP Proxy receive port is active");
+            if(log.isTraceEnabled()) {
+                DatagramChannel ch = (DatagramChannel) ctx.channel();
+                log.trace("Local UDP Proxy receive port is active, port: {}, Receive address: {}",
+                        ch.localAddress().getPort(), receiveAddress);
+            }
         }
 
         @Override

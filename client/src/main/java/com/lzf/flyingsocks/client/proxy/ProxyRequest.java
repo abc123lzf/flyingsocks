@@ -32,6 +32,11 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
     protected final Protocol protocol;
 
     /**
+     * 附加字段
+     */
+    protected int ctl;
+
+    /**
      * 代理协议枚举，目前支持UDP、TCP
      */
     public enum Protocol {
@@ -64,6 +69,35 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
 
     public final Protocol protocol() {
         return protocol;
+    }
+
+    public final boolean isCtlMark(int index) {
+        int c = ctl;
+        return (c & (1 << index)) > 0;
+    }
+
+    public final int getCtl() {
+        return ctl;
+    }
+
+    protected void setCtl(int ctl) {
+        this.ctl = ctl;
+    }
+
+    /**
+     * 将ctl字段某一位标为0或1
+     * @param index 位数，从0开始
+     * @param mark true标为1 false标为0
+     */
+    protected void setCtl(int index, boolean mark) {
+        int c = ctl;
+        if(mark) {
+            c |= (1 << index);
+        } else {
+            c &= (~(1 << index));
+        }
+
+        this.ctl = c;
     }
 
     protected Channel clientChannel() {

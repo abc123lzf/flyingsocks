@@ -4,12 +4,12 @@ import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.client.Client;
 import com.lzf.flyingsocks.client.GlobalConfig;
+import com.lzf.flyingsocks.client.gui.GUIResourceManager;
 import org.jb2011.lnf.beautyeye.BeautyEyeLNFHelper;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.io.IOException;
-import java.net.URL;
 import java.util.Objects;
 
 /**
@@ -53,15 +53,15 @@ public class SwingViewComponent extends AbstractComponent<Client> {
 
         Image image;
         try {
-            image = ImageIO.read(new URL("classpath://icon.png"));
+            image = GUIResourceManager.loadIconImage();
         } catch (IOException e) {
             throw new ComponentException("file \"icon.png\" load error.", e);
         }
 
         Image smallImage;
         try {
-            smallImage = ImageIO.read(new URL("classpath://icon-tray.png"));
-        } catch (Exception e) {
+            smallImage = GUIResourceManager.loadSystemTrayImage();
+        } catch (IOException e) {
             throw new ComponentException("file \"icon-tray.png\" load error.", e);
         }
 

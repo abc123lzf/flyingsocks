@@ -764,7 +764,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     while (it.hasNext()) {
                         SerialProxyRequest req = it.next();
                         Channel cc = req.clientChannel();
-                        if (!cc.isActive()) {
+                        if (!cc.isActive() || req.isCtlMark(31)) {
                             it.remove();
                             activeProxyRequestMap.remove(req.serialId);
                         } else {

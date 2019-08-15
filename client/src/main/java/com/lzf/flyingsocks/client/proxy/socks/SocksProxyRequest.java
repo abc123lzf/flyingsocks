@@ -42,6 +42,15 @@ public final class SocksProxyRequest extends ProxyRequest {
         super.closeClientChannel();
     }
 
+    @Override
+    protected void setCtl(int ctl) {
+        super.setCtl(ctl);
+    }
+
+    @Override
+    protected void setCtl(int index, boolean mark) {
+        super.setCtl(index, mark);
+    }
 
     void setServerChannel(Channel channel) {
         assertChannel(channel, protocol);
