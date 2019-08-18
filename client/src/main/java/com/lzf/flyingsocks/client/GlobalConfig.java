@@ -58,6 +58,8 @@ public class GlobalConfig extends AbstractConfig  {
             String location;
             if(configManager.isWindows()) {
                 location = p.getProperty("config.location.windows");
+            } else if(configManager.isMacOS()) {
+                location = p.getProperty("config.location.mac");
             } else {
                 location = p.getProperty("config.location.linux");
             }

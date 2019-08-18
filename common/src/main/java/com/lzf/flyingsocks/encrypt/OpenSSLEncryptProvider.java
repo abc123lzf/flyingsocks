@@ -8,6 +8,8 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslHandler;
 
+import javax.net.ssl.SSLException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 
@@ -24,6 +26,9 @@ public class OpenSSLEncryptProvider implements EncryptProvider {
     public synchronized void initialize(Map<String, Object> params) throws Exception {
         if(initialize)
             throw new IllegalStateException("OpenSSLEncryptProvider instance has been initialize");
+        if(!params.containsKey("client"))
+            throw new IllegalArgumentException("params client must not be null and should be boolean type");
+
         client = (boolean)params.get("client");
         sslContext = buildSSLContext(params);
         initialize = true;
@@ -35,26 +40,26 @@ public class OpenSSLEncryptProvider implements EncryptProvider {
     }
 
     @Override
-    public ChannelInboundHandler decodeHandler(Map<String, Object> params) throws Exception {
+    public ChannelInboundHandler decodeHandler(Map<String, Object> params) {
         if(!initialize)
             throw new IllegalStateException("OpenSSLEncryptProvider instance must be initial first !");
         return createSSLHandler(params);
     }
 
     @Override
-    public ChannelOutboundHandler encodeHandler(Map<String, Object> params) throws Exception {
+    public ChannelOutboundHandler encodeHandler(Map<String, Object> params) {
         if(!initialize)
             throw new IllegalStateException("OpenSSLEncryptProvider instance must be initial first !");
         return createSSLHandler(params);
     }
 
-    private SslHandler createSSLHandler(Map<String, Object> params) throws Exception {
+    private SslHandler createSSLHandler(Map<String, Object> params) {
         if (params == null || params.get("alloc") == null)
             return sslContext.newHandler(ByteBufAllocator.DEFAULT);
         return sslContext.newHandler((ByteBufAllocator) params.get("alloc"));
     }
 
-    private SslContext buildSSLContext(Map<String, Object> params) throws Exception {
+    private SslContext buildSSLContext(Map<String, Object> params) throws IOException {
         if(client) {
             try (InputStream x509crt = (InputStream) params.get("file.cert.root")) {
                 return SslContextBuilder.forClient().trustManager(x509crt).build();

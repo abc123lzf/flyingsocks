@@ -7,19 +7,34 @@ import java.util.Arrays;
 
 /**
  * 分隔符握手报文
- * 0                                       128
- * +---------------------------------------+
- * |                Delimiter              |
- * |            128 Bit / 16 bytes         |
- * +---------------------------------------+
+ * +-------+---------------------------------------+
+ * | Magic |              Delimiter                |
+ * |6 Bytes|          128 Bit / 16 bytes           |
+ * +-------+---------------------------------------+
+ *
+ * 6字节魔数+16字节分隔符
  */
 public class DelimiterMessage implements Message {
+
+    /**
+     * 魔数
+     */
+    public static final byte[] MAGIC = new byte[] {(byte) 0xE4, (byte) 0xBC, (byte) 0x8A,
+            (byte) 0xE8, (byte)0x94, (byte)0x93};
 
     /**
      * 分隔符字节数，建议16字节以上避免与报文数据混淆
      */
     public static final int DEFAULT_SIZE = 16;
 
+    /**
+     * 消息长度
+     */
+    public static final int LENGTH = MAGIC.length + DEFAULT_SIZE;
+
+    /**
+     * 分隔符内容
+     */
     private byte[] delimiter;
 
     public DelimiterMessage(byte[] delimiter) {
@@ -32,8 +47,11 @@ public class DelimiterMessage implements Message {
 
     @Override
     public ByteBuf serialize() throws SerializationException {
+        ByteBuf buf = Unpooled.buffer(LENGTH);
+        buf.writeBytes(MAGIC);
+        buf.writeBytes(delimiter);
         try {
-            return Unpooled.buffer(DEFAULT_SIZE).writeBytes(delimiter);
+            return buf;
         } catch (Exception e) {
             throw new SerializationException(e);
         }
@@ -41,9 +59,16 @@ public class DelimiterMessage implements Message {
 
     @Override
     public void deserialize(ByteBuf buf) throws SerializationException {
+
         int size = buf.readableBytes();
-        if(size < 16)
-            throw new SerializationException("Delimiter length must be " + DEFAULT_SIZE + " bytes");
+        if(size < LENGTH)
+            throw new SerializationException("Delimiter Message length must be " + LENGTH + " bytes: including " +
+                    MAGIC.length + " bytes magic and " + DEFAULT_SIZE + " bytes delimiter content");
+
+        byte[] magic = new byte[MAGIC.length];
+        buf.readBytes(magic);
+        if(!Arrays.equals(magic, MAGIC))
+            return;
 
         try {
             byte[] b = new byte[DEFAULT_SIZE];

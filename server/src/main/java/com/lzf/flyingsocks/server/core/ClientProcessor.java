@@ -10,6 +10,7 @@ import com.lzf.flyingsocks.encrypt.OpenSSLEncryptProvider;
 import com.lzf.flyingsocks.protocol.*;
 import com.lzf.flyingsocks.server.ServerConfig;
 import com.lzf.flyingsocks.server.UserDatabase;
+import com.lzf.flyingsocks.util.FSMessageChannelOutboundHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -144,7 +145,8 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                         cp.addLast(provider.decodeHandler(params));
                     }
                     cp.addLast(parent.clientSessionHandler());
-                    cp.addLast(new FixedLengthFrameDecoder(DelimiterMessage.DEFAULT_SIZE));
+                    cp.addLast(FSMessageChannelOutboundHandler.INSTANCE);
+                    cp.addLast(new FixedLengthFrameDecoder(DelimiterMessage.LENGTH));
                     cp.addLast(new InitialHandler());
                 }
             });
@@ -271,9 +273,16 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
     private final class InitialHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
         @Override
-        protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) {
+        protected void channelRead0(ChannelHandlerContext ctx, ByteBuf buf) throws SerializationException {
             byte[] key = new byte[DelimiterMessage.DEFAULT_SIZE];
-            msg.readBytes(key);
+            DelimiterMessage msg = new DelimiterMessage(buf);
+            if(msg.getDelimiter() == null) {
+                log.info("Remote client close, cause Delimiter message magic number is not correct");
+                ctx.close();
+                return;
+            }
+
+            msg.getDelimiter().readBytes(key);
 
             if(log.isTraceEnabled())
                 log.trace("Receive DelimiterMessage from client.");
@@ -284,9 +293,11 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             ChannelPipeline cp = ctx.pipeline();
             cp.remove(this).remove(FixedLengthFrameDecoder.class);
 
+            DelimiterMessage resp = new DelimiterMessage(key);
+            ctx.writeAndFlush(resp);
+
             ByteBuf keyBuf = Unpooled.buffer(DelimiterMessage.DEFAULT_SIZE);
             keyBuf.writeBytes(key);
-            ctx.writeAndFlush(keyBuf.copy());
 
             cp.addLast(new DelimiterOutboundHandler(keyBuf));
             cp.addLast(new DelimiterBasedFrameDecoder(102400, keyBuf));

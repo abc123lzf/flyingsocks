@@ -147,6 +147,10 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     public void setProxyMode(int proxyMode) {
         if(this.proxyMode == proxyMode)
             return;
+
+        if(proxyMode < 0 || proxyMode > 2)
+            throw new IllegalArgumentException();
+
         this.proxyMode = proxyMode;
         configManager.updateConfig(this);
     }

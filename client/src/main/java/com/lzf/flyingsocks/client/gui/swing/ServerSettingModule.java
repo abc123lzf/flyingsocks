@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-class ServerSettingModule extends AbstractModule<SwingViewComponent> {
+final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
 
     private static final Logger log = LoggerFactory.getLogger(ServerSettingModule.class);
 

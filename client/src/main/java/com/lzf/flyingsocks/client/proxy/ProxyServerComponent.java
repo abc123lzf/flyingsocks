@@ -551,8 +551,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object buf) {
             if(buf instanceof ByteBuf) {
-                if(log.isTraceEnabled())
-                    log.trace("Receive flyingsocks delimiter message");
+                log.trace("Receive flyingsocks delimiter message");
                 ByteBuf msg = (ByteBuf) buf;
                 try {
                     DelimiterMessage dmsg = new DelimiterMessage(msg);
@@ -562,10 +561,15 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
                     byte[] rb = proxyServerSession.getDelimiter();
 
+                    if(rb == null) {
+                        log.info("Delimiter message magic number is not correct");
+                        ctx.close();
+                        return;
+                    }
+
                     for(int i = 0; i < DelimiterMessage.DEFAULT_SIZE; i++) {
                         if(b[i] != rb[i]) {
-                            if(log.isDebugEnabled())
-                                log.debug("Channel close because of delimiter is difference");
+                            log.debug("Channel close because of delimiter is difference");
                             ctx.close();
                             return;
                         }

@@ -26,7 +26,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
     /**
      * 对于长时间没有通信的活跃TCP连接/UDP通信端口，当超出这个时间时关闭连接
      */
-    private static final long DEFAULT_TIMEOUT = 60 * 1000L;
+    private static final long DEFAULT_TIMEOUT = 80 * 1000L;
 
     /**
      * TCP客户端连接引导模板

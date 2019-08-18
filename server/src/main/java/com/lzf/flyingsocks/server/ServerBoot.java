@@ -26,12 +26,13 @@ public abstract class ServerBoot {
         synchronized (ServerBoot.class) {
             if(server.getState() != LifecycleState.NEW)
                 return;
-
+            long st = System.currentTimeMillis();
             log.info("flyingsocks server {} start...", VERSION);
             try {
                 server.init();
                 server.start();
-                log.info("flyingsocks server {} start complete", VERSION);
+                long ed = System.currentTimeMillis();
+                log.info("flyingsocks server {} start complete, use {} millisecond", VERSION, ed - st);
             } catch (ComponentException e) {
                 log.error("flyingsocks server {} start failure, cause:", VERSION);
                 log.info("If it caused by BUG, please submit issue at https://github.com/abc123lzf/flyingsocks , Thanks");

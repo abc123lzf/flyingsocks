@@ -110,6 +110,8 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
             buf.writeByte(1 << 7);
         } else if(protocol == Protocol.CLOSE) {
             buf.writeByte(1 << 6);
+        } else {
+            buf.writeByte(0);
         }
 
         buf.writeShort(port);

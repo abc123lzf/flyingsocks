@@ -2,41 +2,68 @@ package com.lzf.flyingsocks.client.gui.swt;
 
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.client.Client;
-import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.*;
 
 import java.util.Objects;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
- * @author lizifan lzf@webull.com
  * @create 2019.8.13 9:40
  * @description SWT GUI组件
  */
 public class SWTViewComponent extends AbstractComponent<Client> {
 
-    private final Display display = new Display();
+    /**
+     * SWT GUI线程
+     */
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-    private final Tray tray = display.getSystemTray();
+
+    private final Display display;
+
 
     public SWTViewComponent(Client parent) {
         super("SWTViewComponent", Objects.requireNonNull(parent));
+        try {
+            this.display = executor.submit(new Callable<Display>() {
+                @Override
+                public Display call() {
+                    return new Display();
+                }
+            }).get();
+        } catch (Exception e) {
+            throw new Error(e);
+        }
     }
 
     @Override
     protected void initInternal() {
-        TrayItem item = new TrayItem(tray, SWT.NONE);
-        final Shell shell = new Shell(display,SWT.SHELL_TRIM ^ SWT.MAX);
-        item.setVisible(true);
-        item.setToolTipText(Client.DEFAULT_COMPONENT_NAME);
+        executor.submit(() -> {
+            addModule(new TrayModule(this, display));
+            addModule(new ServerSettingModule(this, display));
+        });
 
-        Menu menu = new Menu(shell, SWT.POP_UP);
-        MenuItem exit = new MenuItem(menu, SWT.PUSH);
-        exit.setText("退出(&x)");
+    }
+
+    @Override
+    protected void startInternal() {
+        executor.submit(() -> {
+            Thread t = Thread.currentThread();
+            while (!t.isInterrupted()) {
+                if(!display.readAndDispatch()) {
+                    display.sleep();
+                }
+            }
+
+            display.dispose();
+        });
     }
 
     @Override
     protected void stopInternal() {
-        display.dispose();
+        executor.shutdownNow();
     }
 
     @Override

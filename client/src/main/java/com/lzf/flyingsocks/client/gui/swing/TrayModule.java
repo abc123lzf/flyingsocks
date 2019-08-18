@@ -12,7 +12,7 @@ import java.awt.event.MouseEvent;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-class TrayModule extends AbstractModule<SwingViewComponent> {
+final class TrayModule extends AbstractModule<SwingViewComponent> {
     private static final Logger log = LoggerFactory.getLogger("PopupMenu");
 
     static final String NAME = "module.tray";

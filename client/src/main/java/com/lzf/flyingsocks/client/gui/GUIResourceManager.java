@@ -3,6 +3,7 @@ package com.lzf.flyingsocks.client.gui;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 
 /**
@@ -19,6 +20,14 @@ public final class GUIResourceManager {
         } catch (ClassNotFoundException e) {
             throw new Error(e);
         }
+    }
+
+    public static InputStream openIconImageStream() throws IOException {
+        return new URL("classpath://icon.png").openStream();
+    }
+
+    public static InputStream openSystemTrayImageStream() throws IOException {
+        return new URL("classpath://icon-tray.png").openStream();
     }
 
     public static Image loadSystemTrayImage() throws IOException {

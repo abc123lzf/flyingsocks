@@ -43,7 +43,7 @@ public class SocksConfig extends AbstractConfig {
      */
     private String address;
 
-    public SocksConfig(ConfigManager<?> configManager) {
+    SocksConfig(ConfigManager<?> configManager) {
         super(configManager, NAME);
     }
 
@@ -139,9 +139,9 @@ public class SocksConfig extends AbstractConfig {
     }
 
     public void update(boolean auth, String username, String password) {
-        this.auth = auth;
         this.username = username;
         this.password = password;
+        this.auth = auth;
         configManager.updateConfig(this);
     }
 }

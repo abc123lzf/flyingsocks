@@ -2,6 +2,7 @@ package com.lzf.flyingsocks.client;
 
 import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.client.gui.swt.SWTViewComponent;
+import com.lzf.flyingsocks.client.proxy.ProxyAutoConfig;
 import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksProxyComponent;
 import com.lzf.flyingsocks.client.gui.swing.SwingViewComponent;
@@ -9,10 +10,10 @@ import com.lzf.flyingsocks.client.gui.swing.SwingViewComponent;
 /**
  * 客户端类
  */
-public class StandardClient extends TopLevelComponent implements Client {
+public class StandardClient extends Client {
 
     StandardClient() {
-        super(DEFAULT_COMPONENT_NAME);
+        super();
     }
 
     /**
@@ -61,36 +62,74 @@ public class StandardClient extends TopLevelComponent implements Client {
     }
 
     @Override
-    public ConfigManager<?> getConfigManager() {
-        return super.getConfigManager();
+    public void registerConfigEventListener(ConfigEventListener listener) {
+        getConfigManager().registerConfigEventListener(listener);
+    }
+
+    @Override
+    public void removeConfigEventListener(ConfigEventListener listener) {
+        getConfigManager().removeConfigEventListener(listener);
     }
 
     @Override
     public void addServerConfig(ProxyServerConfig.Node node) {
-        ProxyServerConfig cfg = getConfigManager().getConfig(ProxyServerConfig.DEFAULT_NAME, ProxyServerConfig.class);
+        ProxyServerConfig cfg = getProxyServerConfig();
         if(cfg != null)
             cfg.addProxyServerNode(node);
     }
 
     @Override
     public void updateServerConfig(ProxyServerConfig.Node node) {
-        ProxyServerConfig cfg = getConfigManager().getConfig(ProxyServerConfig.DEFAULT_NAME, ProxyServerConfig.class);
+        ProxyServerConfig cfg = getProxyServerConfig();
         if(cfg != null)
             cfg.updateProxyServerNode(node);
     }
 
     @Override
     public void removeServer(ProxyServerConfig.Node node) {
-        ProxyServerConfig cfg = getConfigManager().getConfig(ProxyServerConfig.DEFAULT_NAME, ProxyServerConfig.class);
+        ProxyServerConfig cfg = getProxyServerConfig();
         if(cfg != null)
             cfg.removeProxyServerNode(node);
     }
 
     @Override
     public ProxyServerConfig.Node[] getServerNodes() {
-        ProxyServerConfig cfg = getConfigManager().getConfig(ProxyServerConfig.DEFAULT_NAME, ProxyServerConfig.class);
+        ProxyServerConfig cfg = getProxyServerConfig();
         if(cfg == null)
             return null;
         return cfg.getProxyServerConfig();
+    }
+
+    @Override
+    public int proxyMode() {
+        ProxyAutoConfig cfg = getConfigManager().getConfig(ProxyAutoConfig.DEFAULT_NAME, ProxyAutoConfig.class);
+        if(cfg == null)
+            return -1;
+
+        return cfg.getProxyMode();
+    }
+
+    @Override
+    public void setProxyMode(int mode) {
+        ProxyAutoConfig cfg = getProxyAutoConfig();
+        if(cfg == null)
+            return;
+        cfg.setProxyMode(mode);
+    }
+
+    @Override
+    public void setProxyServerUsing(ProxyServerConfig.Node node, boolean use) {
+        ProxyServerConfig cfg = getProxyServerConfig();
+        if(cfg == null)
+            return;
+        cfg.setProxyServerUsing(node, use);
+    }
+
+    private ProxyServerConfig getProxyServerConfig() {
+        return getConfigManager().getConfig(ProxyServerConfig.DEFAULT_NAME, ProxyServerConfig.class);
+    }
+
+    private ProxyAutoConfig getProxyAutoConfig() {
+        return getConfigManager().getConfig(ProxyAutoConfig.DEFAULT_NAME, ProxyAutoConfig.class);
     }
 }

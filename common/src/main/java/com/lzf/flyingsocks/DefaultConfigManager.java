@@ -7,15 +7,26 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public class DefaultConfigManager<T extends Component<?> & Environment> extends AbstractModule<T> implements ConfigManager<T> {
+public class DefaultConfigManager<T extends Component<?> & Environment>
+        extends AbstractModule<T> implements ConfigManager<T> {
 
+    /**
+     * Slf4j日志
+     */
     private final Logger log;
 
+    /**
+     * 配置存储Map
+     */
     private final Map<String, Config> configMap = new ConcurrentHashMap<>();
 
+    /**
+     * 配置事件监听器集合
+     */
     private final List<ConfigEventListener> listeners = new CopyOnWriteArrayList<>();
 
     public DefaultConfigManager(T belongComponent, String name) {
@@ -119,18 +130,18 @@ public class DefaultConfigManager<T extends Component<?> & Environment> extends 
     }
 
     @Override @SuppressWarnings("unchecked")
-    public final  <T extends Config> T getConfig(String name, Class<T> requireType) {
+    public final <T extends Config> T getConfig(String name, Class<T> requireType) {
         return (T) configMap.get(name);
     }
 
     @Override
     public void registerConfigEventListener(ConfigEventListener listener) {
-        listeners.add(listener);
+        listeners.add(Objects.requireNonNull(listener));
     }
 
     @Override
     public void removeConfigEventListener(ConfigEventListener listener) {
-        listeners.remove(listener);
+        listeners.remove(Objects.requireNonNull(listener));
     }
 
 
