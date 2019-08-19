@@ -1,17 +1,23 @@
 package com.lzf.flyingsocks.client.gui.swt;
 
 import com.lzf.flyingsocks.AbstractModule;
+import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.client.ClientOperator;
-import com.lzf.flyingsocks.client.gui.GUIResourceManager;
+import com.lzf.flyingsocks.client.gui.ResourceManager;
 import com.lzf.flyingsocks.client.proxy.ProxyAutoConfig;
+import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.widgets.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
@@ -20,6 +26,7 @@ import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
  * SWT系统托盘实现
  */
 final class TrayModule extends AbstractModule<SWTViewComponent> {
+    private static final Logger log = LoggerFactory.getLogger("SystemTray");
 
     private final Display display;
 
@@ -44,27 +51,41 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         tray.setVisible(true);
         tray.setToolTipText(shell.getText());
 
+        new ServerChooseMenu(shell, menu);
         initialPacMenu(shell, menu);
+        MenuItem server = new MenuItem(menu, SWT.PUSH);
+        server.setText("编辑服务器配置...(&e)");
+
+        new MenuItem(menu, SWT.SEPARATOR);
 
         MenuItem socks = new MenuItem(menu, SWT.PUSH);
-        socks.setText("本地Socks5代理设置(&l)");
+        socks.setText("本地Socks5代理设置...(&l)");
+        socks.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                belongComponent.openSocksSettingUI();
+            }
+        });
 
+        new MenuItem(menu, SWT.SEPARATOR);
+
+        initialAboutMenu(shell, menu);
         MenuItem exit = new MenuItem(menu, SWT.PUSH);
         exit.setText("退出(&x)");
 
         exit.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                getComponent().getParentComponent().stop();
+                shell.dispose();
+                belongComponent.getParentComponent().stop();
             }
         });
 
         try {
-            tray.setImage(new Image(display, new ImageData(GUIResourceManager.openSystemTrayImageStream())));
+            tray.setImage(new Image(display, new ImageData(ResourceManager.openSystemTrayImageStream())));
         } catch (IOException e) {
             throw new Error(e);
         }
-
     }
 
     /**
@@ -120,18 +141,98 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         }
     }
 
-    private void initialServerMenu(Shell shell, Menu main) {
-        MenuItem serv = new MenuItem(main, SWT.CASCADE);
-        serv.setText("代理服务器(&s)");
-        Node[] nodes = operator.getServerNodes();
 
-        Menu servMenu = new Menu(shell, SWT.DROP_DOWN);
-        for (Node node : nodes) {
-            MenuItem it = new MenuItem(servMenu, SWT.CASCADE ^ SWT.CHECK);
-            it.setText(node.getHost() + ":" + node.getPort());
+    private final class ServerChooseMenu {
+        private final Menu serverMenu;
+        private final Map<Node, MenuItem> menuMap = new HashMap<>();
+        private Node usingNode;
 
+        ServerChooseMenu(Shell shell, Menu main) {
+            MenuItem serv = new MenuItem(main, SWT.CASCADE);
+            serv.setText("代理服务器(&s)");
+            this.serverMenu = new Menu(shell, SWT.DROP_DOWN);
+            serv.setMenu(this.serverMenu);
+
+            flushNodes(false);
+
+            operator.registerConfigEventListener(event -> {
+                if(event.getSource() instanceof ProxyServerConfig && event.getEvent().equals(Config.UPDATE_EVENT)) {
+                    flushNodes(true);
+                }
+            });
         }
 
+        private void flushNodes(boolean clean) {
+            if(clean) {
+                menuMap.forEach((node, item) -> item.dispose());
+                menuMap.clear();
+                usingNode = null;
+            }
 
+            Node[] nodes = operator.getServerNodes();
+
+            for (final Node node : nodes) {
+                final MenuItem it = new MenuItem(serverMenu, SWT.CASCADE ^ SWT.CHECK);
+                it.setText(node.getHost() + ":" + node.getPort());
+
+                menuMap.put(node, it);
+
+                if(node.isUse()) {
+                    it.setSelection(true);
+                    usingNode = node;
+                }
+
+                it.addSelectionListener(new SelectionAdapter() {
+                    boolean use = node.isUse();
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        if(use) {
+                            operator.setProxyServerUsing(node, false);
+                            it.setSelection(false);
+                            usingNode = null;
+                        } else {
+                            if(usingNode != null)
+                                operator.setProxyServerUsing(usingNode, false);
+                            usingNode = node;
+                            operator.setProxyServerUsing(node, true);
+                            it.setSelection(true);
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    private void initialAboutMenu(Shell shell, Menu main) {
+        MenuItem serv = new MenuItem(main, SWT.CASCADE);
+        serv.setText("帮助/关于(&a)");
+        Menu about = new Menu(shell, SWT.DROP_DOWN);
+        serv.setMenu(about);
+
+        MenuItem github = new MenuItem(about, SWT.CASCADE);
+        github.setText("GitHub页面");
+        github.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent event) {
+                try {
+                    Runtime.getRuntime().exec("rundll32 url.dll,FileProtocolHandler https://github.com/abc123lzf/flyingsocks");
+                } catch (IOException e) {
+                    log.warn("Can not open GitHub page", e);
+                }
+            }
+        });
+
+        MenuItem problem = new MenuItem(about, SWT.CASCADE);
+        problem.setText("问题反馈");
+        problem.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent event) {
+                try {
+                    Runtime.getRuntime().exec("rundll32 url.dll,FileProtocolHandler https://github.com/abc123lzf/flyingsocks/issues");
+                } catch (IOException e) {
+                    log.warn("Can not open ISSUE page", e);
+                }
+            }
+        });
     }
 }

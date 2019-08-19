@@ -11,7 +11,7 @@ import java.net.URL;
  * @create 2019.8.13 11:26
  * @description GUI资源管理器
  */
-public final class GUIResourceManager {
+public final class ResourceManager {
 
     static {
         try {
@@ -38,7 +38,7 @@ public final class GUIResourceManager {
         return ImageIO.read(new URL("classpath://icon-tray.png"));
     }
 
-    private GUIResourceManager() {
+    private ResourceManager() {
         throw new UnsupportedOperationException();
     }
 

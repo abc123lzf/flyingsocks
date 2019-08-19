@@ -24,15 +24,15 @@ public class SWTViewComponent extends AbstractComponent<Client> {
     private final Display display;
 
 
+    private SocksSettingModule socksSettingModule;
+
+
     public SWTViewComponent(Client parent) {
         super("SWTViewComponent", Objects.requireNonNull(parent));
+
+        Callable<Display> swtBuilder = Display::new;
         try {
-            this.display = executor.submit(new Callable<Display>() {
-                @Override
-                public Display call() {
-                    return new Display();
-                }
-            }).get();
+            this.display = executor.submit(swtBuilder).get();
         } catch (Exception e) {
             throw new Error(e);
         }
@@ -43,8 +43,8 @@ public class SWTViewComponent extends AbstractComponent<Client> {
         executor.submit(() -> {
             addModule(new TrayModule(this, display));
             addModule(new ServerSettingModule(this, display));
+            addModule(this.socksSettingModule = new SocksSettingModule(this, display));
         });
-
     }
 
     @Override
@@ -64,6 +64,10 @@ public class SWTViewComponent extends AbstractComponent<Client> {
     @Override
     protected void stopInternal() {
         executor.shutdownNow();
+    }
+
+    void openSocksSettingUI() {
+        socksSettingModule.setVisiable(true);
     }
 
     @Override

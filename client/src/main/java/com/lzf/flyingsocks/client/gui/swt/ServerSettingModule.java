@@ -1,7 +1,8 @@
 package com.lzf.flyingsocks.client.gui.swt;
 
 import com.lzf.flyingsocks.AbstractModule;
-import com.lzf.flyingsocks.client.gui.GUIResourceManager;
+import com.lzf.flyingsocks.client.ClientOperator;
+import com.lzf.flyingsocks.client.gui.ResourceManager;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
@@ -22,9 +23,12 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
     private final Shell shell;
 
+    private final ClientOperator operator;
+
     ServerSettingModule(SWTViewComponent component, Display display) {
         super(Objects.requireNonNull(component));
         this.display = display;
+        this.operator = component.getParentComponent();
         this.shell = initial();
     }
 
@@ -37,11 +41,11 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
     private Shell initial() {
         final Shell shell = new Shell(display);
         shell.setText("服务器设置");
-        shell.setSize(800, 400);
+        shell.setSize(800, 450);
         shell.setVisible(false);
         shell.setLayout(null);
         try {
-            shell.setImage(new Image(display, new ImageData(GUIResourceManager.openIconImageStream())));
+            shell.setImage(new Image(display, new ImageData(ResourceManager.openIconImageStream())));
         } catch (IOException e) {
             throw new Error(e);
         }
@@ -52,12 +56,11 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         enter.setBounds(400, 300, 100, 100);
 
 
-        shell.open();
         return shell;
     }
 
 
-    Shell getShell() {
-        return shell;
+    public void setVisiable(boolean visiable) {
+        shell.setVisible(visiable);
     }
 }

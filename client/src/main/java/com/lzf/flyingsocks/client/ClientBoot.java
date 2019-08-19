@@ -15,7 +15,7 @@ public abstract class ClientBoot {
 
     public static void main(String[] args) {
         log.info("flyingsocks client {} start...", VERSION);
-
+        long st = System.currentTimeMillis();
         try {
             Client client = new StandardClient();
             client.init();
@@ -26,7 +26,8 @@ public abstract class ClientBoot {
             System.exit(1);
         }
 
-        log.info("flyingsocks client {} start complete.", VERSION);
+        long ed = System.currentTimeMillis();
+        log.info("flyingsocks client {} start complete, use {} millisecond", VERSION, ed - st);
     }
 
     private ClientBoot() {

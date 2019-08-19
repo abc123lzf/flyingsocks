@@ -83,9 +83,9 @@ public class ClientSession extends AbstractSession implements Session {
 
     @Override
     public String toString() {
-        return "ClientSession{" +
-                "delimiterKey=" + Arrays.toString(delimiterKey) +
-                ", auth=" + auth +
-                '}';
+        return "ClientSession [ address:" + remoteAddress() +
+                " ,connection_time:" + connectionTime +
+                " ,last_active_time:" + lastActiveTime +
+                " ,auth:" + auth + " ]";
     }
 }

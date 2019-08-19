@@ -62,4 +62,12 @@ public interface ClientOperator {
      * @param use 是否启用
      */
     void setProxyServerUsing(ProxyServerConfig.Node node, boolean use);
+
+    /**
+     * 修改本地Socks5代理端口身份验证机制
+     * @param auth 是否打开身份验证
+     * @param username 用户名
+     * @param password 密码
+     */
+    void updateSocksProxyAuthentication(boolean auth, String username, String password);
 }

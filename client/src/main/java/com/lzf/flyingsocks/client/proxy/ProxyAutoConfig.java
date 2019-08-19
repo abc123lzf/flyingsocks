@@ -8,6 +8,7 @@ import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.client.GlobalConfig;
+import com.lzf.flyingsocks.util.BaseUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,9 +34,15 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     public static final int PROXY_PAC = 1;
     public static final int PROXY_GLOBAL = 2;
 
+    /**
+     * 系统代理模式
+     */
     private int proxyMode;
 
-    private final Set<String> proxySet = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    /**
+     * 需要代理的域名/IP列表
+     */
+    private final Set<String> proxySet = Collections.newSetFromMap(new ConcurrentHashMap<>(2048));
 
     public ProxyAutoConfig(ConfigManager<?> configManager) {
         super(configManager, DEFAULT_NAME);
@@ -44,24 +51,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     @Override
     protected void initInternal() throws ConfigInitializationException {
         try(InputStream is = configManager.loadResource(DEFAULT_PAC_CONFIG_LOCATION)) {
-            byte[] b = new byte[5120000];
-            int r = is.read(b);
-
-            String str = new String(b, 0, r, DEFAULT_CONFIG_ENCODING);
-            JSONObject object;
-            try {
-                object = JSON.parseObject(str);
-            } catch (JSONException e) {
-                if(log.isErrorEnabled())
-                    log.error("PAC file format is not illegal.");
-                throw new ConfigInitializationException(e);
-            }
-
-            for(Map.Entry<String, Object> entry : object.entrySet()) {
-                String k;
-                if(object.getInteger(k = entry.getKey()) != 0)
-                    proxySet.add(k);
-            }
+            loadDefaultPacFile(is);
         } catch (IOException e) {
             throw new ConfigInitializationException(e);
         }
@@ -70,7 +60,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
         String url = cfg.configLocationURL();
 
         try(InputStream is = configManager.loadResource(url)) {
-            byte[] b = new byte[512000];
+            byte[] b = new byte[1024000];
             int r = is.read(b);
             String str = new String(b, 0, r, DEFAULT_CONFIG_ENCODING);
             JSONObject object;
@@ -98,6 +88,32 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
             throw new ConfigInitializationException(e);
         }
     }
+
+    /**
+     * 加载默认的PAC文件
+     * @param is 文件输入流
+     * @throws IOException 加载错误
+     */
+    private void loadDefaultPacFile(InputStream is) throws IOException {
+        byte[] b = new byte[5120000];
+        int r = is.read(b);
+
+        String str = new String(b, 0, r, DEFAULT_CONFIG_ENCODING);
+        JSONObject object;
+        try {
+            object = JSON.parseObject(str);
+        } catch (JSONException e) {
+            if(log.isErrorEnabled())
+                log.error("PAC file format is not illegal.");
+            throw new ConfigInitializationException(e);
+        }
+
+        object.forEach((host, enabled) -> {
+            if(object.getInteger(host) != 0)
+                proxySet.add(host);
+        });
+    }
+
 
     @Override
     public boolean canSave() {
@@ -161,7 +177,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
         if(proxyMode == PROXY_GLOBAL)
             return true;
         if(proxyMode == PROXY_PAC) {
-            String[] strings = host.split("\\.");
+            String[] strings = BaseUtils.splitPreserveAllTokens(host, '.');
             int len = strings.length;
             if (len <= 1)
                 return false;

@@ -30,6 +30,9 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 
+import static com.lzf.flyingsocks.protocol.AuthMessage.AuthMethod;
+import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.EncryptType;
+
 /**
  * flyingsocks服务器的连接管理组件，每个ProxyServerComponent对象代表一个服务器节点
  * 例如：若需要连接多个flyingsocks服务器实现负载均衡，则需要多个ProxyServerComponent对象
@@ -106,7 +109,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         private final ProxyRequest request;
 
-        public SerialProxyRequest(int serialId, ProxyRequest request) {
+        SerialProxyRequest(int serialId, ProxyRequest request) {
             super(request.host, request.port, request.clientChannel, request.protocol);
             this.serialId = serialId;
             this.request = request;
@@ -136,9 +139,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         EncryptProvider provider;
         //目前仅支持OpenSSL加密和不加密(测试性质)
-        if(config.getEncryptType() == ProxyServerConfig.EncryptType.NONE) {
+        if(config.getEncryptType() == EncryptType.NONE) {
             provider = null;
-        } else if(config.getEncryptType() == ProxyServerConfig.EncryptType.SSL) {
+        } else if(config.getEncryptType() == EncryptType.SSL) {
             //首先计算证书文件的MD5
             final byte[] md5 = calcuateCertFileMD5(cfg.configPath());
             if(md5 == null) {
@@ -168,8 +171,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                                 public void channelActive(ChannelHandlerContext ctx) {
                                     CertRequestMessage msg;
                                     switch (config.getAuthType()) {
-                                        case SIMPLE: msg = new CertRequestMessage(AuthMessage.AuthMethod.SIMPLE, md5); break;
-                                        case USER: msg = new CertRequestMessage(AuthMessage.AuthMethod.USER, md5); break;
+                                        case SIMPLE: msg = new CertRequestMessage(AuthMethod.SIMPLE, md5); break;
+                                        case USER: msg = new CertRequestMessage(AuthMethod.USER, md5); break;
                                         default:
                                             throw new IllegalArgumentException("Auth method: " + config.getAuthType() + " Not support.");
                                     }
@@ -633,8 +636,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         public void handlerAdded(ChannelHandlerContext ctx) {
             AuthMessage msg;
             switch (config.getAuthType()) {
-                case SIMPLE: msg = new AuthMessage(AuthMessage.AuthMethod.SIMPLE); break;
-                case USER: msg = new AuthMessage(AuthMessage.AuthMethod.USER); break;
+                case SIMPLE: msg = new AuthMessage(AuthMethod.SIMPLE); break;
+                case USER: msg = new AuthMessage(AuthMethod.USER); break;
                 default:
                     throw new IllegalArgumentException("Auth method: " + config.getAuthType() + " Not support.");
             }

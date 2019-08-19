@@ -10,8 +10,9 @@
     <version>1.1</version>
 
     <description>
-        Shadowsocks with Java-Netty
+        flyingsocks
         Author: LZF
+        GitHub: https://github.com/abc123lzf/flyingsocks
         My blog: https://blog.csdn.net/abc123lzf
     </description>
 

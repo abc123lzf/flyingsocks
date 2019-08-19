@@ -1,6 +1,7 @@
 package com.lzf.flyingsocks.client.gui.swing;
 
 import com.lzf.flyingsocks.*;
+import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.proxy.ProxyAutoConfig;
 import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
 import org.slf4j.Logger;
@@ -12,6 +13,8 @@ import java.awt.event.MouseEvent;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
+
 final class TrayModule extends AbstractModule<SwingViewComponent> {
     private static final Logger log = LoggerFactory.getLogger("PopupMenu");
 
@@ -21,7 +24,7 @@ final class TrayModule extends AbstractModule<SwingViewComponent> {
 
     private final Image icon;
 
-    private final ConfigManager<?> configManager;
+    private final ClientOperator operator;
 
     private PACSettingMenu pacSettingMenu;
 
@@ -29,14 +32,13 @@ final class TrayModule extends AbstractModule<SwingViewComponent> {
 
     TrayModule(SwingViewComponent component, Image icon) {
         super(component, NAME);
-        this.configManager = getComponent().getParentComponent().getConfigManager();
+        this.operator = component.getParentComponent();
         this.icon = icon;
         this.tray = initTray();
     }
 
     private final class PACSettingMenu {
         int select;
-        ProxyAutoConfig pacConfig;
         final MenuItem proxyItemClose = new MenuItem("关闭代理");
         final MenuItem proxyItemPac = new MenuItem("PAC模式");
         final MenuItem proxyItemGlobal = new MenuItem("全局模式");
@@ -50,43 +52,37 @@ final class TrayModule extends AbstractModule<SwingViewComponent> {
             proxyItemClose.addActionListener(e -> {
                 if(select == ProxyAutoConfig.PROXY_NO)
                     return;
-                if(pacConfig == null)
-                    return;
                 select = ProxyAutoConfig.PROXY_NO;
-                pacConfig.setProxyMode(select);
+                operator.setProxyMode(select);
             });
 
             proxyItemPac.addActionListener(e -> {
                 if(select == ProxyAutoConfig.PROXY_PAC)
                     return;
-                if(pacConfig == null)
-                    return;
 
                 select = ProxyAutoConfig.PROXY_PAC;
-                pacConfig.setProxyMode(select);
+                operator.setProxyMode(select);
             });
 
             proxyItemGlobal.addActionListener(e -> {
                 if(select == ProxyAutoConfig.PROXY_GLOBAL)
                     return;
-                if(pacConfig == null)
-                    return;
 
                 select = ProxyAutoConfig.PROXY_GLOBAL;
-                pacConfig.setProxyMode(select);
+                operator.setProxyMode(select);
             });
 
-            configManager.registerConfigEventListener(event -> {
+            operator.registerConfigEventListener(event -> {
                 if(event.getEvent().equals(Config.UPDATE_EVENT) && event.getSource() instanceof ProxyAutoConfig) {
-                    initProxyAutoConfig((ProxyAutoConfig) event.getSource());
+                    initProxyAutoConfig();
                 }
             });
 
             menu.add(proxyItem);
         }
 
-        private void initProxyAutoConfig(ProxyAutoConfig cfg) {
-            switch (this.select = cfg.getProxyMode()) {
+        private void initProxyAutoConfig() {
+            switch (this.select = operator.proxyMode()) {
                 case ProxyAutoConfig.PROXY_NO:
                     proxyItemClose.setLabel("√ 关闭代理");
                     proxyItemPac.setLabel("PAC模式");
@@ -106,7 +102,6 @@ final class TrayModule extends AbstractModule<SwingViewComponent> {
                     log.error("Unknown ProxyAuto mode.");
             }
 
-            this.pacConfig = cfg;
         }
     }
 
@@ -117,13 +112,13 @@ final class TrayModule extends AbstractModule<SwingViewComponent> {
         int select = -1;
         final Menu serverMenu = new Menu("选择服务器");
         final Map<Integer, MenuItem> serverMap = new LinkedHashMap<>();
-        final Map<Integer, ProxyServerConfig.Node> nodeMap = new LinkedHashMap<>();
+        final Map<Integer, Node> nodeMap = new LinkedHashMap<>();
 
         private ServerChooseMenu(PopupMenu menu) {
             menu.add(serverMenu);
         }
 
-        void addServer(final int index, final ProxyServerConfig cfg, final ProxyServerConfig.Node node) {
+        void addServer(final int index, final ProxyServerConfig.Node node) {
             MenuItem item;
             if(node.isUse()) {
                 item = new MenuItem("√ " + node.getHost() + ":" + node.getPort());
@@ -136,11 +131,11 @@ final class TrayModule extends AbstractModule<SwingViewComponent> {
                     MenuItem mi = serverMap.get(select); //获取目前选定的MenuItem
                     if (item == mi) //如果选择的是自身
                         return;
-                    ProxyServerConfig.Node oldServ = nodeMap.get(select);
-                    cfg.setProxyServerUsing(oldServ, false); //将目前启用的代理服务器关闭
+                    Node oldServ = nodeMap.get(select);
+                    operator.setProxyServerUsing(oldServ, false); //将目前启用的代理服务器关闭
                 }
                 select = index;
-                cfg.setProxyServerUsing(node, true); //启用新的代理服务器
+                operator.setProxyServerUsing(node, true); //启用新的代理服务器
             });
 
             nodeMap.put(index, node);
@@ -153,7 +148,7 @@ final class TrayModule extends AbstractModule<SwingViewComponent> {
             serverMenu.remove(serverMap.remove(index));
         }
 
-        void initServerItem(ProxyServerConfig cfg) {
+        void initServerItem() {
             for(MenuItem mi : serverMap.values()) {
                 serverMenu.remove(mi);
             }
@@ -161,10 +156,10 @@ final class TrayModule extends AbstractModule<SwingViewComponent> {
             serverMap.clear();
             select = -1;
 
-            ProxyServerConfig.Node[] nodes = cfg.getProxyServerConfig();
+            Node[] nodes = operator.getServerNodes();
             int i = 0;
-            for(ProxyServerConfig.Node node : nodes) {
-                addServer(i++, cfg, node);
+            for(Node node : nodes) {
+                addServer(i++, node);
             }
         }
     }
@@ -197,38 +192,8 @@ final class TrayModule extends AbstractModule<SwingViewComponent> {
             }
         });
 
-        ProxyServerConfig cfg = configManager.getConfig(ProxyServerConfig.DEFAULT_NAME, ProxyServerConfig.class);
-
-        if(cfg == null) {
-            configManager.registerConfigEventListener(new ConfigEventListener() {
-                @Override
-                public void configEvent(ConfigEvent configEvent) {
-                    if(configEvent.getEvent().equals(Config.REGISTER_EVENT) && configEvent.getSource() instanceof ProxyServerConfig) {
-                        ProxyServerConfig psc = (ProxyServerConfig) configEvent.getSource();
-                        serverChooseMenu.initServerItem(psc);
-                        configManager.removeConfigEventListener(this);
-                    }
-                }
-            });
-        } else {
-            serverChooseMenu.initServerItem(cfg);
-        }
-
-        ProxyAutoConfig pac = configManager.getConfig(ProxyAutoConfig.DEFAULT_NAME, ProxyAutoConfig.class);
-        if(pac == null) {
-            configManager.registerConfigEventListener(new ConfigEventListener() {
-                @Override
-                public void configEvent(ConfigEvent event) {
-                    if(event.getEvent().equals(Config.REGISTER_EVENT) && event.getSource() instanceof ProxyAutoConfig) {
-                        pacSettingMenu.initProxyAutoConfig((ProxyAutoConfig) event.getSource());
-                        configManager.removeConfigEventListener(this);
-                    }
-                }
-            });
-        } else {
-            pacSettingMenu.initProxyAutoConfig(pac);
-        }
-
+        serverChooseMenu.initServerItem();
+        pacSettingMenu.initProxyAutoConfig();
 
         serverItem.addActionListener(e -> belongComponent.getModuleByName(ServerSettingModule.NAME,
                 ServerSettingModule.class).setVisible(true));
@@ -241,10 +206,9 @@ final class TrayModule extends AbstractModule<SwingViewComponent> {
             belongComponent.getParentComponent().stop();
         });
 
-        configManager.registerConfigEventListener(event -> {
+        operator.registerConfigEventListener(event -> {
             if(event.getEvent().equals(Config.UPDATE_EVENT) && event.getSource() instanceof ProxyServerConfig) {
-                ProxyServerConfig psc = (ProxyServerConfig) event.getSource();
-                serverChooseMenu.initServerItem(psc);
+                serverChooseMenu.initServerItem();
             }
         });
 

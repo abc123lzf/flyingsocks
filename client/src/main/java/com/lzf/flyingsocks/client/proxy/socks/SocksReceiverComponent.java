@@ -380,7 +380,6 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
 
                 DatagramPacket dp = new DatagramPacket(buf, receiveAddress);
                 ctx.writeAndFlush(dp);
-                buf.release();
             }
         }
 

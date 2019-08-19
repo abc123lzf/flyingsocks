@@ -4,13 +4,14 @@ import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.client.gui.swt.SWTViewComponent;
 import com.lzf.flyingsocks.client.proxy.ProxyAutoConfig;
 import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
+import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksProxyComponent;
 import com.lzf.flyingsocks.client.gui.swing.SwingViewComponent;
 
 /**
  * 客户端类
  */
-public class StandardClient extends Client {
+public final class StandardClient extends Client {
 
     StandardClient() {
         super();
@@ -59,6 +60,14 @@ public class StandardClient extends Client {
     @Override
     protected void restartInternal() {
         throw new ComponentException("can not restart client");
+    }
+
+    @Override
+    public void updateSocksProxyAuthentication(boolean auth, String username, String password) {
+        SocksConfig cfg = getConfigManager().getConfig(SocksConfig.NAME, SocksConfig.class);
+        if(cfg == null)
+            return;
+        cfg.update(auth, username, password);
     }
 
     @Override
