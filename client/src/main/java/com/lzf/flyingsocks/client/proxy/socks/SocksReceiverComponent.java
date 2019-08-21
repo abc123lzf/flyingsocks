@@ -98,8 +98,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
         try {
             serverBootstrap.clone().bind(bindAddress, port).addListener(f -> {
                 if(!f.isSuccess()) {
-                    Throwable t = f.cause();
-                    log.error("bind socks server error, address:[{}:{}]", bindAddress, port, t);
+                    log.error("bind socks server error, address:[{}:{}]", bindAddress, port, f.cause());
                     System.exit(1);
                 } else {
                     log.info("Netty socks server complete");

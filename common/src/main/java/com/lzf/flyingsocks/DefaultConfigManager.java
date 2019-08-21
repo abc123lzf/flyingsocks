@@ -102,7 +102,7 @@ public class DefaultConfigManager<T extends Component<?> & Environment>
                 config.save();
                 return true;
             } catch (Exception e) {
-                log.warn("Save config '" + config.getName() + "' occur a exception", e);
+                log.warn("Save config '{}' occur a exception", config.getName(), e);
                 return false;
             }
         }
@@ -118,7 +118,7 @@ public class DefaultConfigManager<T extends Component<?> & Environment>
                     if (c.canSave())
                         c.save();
                 } catch (Exception e) {
-                    log.warn("Save config '" + c.getName() + "' occur a exception", e);
+                    log.warn("Save config '{}' occur a exception", c.getName(), e);
                 }
             }
         }

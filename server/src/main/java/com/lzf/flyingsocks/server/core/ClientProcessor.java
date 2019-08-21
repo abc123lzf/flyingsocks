@@ -74,7 +74,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                 provider = null;
                 break;
             default: {
-                log.error("Unsupport encrypt type");
+                log.error("Unsupport encrypt type {}", node.encryptType);
                 System.exit(1);
                 return;
             }
@@ -178,8 +178,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             serverBootstrap.bind(parent.getPort()).addListener(future -> {
                 if (!future.isSuccess()) {
                     Throwable t = future.cause();
-                    if (log.isErrorEnabled())
-                        log.error("Server occur a error when bind port " + parent.getPort(), t);
+                    log.error("Server occur a error when bind port {}", parent.getPort(), t);
                     throw new ComponentException(t);
                 }
             }).sync();
@@ -187,8 +186,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             certBootstrap.bind(parent.getCertPort()).addListener(future -> {
                 if (!future.isSuccess()) {
                     Throwable t = future.cause();
-                    if (log.isErrorEnabled())
-                        log.error("CertServer occur a error when bind port " + parent.getPort(), t);
+                    log.error("CertServer occur a error when bind port {}", parent.getPort(), t);
                     throw new ComponentException(t);
                 }
             }).sync();
@@ -238,8 +236,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             if(cause instanceof IOException)
                 return;
-            if(log.isWarnEnabled())
-                log.warn("Exception occur at CertRequestHandler", cause);
+            log.warn("Exception occur at CertRequestHandler", cause);
             ctx.close();
         }
 
@@ -284,8 +281,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
             msg.getDelimiter().readBytes(key);
 
-            if(log.isTraceEnabled())
-                log.trace("Receive DelimiterMessage from client.");
+            log.trace("Receive DelimiterMessage from client.");
 
             ClientSession state = parent.getClientSession(ctx.channel());
             state.setDelimiterKey(key);
@@ -391,8 +387,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             try {
                 msg = new ProxyRequestMessage(buf);
             } catch (SerializationException e) {
-                if(log.isWarnEnabled())
-                    log.warn("Serialize request occur a exception", e);
+                log.warn("Serialize request occur a exception", e);
                 ctx.close();
                 return;
             }

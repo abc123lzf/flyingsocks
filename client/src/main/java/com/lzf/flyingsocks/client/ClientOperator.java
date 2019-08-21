@@ -1,7 +1,7 @@
 package com.lzf.flyingsocks.client;
 
 import com.lzf.flyingsocks.ConfigEventListener;
-import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
+import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
 
 /**
  * @create 2019.8.18 1:17
@@ -10,10 +10,34 @@ import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
 public interface ClientOperator {
 
     /**
+     * 清空日志
+     */
+    void cleanLogFiles();
+
+    /**
+     * 打开日志目录
+     */
+    void openLogDirectory();
+
+    /**
+     * 打开浏览器
+     * @param url URL链接
+     */
+    void openBrowser(String url);
+
+    /**
      * 注册配置中心事件监听器
      * @param listener 事件监听器
      */
     void registerConfigEventListener(ConfigEventListener listener);
+
+    /**
+     * 注册ProxyServerConfig监听器
+     * @param event 关心的事件
+     * @param runnable 事件触发后的逻辑
+     * @param remove 事件触发后是否删除该监听器
+     */
+    void registerProxyServerConfigListener(String event, Runnable runnable, boolean remove);
 
     /**
      * 删除配置中心事件监听器
@@ -25,25 +49,25 @@ public interface ClientOperator {
      * 用户界面添加代理服务器配置
      * @param node 服务器配置
      */
-    void addServerConfig(ProxyServerConfig.Node node);
+    void addServerConfig(Node node);
 
     /**
      * 更新代理服务器的配置
      * @param node 服务器配置
      */
-    void updateServerConfig(ProxyServerConfig.Node node);
+    void updateServerConfig(Node node);
 
 
     /**
      * 移除代理服务器配置
      * @param node 服务器配置
      */
-    void removeServer(ProxyServerConfig.Node node);
+    void removeServer(Node node);
 
     /**
      * @return 服务器配置
      */
-    ProxyServerConfig.Node[] getServerNodes();
+    Node[] getServerNodes();
 
     /**
      * @return 系统代理模式
@@ -61,7 +85,7 @@ public interface ClientOperator {
      * @param node 代理服务器配置
      * @param use 是否启用
      */
-    void setProxyServerUsing(ProxyServerConfig.Node node, boolean use);
+    void setProxyServerUsing(Node node, boolean use);
 
     /**
      * 修改本地Socks5代理端口身份验证机制

@@ -12,6 +12,8 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.widgets.*;
+import org.eclipse.swt.widgets.Menu;
+import org.eclipse.swt.widgets.MenuItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +28,9 @@ import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
  * SWT系统托盘实现
  */
 final class TrayModule extends AbstractModule<SWTViewComponent> {
+    private static final String GITHUB_PAGE = "https://github.com/abc123lzf/flyingsocks";
+    private static final String ISSUE_PAGE = "https://github.com/abc123lzf/flyingsocks/issues";
+
     private static final Logger log = LoggerFactory.getLogger("SystemTray");
 
     private final Display display;
@@ -52,9 +57,17 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         tray.setToolTipText(shell.getText());
 
         new ServerChooseMenu(shell, menu);
+
         initialPacMenu(shell, menu);
+
         MenuItem server = new MenuItem(menu, SWT.PUSH);
         server.setText("编辑服务器配置...(&e)");
+        server.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                belongComponent.openServerSettingUI();
+            }
+        });
 
         new MenuItem(menu, SWT.SEPARATOR);
 
@@ -209,16 +222,32 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         Menu about = new Menu(shell, SWT.DROP_DOWN);
         serv.setMenu(about);
 
+        MenuItem openLogDir = new MenuItem(about, SWT.CASCADE);
+        openLogDir.setText("打开日志目录");
+        openLogDir.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                operator.openLogDirectory();
+            }
+        });
+
+        MenuItem cleanLog = new MenuItem(about, SWT.CASCADE);
+        cleanLog.setText("清空日志");
+        cleanLog.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                operator.cleanLogFiles();
+            }
+        });
+
+        new MenuItem(about, SWT.SEPARATOR);
+
         MenuItem github = new MenuItem(about, SWT.CASCADE);
         github.setText("GitHub页面");
         github.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                try {
-                    Runtime.getRuntime().exec("rundll32 url.dll,FileProtocolHandler https://github.com/abc123lzf/flyingsocks");
-                } catch (IOException e) {
-                    log.warn("Can not open GitHub page", e);
-                }
+                operator.openBrowser(GITHUB_PAGE);
             }
         });
 
@@ -227,11 +256,7 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         problem.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                try {
-                    Runtime.getRuntime().exec("rundll32 url.dll,FileProtocolHandler https://github.com/abc123lzf/flyingsocks/issues");
-                } catch (IOException e) {
-                    log.warn("Can not open ISSUE page", e);
-                }
+                operator.openBrowser(ISSUE_PAGE);
             }
         });
     }

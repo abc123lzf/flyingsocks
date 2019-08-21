@@ -23,8 +23,9 @@ public class SWTViewComponent extends AbstractComponent<Client> {
 
     private final Display display;
 
+    private volatile SocksSettingModule socksSettingModule;
 
-    private SocksSettingModule socksSettingModule;
+    private volatile ServerSettingModule serverSettingModule;
 
 
     public SWTViewComponent(Client parent) {
@@ -41,23 +42,33 @@ public class SWTViewComponent extends AbstractComponent<Client> {
     @Override
     protected void initInternal() {
         executor.submit(() -> {
-            addModule(new TrayModule(this, display));
-            addModule(new ServerSettingModule(this, display));
-            addModule(this.socksSettingModule = new SocksSettingModule(this, display));
+            try {
+                addModule(new TrayModule(this, display));
+                addModule(this.serverSettingModule = new ServerSettingModule(this, display));
+                addModule(this.socksSettingModule = new SocksSettingModule(this, display));
+            } catch (Throwable t) {
+                log.error("SWT Thread occur a error", t);
+                System.exit(1);
+            }
         });
     }
 
     @Override
     protected void startInternal() {
         executor.submit(() -> {
-            Thread t = Thread.currentThread();
-            while (!t.isInterrupted()) {
-                if(!display.readAndDispatch()) {
-                    display.sleep();
+            try {
+                Thread t = Thread.currentThread();
+                while (!t.isInterrupted()) {
+                    if (!display.readAndDispatch()) {
+                        display.sleep();
+                    }
                 }
-            }
 
-            display.dispose();
+                display.dispose();
+            } catch (Throwable t) {
+                log.error("SWT Thread occur a error", t);
+                System.exit(1);
+            }
         });
     }
 
@@ -68,6 +79,10 @@ public class SWTViewComponent extends AbstractComponent<Client> {
 
     void openSocksSettingUI() {
         socksSettingModule.setVisiable(true);
+    }
+
+    void openServerSettingUI() {
+        serverSettingModule.setVisiable(true);
     }
 
     @Override

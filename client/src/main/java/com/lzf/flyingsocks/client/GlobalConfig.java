@@ -14,7 +14,7 @@ import java.util.Properties;
 /**
  * 初始配置文件，用于获取用户配置文件路径、GUI设置以及应用程序超时时间
  */
-public class GlobalConfig extends AbstractConfig  {
+public class GlobalConfig extends AbstractConfig {
 
     public static final String NAME = "config.global";
 

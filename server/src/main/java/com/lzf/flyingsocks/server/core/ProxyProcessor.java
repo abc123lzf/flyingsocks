@@ -181,8 +181,9 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
     }
 
     private void removeClientSession(Channel channel) {
-        if(log.isInfoEnabled())
-            log.info("Client channel {} has been removed.", channel.id().asLongText());
+        if(log.isInfoEnabled()) {
+            log.info("Remote client has disconnect, connection information: {}", activeClientMap.get(channel));
+        }
         activeClientMap.remove(channel);
     }
 

@@ -1,7 +1,13 @@
 package com.lzf.flyingsocks.client;
 
 import com.lzf.flyingsocks.*;
-import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
+import com.lzf.flyingsocks.Component;
+
+import java.awt.Desktop;
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 public abstract class Client extends TopLevelComponent
         implements Component<VoidComponent>, Environment, ClientOperator {
@@ -27,35 +33,50 @@ public abstract class Client extends TopLevelComponent
         return super.getConfigManager();
     }
 
+    @Override
+    public void cleanLogFiles() {
+        GlobalConfig gc = getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
+        if(gc != null) {
+            File folder = new File(gc.configPath() + "/log");
+            if(!folder.exists() || folder.isDirectory())
+                return;
 
-    /* GUI Interface  */
+            File[] files = folder.listFiles();
+            if(files == null)
+                return;
+            for (File file : files) {
+                if(file.isFile() && !file.delete())
+                    log.info("Can not delete file {}", file.getName());
+            }
+        }
+    }
 
-    /**
-     * 用户界面添加代理服务器配置
-     * @param node 服务器配置
-     */
-    public abstract void addServerConfig(ProxyServerConfig.Node node);
+    @Override
+    public void openLogDirectory() {
+        GlobalConfig gc = getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
+        if(gc != null) {
+            File folder = new File(gc.configPath() + "/log");
+            try {
+                Desktop.getDesktop().open(folder);
+            } catch (IOException e) {
+                log.warn("Open log file directory occur a exception", e);
+            }
+        }
+    }
 
-    /**
-     * 更新代理服务器的配置
-     * @param node 服务器配置
-     */
-    public abstract void updateServerConfig(ProxyServerConfig.Node node);
-
-
-    /**
-     * 移除代理服务器配置
-     * @param node 服务器配置
-     */
-    public abstract void removeServer(ProxyServerConfig.Node node);
-
-    /**
-     * @return 服务器配置
-     */
-    public abstract ProxyServerConfig.Node[] getServerNodes();
-
-    /**
-     * @return 系统代理模式
-     */
-    public abstract int proxyMode();
+    @Override
+    public void openBrowser(String url) {
+        try {
+            if(isWindows()) {
+                Runtime.getRuntime().exec("rundll32 url.dll,FileProtocolHandler " + url);
+            } else {
+                Desktop dt = Desktop.getDesktop();
+                if(dt.isSupported(Desktop.Action.BROWSE)) {
+                    dt.browse(new URI(url));
+                }
+            }
+        } catch (IOException | URISyntaxException e) {
+            log.warn("Open browser occur a exception", e);
+        }
+    }
 }

@@ -36,17 +36,17 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
         shell.setText("Socks5本地代理设置");
         shell.setSize(600, 330);
         try {
-            shell.setImage(new Image(display, new ImageData(ResourceManager.openSystemTrayImageStream())));
+            shell.setImage(new Image(display, new ImageData(ResourceManager.openIconImageStream())));
         } catch (IOException e) {
             throw new Error(e);
         }
 
         shell.addListener(SWT.Close, e -> {
-            setVisiable(false);
             e.doit = false;
+            setVisiable(false);
         });
 
-        Label openl = new Label(shell, SWT.CENTER ^ SWT.RIGHT);
+        Label openl = new Label(shell, SWT.CENTER | SWT.RIGHT);
         openl.setText("验证");
         openl.setBounds(20, 5, 80, 50);
 
@@ -57,18 +57,18 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
         off.setText("关闭");
         off.setBounds(250, 5, 80, 50);
 
-        Label userl = new Label(shell, SWT.CENTER ^ SWT.RIGHT);
+        Label userl = new Label(shell, SWT.CENTER | SWT.RIGHT);
         userl.setText("用户名");
         userl.setBounds(20, 60, 80, 50);
 
         Text user = new Text(shell, SWT.BORDER);
         user.setBounds(160, 60, 380, 50);
 
-        Label passl = new Label(shell, SWT.CENTER ^ SWT.RIGHT);
+        Label passl = new Label(shell, SWT.CENTER | SWT.RIGHT);
         passl.setText("密码");
         passl.setBounds(20, 130, 80, 50);
 
-        Text pass = new Text(shell, SWT.BORDER ^ SWT.PASSWORD);
+        Text pass = new Text(shell, SWT.BORDER | SWT.PASSWORD);
         pass.setBounds(160, 130, 380, 50);
 
         Button enter = new Button(shell, SWT.NONE);
