@@ -26,7 +26,7 @@ public class ProxyServerConfig extends AbstractConfig {
     private final List<Node> nodes = new CopyOnWriteArrayList<>();
 
 
-    public ProxyServerConfig(ConfigManager<?> configManager) {
+    ProxyServerConfig(ConfigManager<?> configManager) {
         super(configManager, DEFAULT_NAME);
     }
 

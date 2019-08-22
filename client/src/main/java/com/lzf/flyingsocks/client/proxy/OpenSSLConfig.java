@@ -17,7 +17,7 @@ public class OpenSSLConfig extends AbstractConfig {
 
     private File rootCertFile;
 
-    public OpenSSLConfig(ConfigManager<?> configManager, String host) {
+    OpenSSLConfig(ConfigManager<?> configManager, String host) {
         super(configManager, NAME_PREFIX + host);
         this.host = host;
     }

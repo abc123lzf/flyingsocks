@@ -1,14 +1,10 @@
 package com.lzf.flyingsocks.client.gui.swing;
 
 import com.lzf.flyingsocks.AbstractComponent;
-import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.client.Client;
-import com.lzf.flyingsocks.client.GlobalConfig;
-import com.lzf.flyingsocks.client.gui.ResourceManager;
 import org.jb2011.lnf.beautyeye.BeautyEyeLNFHelper;
 
-import java.awt.*;
-import java.io.IOException;
+import java.awt.SystemTray;
 import java.util.Objects;
 
 /**
@@ -44,7 +40,7 @@ public class SwingViewComponent extends AbstractComponent<Client> {
         }
 
         if(!SystemTray.isSupported()) {
-            log.error("Swing GUI: System not support the tray.");
+            log.error("Swing GUI: System not support the tray, you can shutdown GUI mode at config.json");
             System.exit(1);
         }
 

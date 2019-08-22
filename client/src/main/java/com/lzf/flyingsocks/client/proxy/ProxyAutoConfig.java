@@ -44,7 +44,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
      */
     private final Set<String> proxySet = Collections.newSetFromMap(new ConcurrentHashMap<>(2048));
 
-    public ProxyAutoConfig(ConfigManager<?> configManager) {
+    ProxyAutoConfig(ConfigManager<?> configManager) {
         super(configManager, DEFAULT_NAME);
     }
 

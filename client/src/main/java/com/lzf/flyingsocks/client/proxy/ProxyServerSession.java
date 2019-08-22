@@ -10,7 +10,7 @@ public class ProxyServerSession extends AbstractSession {
 
     private byte[] delimiter;
 
-    public ProxyServerSession(SocketChannel serverChannel) {
+    ProxyServerSession(SocketChannel serverChannel) {
         super(serverChannel);
     }
 
