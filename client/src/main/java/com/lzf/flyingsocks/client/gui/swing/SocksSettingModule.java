@@ -1,24 +1,38 @@
 package com.lzf.flyingsocks.client.gui.swing;
 
 import com.lzf.flyingsocks.*;
+import com.lzf.flyingsocks.client.ClientOperator;
+import com.lzf.flyingsocks.client.gui.ResourceManager;
 import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.IOException;
 
 final class SocksSettingModule extends AbstractModule<SwingViewComponent> {
+    private static final Logger log = LoggerFactory.getLogger(SocksSettingModule.class);
     static final String NAME = "module.socks";
 
+    private final ClientOperator operator;
     private final Frame frame;
     private JComboBox<String> authTypeBox;
     private JTextField userField;
     private JPasswordField passwordField;
 
-    SocksSettingModule(SwingViewComponent component, Image icon) {
+    SocksSettingModule(SwingViewComponent component) {
         super(component, NAME);
-        this.frame = initFrame(icon);
+        this.operator = getComponent().getParentComponent();
+        try {
+            this.frame = initFrame(ResourceManager.loadIconImage());
+        } catch (IOException e) {
+            log.error("Can not load/find icon image", e);
+            System.exit(1);
+            throw new Error(e);
+        }
     }
 
     private Frame initFrame(Image icon) {
@@ -111,6 +125,8 @@ final class SocksSettingModule extends AbstractModule<SwingViewComponent> {
             });
         }
 
+        //operator.registerSocksConfigListener(Config.UPDATE_EVENT, () -> {}, false);
+
         cm.registerConfigEventListener(event -> {
             if(event.getEvent().equals(Config.UPDATE_EVENT) && event.getSource() instanceof SocksConfig) {
                 initConfig((SocksConfig) event.getSource());
@@ -118,7 +134,6 @@ final class SocksSettingModule extends AbstractModule<SwingViewComponent> {
         });
 
         cancel.addActionListener(e -> setVisiable(false));
-
 
         return f;
     }

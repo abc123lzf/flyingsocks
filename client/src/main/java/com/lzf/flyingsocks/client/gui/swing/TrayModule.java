@@ -2,6 +2,7 @@ package com.lzf.flyingsocks.client.gui.swing;
 
 import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.client.ClientOperator;
+import com.lzf.flyingsocks.client.gui.ResourceManager;
 import com.lzf.flyingsocks.client.proxy.ProxyAutoConfig;
 import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
 import org.slf4j.Logger;
@@ -10,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -30,10 +32,16 @@ final class TrayModule extends AbstractModule<SwingViewComponent> {
 
     private ServerChooseMenu serverChooseMenu;
 
-    TrayModule(SwingViewComponent component, Image icon) {
+    TrayModule(SwingViewComponent component) {
         super(component, NAME);
         this.operator = component.getParentComponent();
-        this.icon = icon;
+        try {
+            this.icon = ResourceManager.loadSystemTrayImage();
+        } catch (IOException e) {
+            log.error("Can not find/load system tray image", e);
+            System.exit(1);
+            throw new Error(e);
+        }
         this.tray = initTray();
     }
 

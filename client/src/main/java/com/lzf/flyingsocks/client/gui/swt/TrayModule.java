@@ -4,8 +4,6 @@ import com.lzf.flyingsocks.AbstractModule;
 import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
-import com.lzf.flyingsocks.client.proxy.ProxyAutoConfig;
-import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -22,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import static com.lzf.flyingsocks.client.proxy.ProxyAutoConfig.*;
 import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
 
 /**
@@ -148,9 +147,9 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
 
         int mode = operator.proxyMode();
         switch (mode) {
-            case ProxyAutoConfig.PROXY_PAC: pac1.setSelection(true); break;
-            case ProxyAutoConfig.PROXY_NO: pac0.setSelection(true); break;
-            case ProxyAutoConfig.PROXY_GLOBAL: pac2.setSelection(true); break;
+            case PROXY_PAC: pac1.setSelection(true); break;
+            case PROXY_NO: pac0.setSelection(true); break;
+            case PROXY_GLOBAL: pac2.setSelection(true); break;
         }
     }
 
@@ -167,12 +166,7 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
             serv.setMenu(this.serverMenu);
 
             flushNodes(false);
-
-            operator.registerConfigEventListener(event -> {
-                if(event.getSource() instanceof ProxyServerConfig && event.getEvent().equals(Config.UPDATE_EVENT)) {
-                    flushNodes(true);
-                }
-            });
+            operator.registerProxyServerConfigListener(Config.UPDATE_EVENT, () -> flushNodes(true), false);
         }
 
         private void flushNodes(boolean clean) {

@@ -43,34 +43,19 @@ public class SwingViewComponent extends AbstractComponent<Client> {
             log.warn("BeautyEyeLNFHelper exception", e);
         }
 
-        GlobalConfig cfg = parent.getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
-        if(!cfg.isOpenGUI())
-            return;
-
-        if(!SystemTray.isSupported())
-            throw new UnsupportedOperationException("System not support the tray.");
-
-        Image image;
-        try {
-            image = ResourceManager.loadIconImage();
-        } catch (IOException e) {
-            throw new ComponentException("file \"icon.png\" load error.", e);
+        if(!SystemTray.isSupported()) {
+            log.error("Swing GUI: System not support the tray.");
+            System.exit(1);
         }
 
-        Image smallImage;
-        try {
-            smallImage = ResourceManager.loadSystemTrayImage();
-        } catch (IOException e) {
-            throw new ComponentException("file \"icon-tray.png\" load error.", e);
-        }
 
-        this.trayModule = new TrayModule(this, smallImage);
+        this.trayModule = new TrayModule(this);
         addModule(trayModule);
 
-        this.serverSettingModule = new ServerSettingModule(this, image);
+        this.serverSettingModule = new ServerSettingModule(this);
         addModule(serverSettingModule);
 
-        this.socksSettingModule = new SocksSettingModule(this, image);
+        this.socksSettingModule = new SocksSettingModule(this);
         addModule(socksSettingModule);
     }
 

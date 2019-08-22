@@ -7,13 +7,18 @@ import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLException;
+import javax.net.ssl.TrustManagerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 
 public class OpenSSLEncryptProvider implements EncryptProvider {
+    private static final Logger log = LoggerFactory.getLogger("OpenSSLEncryptProvider");
+
     static final String NAME = "OpenSSL";
 
     private volatile SslContext sslContext;
@@ -61,11 +66,16 @@ public class OpenSSLEncryptProvider implements EncryptProvider {
 
     private SslContext buildSSLContext(Map<String, Object> params) throws IOException {
         if(client) {
-            try (InputStream x509crt = (InputStream) params.get("file.cert.root")) {
-                return SslContextBuilder.forClient().trustManager(x509crt).build();
+            if(params != null && params.containsKey("file.cert.root")) {
+                try (InputStream x509crt = (InputStream) params.get("file.cert.root")) {
+                    return SslContextBuilder.forClient().trustManager(x509crt).build();
+                }
+            } else {
+                log.info("No cert file provide");
+                return SslContextBuilder.forClient().build();
             }
         } else {
-            try (InputStream crt = (InputStream) params.get("file.cert");
+            try (InputStream crt = (InputStream) params.get("file.cert");  //该参数(签名请求)可为null
                  InputStream key = (InputStream) params.get("file.key");
                  InputStream x509crt = (InputStream) params.get("file.cert.root")) {
                 return SslContextBuilder.forServer(crt, key)

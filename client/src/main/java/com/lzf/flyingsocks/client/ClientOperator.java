@@ -40,6 +40,15 @@ public interface ClientOperator {
     void registerProxyServerConfigListener(String event, Runnable runnable, boolean remove);
 
     /**
+     * 注册SocksConfig事件监听器
+     * @param event 关心的事件
+     * @param runnable 事件触发后的逻辑
+     * @param remove 事件触发后是否删除该监听器
+     */
+    void registerSocksConfigListener(String event, Runnable runnable, boolean remove);
+
+
+    /**
      * 删除配置中心事件监听器
      * @param listener 事件监听器
      */

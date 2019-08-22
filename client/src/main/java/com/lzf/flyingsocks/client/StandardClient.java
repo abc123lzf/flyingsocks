@@ -97,6 +97,27 @@ public final class StandardClient extends Client {
     }
 
     @Override
+    public void registerSocksConfigListener(String event, Runnable runnable, boolean remove) {
+        if(!remove) {
+            getConfigManager().registerConfigEventListener(e -> {
+                if(e.getSource() instanceof SocksConfig && e.getEvent().equals(event)) {
+                    runnable.run();
+                }
+            });
+        } else {
+            getConfigManager().registerConfigEventListener(new ConfigEventListener() {
+                @Override
+                public void configEvent(ConfigEvent e) {
+                    if(e.getSource() instanceof SocksConfig && e.getEvent().equals(event)) {
+                        runnable.run();
+                        e.getConfigManager().removeConfigEventListener(this);
+                    }
+                }
+            });
+        }
+    }
+
+    @Override
     public void removeConfigEventListener(ConfigEventListener listener) {
         getConfigManager().removeConfigEventListener(listener);
     }

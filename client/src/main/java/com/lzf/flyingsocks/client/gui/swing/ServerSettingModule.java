@@ -1,7 +1,8 @@
 package com.lzf.flyingsocks.client.gui.swing;
 
 import com.lzf.flyingsocks.*;
-import com.lzf.flyingsocks.client.Client;
+import com.lzf.flyingsocks.client.ClientOperator;
+import com.lzf.flyingsocks.client.gui.ResourceManager;
 import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,10 +11,15 @@ import javax.swing.*;
 import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.AuthType;
+import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.EncryptType;
+import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
 
 final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
 
@@ -32,7 +38,7 @@ final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
     /**
      * 客户端
      */
-    private final Client client;
+    private final ClientOperator operator;
 
     /**
      * 窗口对象
@@ -56,12 +62,17 @@ final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
 
     /**
      * @param component 父组件
-     * @param icon 界面左上角图片
      */
-    ServerSettingModule(SwingViewComponent component, Image icon) {
+    ServerSettingModule(SwingViewComponent component) {
         super(component, NAME);
-        this.client = component.getParentComponent();
-        this.frame = initFrame(icon);
+        this.operator = component.getParentComponent();
+        try {
+            this.frame = initFrame(ResourceManager.loadIconImage());
+        } catch (IOException e) {
+            log.error("Can not find/load icon image", e);
+            System.exit(1);
+            throw new Error(e);
+        }
         initConfig();
     }
 
@@ -85,9 +96,7 @@ final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
         this.hostList = new HostList(sf, 10, 50, 300, 278);
         this.settingTable = new SettingTable(sf, 315, 50, 480, 275);
 
-        settingTable.addEnterButtonActionListener(e -> {
-            hostList.addElement(NEW_CONFIG_NAME);
-        });
+        settingTable.addEnterButtonActionListener(e -> hostList.addElement(NEW_CONFIG_NAME));
 
         settingTable.addSaveButtonActionListener(e -> {
             int index = hostList.getSelectIndex();
@@ -104,17 +113,17 @@ final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
                 return;
             }
 
-            ProxyServerConfig.AuthType at = settingTable.getAuthType();
+            AuthType at = settingTable.getAuthType();
             if(at == null) {
                 JOptionPane.showMessageDialog(frame, "未选择认证方式", "提示", JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
             String[] args = settingTable.getAuthParameter();
-            ProxyServerConfig.EncryptType et = settingTable.getEncryptType();
+            EncryptType et = settingTable.getEncryptType();
 
             int certPort = -1;
-            if(et == ProxyServerConfig.EncryptType.SSL) {
+            if(et == EncryptType.SSL) {
                 certPort = settingTable.getCertPort();
             }
 
@@ -145,19 +154,19 @@ final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
             if(index == -1 || index >= serverNode.size()) {
                 settingTable.setHostField("");
                 settingTable.setPortField(null);
-                settingTable.setAuthInfo(ProxyServerConfig.AuthType.SIMPLE, "");
+                settingTable.setAuthInfo(AuthType.SIMPLE, "");
                 return;
             }
-            ProxyServerConfig.Node n = serverNode.get(index);
+            Node n = serverNode.get(index);
             if(n == null) {
                 settingTable.setHostField("");
                 settingTable.setPortField(null);
-                settingTable.setAuthInfo(ProxyServerConfig.AuthType.SIMPLE, "");
+                settingTable.setAuthInfo(AuthType.SIMPLE, "");
                 return;
             }
             settingTable.setHostField(n.getHost());
             settingTable.setPortField(n.getPort());
-            if(n.getAuthType() == ProxyServerConfig.AuthType.SIMPLE) {
+            if(n.getAuthType() == AuthType.SIMPLE) {
                 settingTable.setAuthInfo(n.getAuthType(), n.getAuthArgument("password"));
             } else {
                 settingTable.setAuthInfo(n.getAuthType(), n.getAuthArgument("user"), n.getAuthArgument("pass"));
@@ -169,28 +178,19 @@ final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
 
 
     private void initConfig() {
-        ProxyServerConfig.Node[] nodes = client.getServerNodes();
+        Node[] nodes = operator.getServerNodes();
         if(nodes == null) {
-            ConfigManager<?> manager = belongComponent.getParentComponent().getConfigManager();
-            manager.registerConfigEventListener(new ConfigEventListener() {
-                @Override
-                public void configEvent(ConfigEvent e) {
-                    if(e.getEvent().equals(Config.REGISTER_EVENT) && e.getSource() instanceof ProxyServerConfig) {
-                        ProxyServerConfig psc = (ProxyServerConfig) e.getSource();
-                        initServerNode(psc.getProxyServerConfig());
-                        manager.removeConfigEventListener(this);
-                    }
-                }
-            });
+            operator.registerProxyServerConfigListener(Config.REGISTER_EVENT,
+                    () -> initServerNode(operator.getServerNodes()), true);
         } else {
             initServerNode(nodes);
         }
     }
 
 
-    private void initServerNode(ProxyServerConfig.Node[] nodes) {
+    private void initServerNode(Node[] nodes) {
         int i = 0;
-        for(ProxyServerConfig.Node node : nodes) {
+        for(Node node : nodes) {
             hostList.addElement(node.getHost() + ":" + node.getPort(), i);
             serverNode.add(i, node);
             i++;
@@ -198,7 +198,7 @@ final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
     }
 
 
-    public void setVisible(boolean visible) {
+    void setVisible(boolean visible) {
         frame.setVisible(visible);
     }
 
@@ -211,8 +211,8 @@ final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
      * @param authType 认证方式
      * @param args 认证参数
      */
-    private ProxyServerConfig.Node addServerNode(String host, int port, int certPort, ProxyServerConfig.EncryptType encryptType,
-                                                 ProxyServerConfig.AuthType authType, String... args) {
+    private Node addServerNode(String host, int port, int certPort, EncryptType encryptType,
+                                                 AuthType authType, String... args) {
         Map<String, String> param = new HashMap<>(4, 1);
         switch (authType) {
             case SIMPLE:
@@ -222,16 +222,16 @@ final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
                 param.put("pass", args[1]);
                 break;
         }
-        ProxyServerConfig.Node node = new ProxyServerConfig.Node(host, port, certPort, authType, encryptType, param, false);
 
-        client.addServerConfig(node);
+        Node node = new Node(host, port, certPort, authType, encryptType, param, false);
+        operator.addServerConfig(node);
         return node;
     }
 
 
-    private void updateServerNode(ProxyServerConfig.Node src, String host, int port, int certPort,
-                                                    ProxyServerConfig.EncryptType encryptType,
-                                                    ProxyServerConfig.AuthType authType, String... args) {
+    private void updateServerNode(Node src, String host, int port, int certPort,
+                                                    EncryptType encryptType,
+                                                    AuthType authType, String... args) {
         Map<String, String> param = new HashMap<>(4);
         switch (authType) {
             case SIMPLE:
@@ -242,7 +242,7 @@ final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
                 break;
         }
 
-        if(encryptType == ProxyServerConfig.EncryptType.SSL)
+        if(encryptType == EncryptType.SSL)
             src.setCertPort(certPort);
 
         src.setHost(host);
@@ -252,17 +252,17 @@ final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
         src.setAuthType(authType);
         src.setAuthArgument(param);
 
-        client.updateServerConfig(src);
+        operator.updateServerConfig(src);
     }
 
 
-    private void removeServerNode(ProxyServerConfig.Node node) {
+    private void removeServerNode(Node node) {
         if(node == null) {
             log.warn("Node is null");
             return;
         }
 
-        client.removeServer(node);
+        operator.removeServer(node);
     }
 
 
@@ -499,7 +499,7 @@ final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
                 portField.setText(String.valueOf(port));
         }
 
-        void setAuthInfo(ProxyServerConfig.AuthType type, String... args) {
+        void setAuthInfo(AuthType type, String... args) {
             switch (type) {
                 case SIMPLE:
                     simplePasswordField.setText(args[0]);
@@ -535,25 +535,25 @@ final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
             }
         }
 
-        ProxyServerConfig.EncryptType getEncryptType() {
+        EncryptType getEncryptType() {
             switch (encryptBox.getSelectedIndex()) {
                 case 0:
-                    return ProxyServerConfig.EncryptType.SSL;
+                    return EncryptType.SSL;
                 case 1:
-                    return ProxyServerConfig.EncryptType.NONE;
+                    return EncryptType.NONE;
                 default:
                     return null;
             }
         }
 
-        ProxyServerConfig.AuthType getAuthType() {
+        AuthType getAuthType() {
             switch (authBox.getSelectedIndex()) {
                 case 0:
                     return null;
                 case 1:
-                    return ProxyServerConfig.AuthType.SIMPLE;
+                    return AuthType.SIMPLE;
                 case 2:
-                    return ProxyServerConfig.AuthType.USER;
+                    return AuthType.USER;
                 default:
                     return null;
             }

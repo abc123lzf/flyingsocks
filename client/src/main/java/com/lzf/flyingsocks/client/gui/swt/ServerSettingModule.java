@@ -4,7 +4,6 @@ import com.lzf.flyingsocks.AbstractModule;
 import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
-import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.FocusEvent;
 import org.eclipse.swt.events.FocusListener;
@@ -33,11 +32,17 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
     private final ClientOperator operator;
 
+    private final ServerList serverList;
+
+    private final ServerSettingForm serverSettingForm;
+
     ServerSettingModule(SWTViewComponent component, Display display) {
         super(Objects.requireNonNull(component));
         this.display = display;
         this.operator = component.getParentComponent();
         this.shell = initialShell();
+        this.serverList = new ServerList();
+        this.serverSettingForm = new ServerSettingForm();
         initialComponent();
     }
 
@@ -62,12 +67,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                 }
             });
             flush(false);
-
-            operator.registerConfigEventListener(e -> {
-                if(e.getSource() instanceof ProxyServerConfig && e.getEvent().equals(Config.UPDATE_EVENT)) {
-                    flush(true);
-                }
-            });
+            operator.registerProxyServerConfigListener(Config.UPDATE_EVENT, () -> flush(true), false);
         }
 
         private void flush(boolean clean) {
@@ -149,9 +149,17 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
         void setAuth(AuthType type) {
             switch (type) {
-                case SIMPLE: encrypt.select(0); break;
-                case USER: encrypt.select(1); break;
+                case SIMPLE: auth.select(0); break;
+                case USER: auth.select(1); break;
             }
+        }
+
+        void setUser(String text) {
+            user.setText(text);
+        }
+
+        void setPass(String text) {
+            pass.setText(text);
         }
     }
 
@@ -177,16 +185,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
     }
 
     private void initialComponent() {
-        new ServerList();
-        new ServerSettingForm();
 
-        /*Label hostl = new Label(shell, SWT.RIGHT);
-        hostl.setText("服务器");*/
-
-
-        /*Button enter = new Button(shell, SWT.NONE);
-        enter.setText("保存");
-        enter.setBounds(400, 300, 100, 100);*/
     }
 
 
