@@ -16,9 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 import static com.lzf.flyingsocks.client.proxy.ProxyAutoConfig.*;
 import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
@@ -36,15 +34,17 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
 
     private final ClientOperator operator;
 
+    private final Shell shell;
+
     TrayModule(SWTViewComponent component, Display display) {
         super(Objects.requireNonNull(component));
         this.display = Objects.requireNonNull(display);
         this.operator = getComponent().getParentComponent();
+        this.shell = new Shell(display);
         initial();
     }
 
     private void initial() {
-        final Shell shell = new Shell(display);
         shell.setText("flyingsocks");
         final Tray trayTool = display.getSystemTray();
 
@@ -170,13 +170,17 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         }
 
         private void flushNodes(boolean clean) {
+            Node[] nodes = operator.getServerNodes();
             if(clean) {
-                menuMap.forEach((node, item) -> item.dispose());
+                Set<Node> set = new HashSet<>();
+                Collections.addAll(set, nodes);
+                menuMap.forEach((node, item) -> {
+                    if(!set.contains(node))
+                        item.dispose();
+                });
                 menuMap.clear();
                 usingNode = null;
             }
-
-            Node[] nodes = operator.getServerNodes();
 
             for (final Node node : nodes) {
                 final MenuItem it = new MenuItem(serverMenu, SWT.CASCADE ^ SWT.CHECK);
@@ -193,6 +197,10 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
                     boolean use = node.isUse();
                     @Override
                     public void widgetSelected(SelectionEvent e) {
+                        if(it.isDisposed()) {
+                            e.doit = false;
+                            return;
+                        }
                         if(use) {
                             operator.setProxyServerUsing(node, false);
                             it.setSelection(false);

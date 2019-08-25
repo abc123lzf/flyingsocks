@@ -1,4 +1,6 @@
 @echo off
+title "flyingsocks Server"
+
 if "%1%" == "-install" (
     md C:\ProgramData\flyingsocks-server
     md C:\ProgramData\flyingsocks-server\log
@@ -7,9 +9,9 @@ if "%1%" == "-install" (
 
 echo "Run flyingsocks-server..."
 if "%1%" == "-daemon" (
-    start /b java -Xbootclasspath/a:../conf -jar ../lib/flyingsocks-server-v1.0.jar
+    start /b java -server -Xbootclasspath/a:../conf;../ -jar ../lib/flyingsocks-server-1.1.jar
 ) else (
-    java -Xbootclasspath/a:../conf -jar ../lib/flyingsocks-server-v1.0.jar
+    java -server -Xbootclasspath/a:../conf;../ -jar ../lib/flyingsocks-server-1.1.jar
 )
 echo "Complete."
 pause

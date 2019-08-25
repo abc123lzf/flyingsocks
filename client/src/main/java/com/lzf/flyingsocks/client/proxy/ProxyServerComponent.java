@@ -199,8 +199,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                                         if(log.isInfoEnabled())
                                             log.info("Update cert file from remote flyingsocks server {}:{}", host, certPort);
 
-                                    } else if(log.isTraceEnabled())
+                                    } else if(log.isTraceEnabled()) {
                                         log.trace("Remote server cert file is same as local, from {}:{}", host, certPort);
+                                    }
 
                                     ctx.close();
                                 }
@@ -216,8 +217,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
             //连接到服务器的证书端口
             ChannelFuture future = sslBoot.connect(host, certPort).addListener(f -> {
-                if(!f.isSuccess())
+                if(!f.isSuccess()) {
                     LockSupport.unpark(thread);
+                }
             });
 
             //等待上述证书操作的完成
@@ -269,8 +271,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     protected void initChannel(SocketChannel ch) throws Exception {
                         ChannelPipeline cp = ch.pipeline();
                         if(provider != null) {
-                            if(!provider.isInboundHandlerSameAsOutboundHandler())
+                            if(!provider.isInboundHandlerSameAsOutboundHandler()) {
                                 cp.addLast(provider.encodeHandler(params));
+                            }
                             cp.addLast(provider.decodeHandler(params));
                         }
                         cp.addLast(FSMessageChannelOutboundHandler.INSTANCE);
@@ -294,8 +297,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         super.startInternal();
 
-        if(active)
+        if(active) {
             parent.addActiveProxyServer(this);
+        }
     }
 
     /**
@@ -342,8 +346,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             @Override
             public void operationComplete(Future<? super Void> future) {
                 if (future.isSuccess()) {
-                    if(log.isInfoEnabled())
-                        log.info("Connect success to flyingsocks server {}:{}", host, port);
+                    log.info("Connect success to flyingsocks server {}:{}", host, port);
 
                     active = true;
                     for(int i = 0; i < DEFAULT_PROCESSOR_THREAD; i++) {
@@ -366,26 +369,29 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             }
         });
 
-        try {
-            if (sync)
+        if(sync) {
+            try {
                 waitLatch.await(10000, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            if(log.isWarnEnabled())
-                log.warn("ProxyServerComponent interrupted when synchronize doConnect");
+            } catch (InterruptedException e) {
+                if (log.isWarnEnabled())
+                    log.warn("ProxyServerComponent interrupted when synchronize doConnect");
+            }
         }
     }
 
 
     @Override
     protected void stopInternal() {
-        if(log.isInfoEnabled())
+        if(log.isInfoEnabled()) {
             log.info("Ready to stop ProxyServerComponent {}:{}...", config.getHost(), config.getPort());
+        }
         active = false;
         parent.removeSubscriber(this);
         parent.removeProxyServer(this);
         parent.getParentComponent().getConfigManager()
                 .removeConfig(OpenSSLConfig.generalName(config.getHost()));
-        if(loopGroup != null)
+
+        if(loopGroup != null) {
             loopGroup.shutdownGracefully().addListener(future -> {
                 if (future.isSuccess())
                     active = false;
@@ -395,14 +401,17 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                         log.warn("Shutdown Component " + getName() + "Failure, cause:", t);
                 }
             });
+        }
 
-        if(clientMessageProcessor != null)
+        if(clientMessageProcessor != null) {
             clientMessageProcessor.shutdownNow();
+        }
 
         activeProxyRequestMap.clear();
         super.stopInternal();
-        if(log.isInfoEnabled())
+        if(log.isInfoEnabled()) {
             log.info("Stop ProxyServerComponent {}:{} complete.", config.getHost(), config.getPort());
+        }
     }
 
     /**
@@ -439,7 +448,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         //如果父组件没有处于正在停止状态并且用户还希望继续使用该节点
         if(!parent.getState().after(LifecycleState.STOPING) && use) {
             if(nextReconnectTime == -1L)
-                nextReconnectTime = System.currentTimeMillis() + 15 * 1000;
+                nextReconnectTime = System.currentTimeMillis() + 5 * 1000;
             long d = nextReconnectTime - System.currentTimeMillis();
             if(d > 2000L) {
                 if(log.isInfoEnabled())
@@ -488,8 +497,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         if(folder.isDirectory()) {
             File file = new File(folder, OpenSSLConfig.CERT_FILE_NAME);
-            if(!file.exists() || file.length() == 0L)
+            if(!file.exists() || file.length() == 0L) {
                 return new byte[16];
+            }
 
             if(file.isDirectory() && !file.delete()) {
                 log.error("location {} exists a folder and can not delete.", file.getAbsolutePath());
@@ -534,8 +544,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
-            if(log.isTraceEnabled())
-                log.trace("Start flyingsocks server connection initialize");
+            log.trace("Start flyingsocks server connection initialize");
             ProxyServerSession session = new ProxyServerSession((SocketChannel) ctx.channel());
 
             Random random = new Random();
@@ -584,8 +593,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                             .addLast(new AuthHandler());
 
                 } catch (SerializationException e) {
-                    if(log.isWarnEnabled())
-                        log.warn("DelimiterMessage serialization error", e);
+                    log.warn("DelimiterMessage serialization error", e);
                     ctx.close();
                 } finally {
                     ReferenceCountUtil.release(msg);
@@ -597,8 +605,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            if(log.isWarnEnabled())
-                log.warn("ProxyServerComponent occur a error" , cause);
+            log.warn("ProxyServerComponent occur a error" , cause);
             ctx.close();
         }
 
@@ -825,6 +832,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         }
     }
 
+    /**
+     * 负责监听配置被移除时(用户删除正在使用的FS服务器)停止当前组件
+     */
     private final class ConfigRemovedListener implements ConfigEventListener {
         @Override
         public void configEvent(ConfigEvent event) {
@@ -832,7 +842,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 ProxyServerConfig psc = (ProxyServerConfig) event.getSource();
                 if(!psc.containsProxyServerNode(config)) {
                     synchronized (ProxyServerComponent.this) {
-                        if(!ProxyServerComponent.this.getState().after(LifecycleState.STOPING)) {
+                        if(!getState().after(LifecycleState.STOPING)) {
                             stop();
                             assert parent != null;
                             parent.removeComponentByName(getName());
