@@ -16,10 +16,9 @@ import java.util.concurrent.Executors;
 public class SWTViewComponent extends AbstractComponent<Client> {
 
     /**
-     * SWT GUI线程
+     * SWT GUI线程, 必须保证是单线程
      */
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
-
 
     private final Display display;
 
@@ -63,9 +62,8 @@ public class SWTViewComponent extends AbstractComponent<Client> {
                         display.sleep();
                     }
                 }
-
                 display.dispose();
-            } catch (Throwable t) {
+            } catch (RuntimeException | Error t) {
                 log.error("SWT Thread occur a error", t);
                 System.exit(1);
             }

@@ -75,6 +75,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
         ServerBootstrap boot = new ServerBootstrap();
         boot.group(socksReceiveGroup, parent.getWorkerEventLoopGroup())
             .channel(NioServerSocketChannel.class)
+            .option(ChannelOption.SO_SNDBUF, 1024 * 64)    //64KB发送缓冲区
             .childHandler(new ChannelInitializer<SocketChannel>() {
                 @Override
                 protected void initChannel(SocketChannel channel) {
