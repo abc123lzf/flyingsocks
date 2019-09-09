@@ -201,6 +201,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
                             newPsc.start();
                         });
                     } else if(psc != null) { //如果用户需要关闭这个代理服务器连接
+                        psc.setUse(false);
                         executors.submit(psc::stop);
                         removeComponentByName(name);
                     }

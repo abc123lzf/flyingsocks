@@ -428,6 +428,11 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         return use;
     }
 
+
+    void setUse(boolean use) {
+        this.use = use;
+    }
+
     /**
      * 连接失效后的处理逻辑
      */
@@ -459,8 +464,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 } catch (InterruptedException ignore) {
                 }
                 //wait会释放锁所以再一次检查
-                if(parent.getState().after(LifecycleState.STOPING) || !use)
+                if(parent.getState().after(LifecycleState.STOPING) || !use) {
                     return;
+                }
             }
 
             if(log.isInfoEnabled())

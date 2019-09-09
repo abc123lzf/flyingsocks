@@ -5,8 +5,7 @@ import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.SelectionAdapter;
-import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.*;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.widgets.*;
@@ -171,18 +170,29 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
 
         private void flushNodes(boolean clean) {
             Node[] nodes = operator.getServerNodes();
+
             if(clean) {
                 Set<Node> set = new HashSet<>();
                 Collections.addAll(set, nodes);
-                menuMap.forEach((node, item) -> {
-                    if(!set.contains(node))
-                        item.dispose();
-                });
-                menuMap.clear();
+                Iterator<Map.Entry<Node, MenuItem>> it = menuMap.entrySet().iterator();
+                while (it.hasNext()) {
+                    Map.Entry<Node, MenuItem> e = it.next();
+                    if(!set.contains(e.getKey())) {
+                        e.getValue().dispose();
+                        it.remove();
+                    }
+                }
+
                 usingNode = null;
             }
 
+            Set<Node> kSet = menuMap.keySet();
+
             for (final Node node : nodes) {
+                if(kSet.contains(node)) {
+                    continue;
+                }
+
                 final MenuItem it = new MenuItem(serverMenu, SWT.CASCADE ^ SWT.CHECK);
                 it.setText(node.getHost() + ":" + node.getPort());
 
@@ -193,27 +203,28 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
                     usingNode = node;
                 }
 
-                it.addSelectionListener(new SelectionAdapter() {
-                    boolean use = node.isUse();
+                SelectionListener sl;
+                it.addSelectionListener(sl = new SelectionAdapter() {
                     @Override
                     public void widgetSelected(SelectionEvent e) {
-                        if(it.isDisposed()) {
-                            e.doit = false;
-                            return;
-                        }
+                        boolean use = node.isUse();
                         if(use) {
                             operator.setProxyServerUsing(node, false);
                             it.setSelection(false);
                             usingNode = null;
                         } else {
-                            if(usingNode != null)
+                            if(usingNode != null) {
+                                menuMap.get(usingNode).setSelection(false);
                                 operator.setProxyServerUsing(usingNode, false);
+                            }
                             usingNode = node;
                             operator.setProxyServerUsing(node, true);
                             it.setSelection(true);
                         }
                     }
                 });
+
+                it.addDisposeListener(e -> it.removeSelectionListener(sl));
             }
         }
     }
