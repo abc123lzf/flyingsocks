@@ -71,6 +71,11 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
         return protocol;
     }
 
+    /**
+     * 判断ctl字段某一位是否被标记为1
+     * @param index 位数
+     * @return 是否被标记为1
+     */
     public final boolean isCtlMark(int index) {
         int c = ctl;
         return (c & (1 << index)) > 0;

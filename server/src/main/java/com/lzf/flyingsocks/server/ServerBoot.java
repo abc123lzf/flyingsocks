@@ -33,6 +33,14 @@ public abstract class ServerBoot {
                 server.start();
                 long ed = System.currentTimeMillis();
                 log.info("flyingsocks server {} start complete, use {} millisecond", VERSION, ed - st);
+
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                    log.info("flyingsocks server {} ready to shutdown", VERSION);
+                    shutdown();
+                    log.info("flyingsocks server {} shut down complete", VERSION);
+                    System.exit(0);
+                }));
+
             } catch (ComponentException e) {
                 log.error("flyingsocks server {} start failure, cause:", VERSION);
                 log.info("If it caused by BUG, please submit issue at https://github.com/abc123lzf/flyingsocks , Thanks");
