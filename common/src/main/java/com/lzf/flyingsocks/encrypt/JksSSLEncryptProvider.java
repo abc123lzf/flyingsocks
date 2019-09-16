@@ -34,10 +34,10 @@ public final class JksSSLEncryptProvider implements EncryptProvider {
     }
 
     @Override
-    public synchronized void initialize(Map<String, Object> params) throws Exception {
+    public synchronized void initialize(Map<String, ?> params) throws Exception {
         if(initialize)
             throw new IllegalStateException("JksEncryptProvider instance has been initialize");
-        client = (boolean)params.get("client");
+        client = (Boolean)params.get("client");
         sslEngine = buildSSLEngine(params);
         initialize = true;
     }
@@ -48,20 +48,20 @@ public final class JksSSLEncryptProvider implements EncryptProvider {
     }
 
     @Override
-    public ChannelInboundHandler decodeHandler(Map<String, Object> params) throws Exception {
+    public ChannelInboundHandler decodeHandler(Map<String, ?> params) throws Exception {
         return createSSLHandler(params);
     }
 
     @Override
-    public ChannelOutboundHandler encodeHandler(Map<String, Object> params) throws Exception {
+    public ChannelOutboundHandler encodeHandler(Map<String, ?> params) throws Exception {
         return createSSLHandler(params);
     }
 
-    private SslHandler createSSLHandler(Map<String, Object> params) throws Exception {
+    private SslHandler createSSLHandler(Map<String, ?> params) throws Exception {
         return new SslHandler(sslEngine);
     }
 
-    private SSLEngine buildSSLEngine(Map<String, Object> params) throws Exception {
+    private SSLEngine buildSSLEngine(Map<String, ?> params) throws Exception {
         if(params == null)
             throw new NullPointerException("params should not be null.");
 

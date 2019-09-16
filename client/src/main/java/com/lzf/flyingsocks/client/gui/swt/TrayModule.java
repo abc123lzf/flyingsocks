@@ -213,12 +213,14 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
                             it.setSelection(false);
                             usingNode = null;
                         } else {
+                            Map<Node, Boolean> map = new HashMap<>(4);
                             if(usingNode != null) {
                                 menuMap.get(usingNode).setSelection(false);
-                                operator.setProxyServerUsing(usingNode, false);
+                                map.put(usingNode, false);
                             }
                             usingNode = node;
-                            operator.setProxyServerUsing(node, true);
+                            map.put(node, true);
+                            operator.setProxyServerUsing(map);
                             it.setSelection(true);
                         }
                     }

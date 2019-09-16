@@ -1,8 +1,5 @@
 package com.lzf.flyingsocks.encrypt;
 
-
-import com.lzf.flyingsocks.ConfigManager;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 

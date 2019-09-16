@@ -1,6 +1,9 @@
 package com.lzf.flyingsocks.client;
 
 import com.lzf.flyingsocks.ConfigEventListener;
+
+import java.util.Map;
+
 import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
 
 /**
@@ -95,6 +98,13 @@ public interface ClientOperator {
      * @param use 是否启用
      */
     void setProxyServerUsing(Node node, boolean use);
+
+    /**
+     * 批量修改代理服务器状态
+     * @param map 代理服务器与是否启用映射关系
+     */
+    void setProxyServerUsing(Map<Node, Boolean> map);
+
 
     /**
      * 修改本地Socks5代理端口身份验证机制

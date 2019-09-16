@@ -8,6 +8,10 @@ import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksProxyComponent;
 import com.lzf.flyingsocks.client.gui.swing.SwingViewComponent;
 
+import java.util.Map;
+
+import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
+
 /**
  * 客户端类
  */
@@ -123,28 +127,28 @@ public final class StandardClient extends Client {
     }
 
     @Override
-    public void addServerConfig(ProxyServerConfig.Node node) {
+    public void addServerConfig(Node node) {
         ProxyServerConfig cfg = getProxyServerConfig();
         if(cfg != null)
             cfg.addProxyServerNode(node);
     }
 
     @Override
-    public void updateServerConfig(ProxyServerConfig.Node node) {
+    public void updateServerConfig(Node node) {
         ProxyServerConfig cfg = getProxyServerConfig();
         if(cfg != null)
             cfg.updateProxyServerNode(node);
     }
 
     @Override
-    public void removeServer(ProxyServerConfig.Node node) {
+    public void removeServer(Node node) {
         ProxyServerConfig cfg = getProxyServerConfig();
         if(cfg != null)
             cfg.removeProxyServerNode(node);
     }
 
     @Override
-    public ProxyServerConfig.Node[] getServerNodes() {
+    public Node[] getServerNodes() {
         ProxyServerConfig cfg = getProxyServerConfig();
         if(cfg == null)
             return null;
@@ -169,11 +173,20 @@ public final class StandardClient extends Client {
     }
 
     @Override
-    public void setProxyServerUsing(ProxyServerConfig.Node node, boolean use) {
+    public void setProxyServerUsing(Node node, boolean use) {
         ProxyServerConfig cfg = getProxyServerConfig();
         if(cfg == null)
             return;
         cfg.setProxyServerUsing(node, use);
+    }
+
+    @Override
+    public void setProxyServerUsing(Map<Node, Boolean> map) {
+        ProxyServerConfig cfg = getProxyServerConfig();
+        if(cfg == null)
+            return;
+
+        cfg.setProxyServerUsing(map);
     }
 
     private ProxyServerConfig getProxyServerConfig() {

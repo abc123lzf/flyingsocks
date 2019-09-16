@@ -16,7 +16,7 @@ public interface EncryptProvider extends Named {
      * 初始化Provider
      * @param params 初始化参数
      */
-    void initialize(Map<String, Object> params) throws Exception;
+    void initialize(Map<String, ?> params) throws Exception;
 
     /**
      * @return 返回decodeHandler方法和encodeHandler返回的是不是同一个类型
@@ -29,7 +29,7 @@ public interface EncryptProvider extends Named {
      * @return ChannelInboundHandler实例
      * @throws Exception 实例化过程抛出的异常
      */
-    ChannelInboundHandler decodeHandler(Map<String, Object> params) throws Exception;
+    ChannelInboundHandler decodeHandler(Map<String, ?> params) throws Exception;
 
     /**
      * 返回加密处理器
@@ -37,5 +37,5 @@ public interface EncryptProvider extends Named {
      * @return ChannelOutboundHandler实例
      * @throws Exception 实例化过程抛出的一场
      */
-    ChannelOutboundHandler encodeHandler(Map<String, Object> params) throws Exception;
+    ChannelOutboundHandler encodeHandler(Map<String, ?> params) throws Exception;
 }

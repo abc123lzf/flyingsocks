@@ -160,6 +160,20 @@ public class ProxyServerConfig extends AbstractConfig {
         configManager.updateConfig(this);
     }
 
+    public void setProxyServerUsing(Map<Node, Boolean> map) {
+        map.forEach((node, using) -> {
+            if(!nodes.contains(node)) {
+                throw new IllegalArgumentException(String.format("Server Node %s:%d not exists", node.getHost(), node.getPort()));
+            }
+
+            if(node.isUse() != using) {
+                node.setUse(using);
+            }
+        });
+
+        configManager.updateConfig(this);
+    }
+
 
     public void removeProxyServerNode(Node node) {
         nodes.remove(node);
