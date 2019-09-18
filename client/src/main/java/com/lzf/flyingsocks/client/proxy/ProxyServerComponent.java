@@ -157,7 +157,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     .group(sslGroup)
                     .channel(NioSocketChannel.class)
                     .option(ChannelOption.SO_KEEPALIVE, true)
-                    .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, cfg.getConnectionTimeout())
+                    .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, cfg.getConnectTimeout())
                     .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) {
@@ -223,12 +223,13 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             });
 
             //等待上述证书操作的完成
-            LockSupport.parkNanos((cfg.getConnectionTimeout() + 1000 * 20) * 1_000_000L);  //20秒加上连接超时时间
+            LockSupport.parkNanos((cfg.getConnectTimeout() + 1000 * 20) * 1_000_000L);  //20秒加上连接超时时间
             sslGroup.shutdownGracefully();
 
             if(!future.isSuccess()) {
                 if(log.isWarnEnabled())
-                    log.warn("Can not connect to cert service {}:{}", host, config.getCertPort());
+                    log.error("Can not connect to cert service {}:{}", host, config.getCertPort());
+                stop();
                 return;
             }
 
@@ -264,7 +265,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         loopGroup = new NioEventLoopGroup(2);
         bootstrap = new Bootstrap()
                 .channel(NioSocketChannel.class)
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, cfg.getConnectionTimeout())
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, cfg.getConnectTimeout())
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override

@@ -21,7 +21,9 @@ public interface EncryptProvider extends Named {
     /**
      * @return 返回decodeHandler方法和encodeHandler返回的是不是同一个类型
      */
-    boolean isInboundHandlerSameAsOutboundHandler();
+    default boolean isInboundHandlerSameAsOutboundHandler() {
+        return false;
+    }
 
     /**
      * 返回解密处理器

@@ -19,4 +19,6 @@ public class ConfigInitializationException extends RuntimeException {
     public ConfigInitializationException(Throwable t) {
         super(t);
     }
+
+
 }

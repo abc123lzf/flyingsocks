@@ -22,7 +22,7 @@ public abstract class ServerBoot {
         boot();
     }
 
-    public static void boot() {
+    private static void boot() {
         synchronized (ServerBoot.class) {
             if(server.getState() != LifecycleState.NEW)
                 return;
@@ -48,7 +48,7 @@ public abstract class ServerBoot {
         }
     }
 
-    public static void shutdown() {
+    private static void shutdown() {
         synchronized (ServerBoot.class) {
             if(server.getState() != LifecycleState.STARTED)
                 throw new IllegalStateException("Server state is STARTED");
@@ -56,7 +56,6 @@ public abstract class ServerBoot {
             server.stop();
         }
     }
-
 
 
     private ServerBoot() {

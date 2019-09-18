@@ -26,6 +26,16 @@ public abstract class Client extends TopLevelComponent
         super(DEFAULT_COMPONENT_NAME);
     }
 
+    @Override
+    protected void initInternal() {
+        super.initInternal();
+    }
+
+    @Override
+    protected void startInternal() {
+        super.startInternal();
+    }
+
     /**
      * @return 配置管理器
      */

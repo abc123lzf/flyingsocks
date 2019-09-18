@@ -1,24 +1,38 @@
 package com.lzf.flyingsocks.client;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
 import com.lzf.flyingsocks.AbstractConfig;
 import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
+import java.nio.file.StandardOpenOption;
+import java.util.NoSuchElementException;
 import java.util.Properties;
+import java.util.Scanner;
 
 /**
  * 初始配置文件，用于获取用户配置文件路径、GUI设置以及应用程序超时时间
  */
 public class GlobalConfig extends AbstractConfig {
+    private static final Logger log = LoggerFactory.getLogger(GlobalConfig.class);
 
     public static final String NAME = "config.global";
 
     private static final String PATH = "classpath://config.properties";
+
+    private static final int DEFAULT_CONNECT_TIMEOUT = 8000;
+
+    private static final String CONNECT_TIMEOUT_FILE = "connect-timeout";
+
+    private static final String GUI_OPTION_FILE = "gui-options";
 
     /**
      * 用户配置文件路径
@@ -38,7 +52,7 @@ public class GlobalConfig extends AbstractConfig {
     /**
      * 应用程序连接超时时间
      */
-    private int connectionTimeout;
+    private int connectTimeout;
 
 
     GlobalConfig(ConfigManager<?> configManager) {
@@ -73,28 +87,61 @@ public class GlobalConfig extends AbstractConfig {
 
             this.path = location;
             location += "config.json";
-
-            File file = new File(location);
-            if(!file.exists()) {  //如果用户配置文件不存在，则初始化用户配置
-                makeTemplateConfigFile(file);
-            }
-
-            //加载用户配置文件
-            try(InputStream cis = file.toURI().toURL().openStream()) {
-                byte[] b = new byte[512000];
-                int len = cis.read(b);
-                String json = new String(b, 0, len, Charset.forName("UTF-8"));
-
-                JSONObject obj = JSON.parseObject(json);
-                this.openGUI = obj.getBooleanValue("gui");
-                this.connectionTimeout = obj.getIntValue("connect-timeout");
-            }
-
             this.location = location;
 
         } catch (IOException e) {
             throw new ConfigInitializationException(e);
         }
+
+        File connTimeoutFile = new File(this.path, CONNECT_TIMEOUT_FILE);
+        if(connTimeoutFile.exists()) {
+            if(connTimeoutFile.isDirectory()) {
+                throw new ConfigInitializationException("File at " + connTimeoutFile.getAbsolutePath() + " is a Directory!");
+            }
+
+            try(FileInputStream is = new FileInputStream(connTimeoutFile);
+                Scanner sc = new Scanner(is)) {
+                this.connectTimeout = Integer.valueOf(sc.next());
+            } catch (IOException e) {
+                throw new ConfigInitializationException("Can not open file at " + connTimeoutFile.getAbsolutePath(), e);
+            } catch (NumberFormatException e) {
+                this.connectTimeout = DEFAULT_CONNECT_TIMEOUT;
+                log.warn("Illegal file format at {}, use the default value as connect timeout", connTimeoutFile.getAbsoluteFile());
+            }
+        } else {
+            try {
+                makeTemplateConnectTimeFile(connTimeoutFile);
+                this.connectTimeout = DEFAULT_CONNECT_TIMEOUT;
+            } catch (IOException e) {
+                log.warn("Can not create file at {}, use the default value as connect timeout", connTimeoutFile.getAbsolutePath(), e);
+            }
+        }
+
+
+        File guiFile = new File(this.path, GUI_OPTION_FILE);
+        if(guiFile.exists()) {
+            if(guiFile.isDirectory()) {
+                throw new ConfigInitializationException("File at " + guiFile.getAbsolutePath() + " is a Directory!");
+            }
+
+            try(FileInputStream is = new FileInputStream(guiFile);
+                Scanner sc = new Scanner(is)) {
+                this.openGUI = sc.nextBoolean();
+            } catch (IOException e) {
+                throw new ConfigInitializationException("Can not open file at " + guiFile.getAbsolutePath(), e);
+            } catch (NoSuchElementException e) {
+                this.openGUI = true;
+                log.warn("Illegal file format at {}, use the default value as gui option", guiFile.getAbsoluteFile());
+            }
+        } else {
+            try {
+                makeTemplateGUIOptionFile(guiFile);
+                this.openGUI = true;
+            } catch (IOException e) {
+                throw new ConfigInitializationException("Can not create file at " + guiFile.getAbsolutePath(), e);
+            }
+        }
+
     }
 
     /**
@@ -111,6 +158,9 @@ public class GlobalConfig extends AbstractConfig {
         return location;
     }
 
+    /**
+     * @return 配置文件目录
+     */
     public String configPath() {
         return path;
     }
@@ -125,31 +175,40 @@ public class GlobalConfig extends AbstractConfig {
     /**
      * @return 应用程序连接超时时间
      */
-    public int getConnectionTimeout() {
-        return connectionTimeout;
+    public int getConnectTimeout() {
+        return connectTimeout;
+    }
+
+
+
+
+    /**
+     * 创建一个默认的记录connectTimeout的文件
+     * @param file 文件路径
+     */
+    private void makeTemplateConnectTimeFile(File file) throws IOException {
+        String content = String.valueOf(DEFAULT_CONNECT_TIMEOUT);
+        ByteBuffer buf = ByteBuffer.allocate(content.length());
+        buf.put(content.getBytes(Charset.forName("ASCII")));
+        writeFile(file, buf);
     }
 
     /**
-     * 生成一个默认配置文件
+     * 创建默认GUI设置文件
      * @param file 文件路径
-     * @throws IOException 如果路径不存在
+     * @throws IOException 当写入失败
      */
-    private void makeTemplateConfigFile(File file) throws IOException {
-        JSONObject obj = new JSONObject();
-        obj.put("connect-timeout", 10000);
-        obj.put("pac", "pac");
-        obj.put("gui", true);
+    private void makeTemplateGUIOptionFile(File file) throws IOException {
+        String content = "true";
+        ByteBuffer buf = ByteBuffer.allocate(content.length());
+        buf.put(content.getBytes(Charset.forName("ASCII")));
+        writeFile(file, buf);
+    }
 
-        JSONObject socks = new JSONObject();
-        socks.put("address", "0.0.0.0");
-        socks.put("port", 1080);
-        socks.put("auth", false);
-
-        obj.put("socks", socks);
-        obj.put("server", new JSONArray(0));
-
-        FileWriter writer = new FileWriter(file);
-        writer.write(obj.toJSONString());
-        writer.close();
+    private void writeFile(File file, ByteBuffer buf) throws IOException {
+        try(FileChannel ch = FileChannel.open(file.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+            buf.rewind();
+            ch.write(buf);
+        }
     }
 }

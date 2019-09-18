@@ -20,6 +20,8 @@ public class ProxyServerConfig extends AbstractConfig {
 
     public static final String DEFAULT_NAME = "config.proxyserver";
 
+    private static final String SERVER_SETTING_FILE = "server-setting.json";
+
     /**
      * 服务器节点集合
      */
@@ -34,22 +36,16 @@ public class ProxyServerConfig extends AbstractConfig {
     @Override
     protected void initInternal() throws ConfigInitializationException {
         GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
-        String url = cfg.configLocationURL();
+        File file = new File(cfg.configPath(), SERVER_SETTING_FILE);
 
-        try(InputStream is = configManager.loadResource(url)) {
-            byte[] b = new byte[1024 * 500];
-            int size;
-            try {
-                size = is.read(b);
-            } catch (IOException e) {
-                throw new ConfigInitializationException(e);
-            }
+        if(!file.exists()) {
+            return;
+        }
 
-            byte[] nb = new byte[size];
-            System.arraycopy(b, 0, nb, 0, size);
-            JSONObject obj = JSON.parseObject(new String(nb, Charset.forName("UTF-8")));
-
-            JSONArray array = obj.getJSONArray("server");
+        try(FileInputStream is = new FileInputStream(file)) {
+            byte[] b = new byte[(int)file.length()];
+            is.read(b);
+            JSONArray array = JSON.parseArray(new String(b, Charset.forName("UTF-8")));
 
             for(int i = 0; i < array.size(); i++) {
                 JSONObject o = array.getJSONObject(i);
@@ -90,22 +86,7 @@ public class ProxyServerConfig extends AbstractConfig {
     public void save() throws Exception {
         GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
 
-        File f = new File(cfg.configLocation());
-        JSONObject obj;
-        if(f.exists() && f.length() > 0) {
-            FileReader reader = new FileReader(f);
-            char[] s = new char[(int)f.length()];
-            int r = reader.read(s);
-            if(r < f.length()) {
-                char[] os = s;
-                s = new char[r];
-                System.arraycopy(os, 0, s, 0, r);
-            }
-            obj = JSON.parseObject(new String(s));
-            reader.close();
-        } else {
-            obj = new JSONObject();
-        }
+        File f = new File(cfg.configPath(), SERVER_SETTING_FILE);
 
         JSONArray arr = new JSONArray(nodes.size());
         for(Node node : nodes) {
@@ -122,11 +103,9 @@ public class ProxyServerConfig extends AbstractConfig {
             arr.add(o);
         }
 
-        obj.put("server", arr);
-
-        FileWriter writer = new FileWriter(f);
-        writer.write(obj.toJSONString());
-        writer.close();
+        try(FileWriter writer = new FileWriter(f)) {
+            writer.write(arr.toJSONString());
+        }
     }
 
     public Node[] getProxyServerConfig() {

@@ -220,8 +220,8 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
                             }
                             usingNode = node;
                             map.put(node, true);
-                            operator.setProxyServerUsing(map);
                             it.setSelection(true);
+                            operator.setProxyServerUsing(map);
                         }
                     }
                 });

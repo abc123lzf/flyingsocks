@@ -13,9 +13,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
+import java.nio.file.StandardOpenOption;
 import java.util.Collections;
-import java.util.Map;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -29,6 +32,8 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
 
     private static final String DEFAULT_PAC_CONFIG_LOCATION = "classpath://pac.txt";
     private static final Charset DEFAULT_CONFIG_ENCODING = Charset.forName("UTF-8");
+
+    private static final String PAC_CONFIG_FILE = "pac-setting";
 
     public static final int PROXY_NO = 0;
     public static final int PROXY_PAC = 1;
@@ -57,35 +62,35 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
         }
 
         GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
-        String url = cfg.configLocationURL();
+        File file = new File(cfg.configPath(), PAC_CONFIG_FILE);
 
-        try(InputStream is = configManager.loadResource(url)) {
-            byte[] b = new byte[1024000];
-            int r = is.read(b);
-            String str = new String(b, 0, r, DEFAULT_CONFIG_ENCODING);
-            JSONObject object;
+        if(!file.exists()) {
             try {
-                object = JSON.parseObject(str);
-            } catch (JSONException e) {
-                if(log.isErrorEnabled())
-                    log.error("Config file format is not illegal.");
-                throw new ConfigInitializationException(e);
+                this.proxyMode = PROXY_PAC;
+                makeTemplatePACFile(file);
+            } catch (IOException e) {
+                throw new ConfigInitializationException("Can not create new File at " + file.getAbsolutePath());
+            }
+        } else {
+            if(file.isDirectory()) {
+                throw new ConfigInitializationException("File at " + file.getAbsolutePath() + " is a Directory!");
             }
 
-            String pac = object.getString("pac");
-            if(pac == null)
-                throw new ConfigInitializationException("Config file pac setting is null");
-            switch (pac) {
-                case "no": proxyMode = PROXY_NO; break;
-                case "pac": proxyMode = PROXY_PAC; break;
-                case "global": proxyMode = PROXY_GLOBAL; break;
-                default:
-                    log.warn("Config file pac setting is not correct, only 'no' / 'pac' / 'global'");
-                    proxyMode = PROXY_PAC;
+            try (FileInputStream is = new FileInputStream(file);
+                 Scanner sc = new Scanner(is)) {
+                String s = sc.next();
+                switch (s) {
+                    case "no": this.proxyMode = PROXY_NO; break;
+                    case "pac": this.proxyMode = PROXY_PAC; break;
+                    case "global": this.proxyMode = PROXY_GLOBAL; break;
+                    default: {
+                        log.warn("Config file pac setting is not correct, only 'no' / 'pac' / 'global'");
+                        this.proxyMode = PROXY_PAC;
+                    }
+                }
+            } catch (IOException e) {
+                throw new ConfigInitializationException();
             }
-
-        } catch (IOException e) {
-            throw new ConfigInitializationException(e);
         }
     }
 
@@ -124,35 +129,19 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     public void save() throws Exception {
         GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
 
-        File f = new File(cfg.configLocation());
-        JSONObject obj;
-        if(f.exists() && f.length() > 0) {
-            FileReader reader = new FileReader(f);
-            char[] s = new char[(int)f.length()];
-            int r = reader.read(s);
-            if(r < f.length()) {
-                char[] os = s;
-                s = new char[r];
-                System.arraycopy(os, 0, s, 0, r);
-            }
-            obj = JSON.parseObject(new String(s));
-            reader.close();
-        } else {
-            obj = new JSONObject();
+        File f = new File(cfg.configPath(), PAC_CONFIG_FILE);
+        String content;
+        switch (this.proxyMode) {
+            case PROXY_NO: content = "no"; break;
+            case PROXY_PAC: content = "pac"; break;
+            case PROXY_GLOBAL: content = "global"; break;
+            default:
+                content = "";
         }
 
-        switch (proxyMode) {
-            case PROXY_NO:
-                obj.put("pac", "no"); break;
-            case PROXY_PAC:
-                obj.put("pac", "pac"); break;
-            case PROXY_GLOBAL:
-                obj.put("pac", "global"); break;
+        try(FileWriter writer = new FileWriter(f)) {
+            writer.write(content);
         }
-
-        FileWriter writer = new FileWriter(f);
-        writer.write(obj.toJSONString());
-        writer.close();
     }
 
     public int getProxyMode() {
@@ -171,7 +160,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
         configManager.updateConfig(this);
     }
 
-    public boolean needProxy(String host) {
+    boolean needProxy(String host) {
         if(proxyMode == PROXY_NO)
             return false;
         if(proxyMode == PROXY_GLOBAL)
@@ -185,6 +174,16 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
             return proxySet.contains(realHost);
         } else {
             throw new IllegalStateException("ProxyMode is not correct");
+        }
+    }
+
+    private void makeTemplatePACFile(File file) throws IOException {
+        String content = "pac";
+        ByteBuffer buf = ByteBuffer.allocate(content.length());
+        buf.put(content.getBytes(Charset.forName("ASCII")));
+        try(FileChannel ch = FileChannel.open(file.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+            buf.rewind();
+            ch.write(buf);
         }
     }
 }
