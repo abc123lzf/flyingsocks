@@ -8,6 +8,9 @@ import java.util.Arrays;
 
 public class ProxyServerSession extends AbstractSession {
 
+    /**
+     * 协议分隔符
+     */
     private byte[] delimiter;
 
     ProxyServerSession(SocketChannel serverChannel) {
@@ -18,13 +21,13 @@ public class ProxyServerSession extends AbstractSession {
         this.lastActiveTime = lastActiveTime;
     }
 
-    public void setDelimiter(byte[] delimiter) {
+    void setDelimiter(byte[] delimiter) {
         if(delimiter == null || delimiter.length != DelimiterMessage.DEFAULT_SIZE)
             throw new IllegalArgumentException("Delimiter length must be " + DelimiterMessage.DEFAULT_SIZE + " bytes");
         this.delimiter = Arrays.copyOf(delimiter, DelimiterMessage.DEFAULT_SIZE);
     }
 
-    public byte[] getDelimiter() {
+    byte[] getDelimiter() {
         if(delimiter == null)
             return null;
         return Arrays.copyOf(delimiter, delimiter.length);

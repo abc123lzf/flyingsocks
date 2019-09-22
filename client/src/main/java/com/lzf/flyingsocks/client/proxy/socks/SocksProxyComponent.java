@@ -138,9 +138,21 @@ public class SocksProxyComponent extends ProxyComponent {
                     BlockingQueue<ByteBuf> queue = req.messageQueue();
                     ByteBuf buf;
                     try { //之所以采用循环是为了转发客户端请求时避免消息不完整
+                        int time = 0;
                         while ((buf = queue.poll(1, TimeUnit.MILLISECONDS)) != null) {
-                            sc.writeAndFlush(buf);
+                            time++;
+                            if(time / 4 == 1) {  //每4次写入刷新一次
+                                sc.writeAndFlush(buf);
+                                time = 0;
+                            } else {
+                                sc.write(buf);
+                            }
                         }
+
+                        if(time > 0) {
+                            sc.flush();
+                        }
+
                     } catch (InterruptedException e) {
                         break;
                     }

@@ -453,9 +453,12 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         //处理掉线重连
         //如果父组件没有处于正在停止状态并且用户还希望继续使用该节点
         if(!parent.getState().after(LifecycleState.STOPING) && use) {
-            if(nextReconnectTime == -1L)
-                nextReconnectTime = System.currentTimeMillis() + 5 * 1000;
-            long d = nextReconnectTime - System.currentTimeMillis();
+            if (nextReconnectTime == -1L) {
+                nextReconnectTime = 5 * 1000;
+            } else {
+                nextReconnectTime = nextReconnectTime >= 30000 ? 30000 : nextReconnectTime * 2;
+            }
+            long d = nextReconnectTime;
             if(d > 2000L) {
                 if(log.isInfoEnabled())
                     log.info("Waiting {}ms before reconnect server {}:{}", d, config.getHost(), config.getPort());
