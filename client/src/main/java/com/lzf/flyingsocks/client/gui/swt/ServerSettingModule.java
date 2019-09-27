@@ -4,27 +4,33 @@ import com.lzf.flyingsocks.AbstractModule;
 import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
+import com.lzf.flyingsocks.util.BaseUtils;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.FocusEvent;
 import org.eclipse.swt.events.FocusListener;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
+import org.eclipse.swt.widgets.List;
 import org.eclipse.swt.widgets.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.io.InputStream;
+import java.util.*;
 
-import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.EncryptType;
-import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.AuthType;
-import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
+import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.*;
 
 /**
  * @create 2019.8.17 23:05
  * @description 服务器设置界面
  */
 final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
+
+    private static final Logger log = LoggerFactory.getLogger("ServerSettingUI");
 
     private final Display display;
 
@@ -50,20 +56,38 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
     private final class ServerList {
         private final List serverList;
         private final Map<Integer, Node> serverMap = new LinkedHashMap<>(8, 1);
+        int select = -1;
 
         ServerList() {
             serverList = new List(shell, SWT.SINGLE | SWT.V_SCROLL | SWT.BORDER);
-            serverList.setBounds(10, 10, 250, 500);
+            serverList.setBounds(10, 10, 250, 475);
             serverList.setToolTipText("服务器列表");
             serverList.addFocusListener(new FocusListener() {
                 @Override
                 public void focusGained(FocusEvent e) {
+                    int idx = serverList.getSelectionIndex();
+                    Node n = serverMap.get(idx);
+                    if(n == null) {
+                        return;
+                    }
+                    serverSettingForm.setHostText(n.getHost());
+                    serverSettingForm.setPortText(n.getPort());
+                    serverSettingForm.setCertPortText(n.getCertPort());
+                    serverSettingForm.setEncrypt(n.getEncryptType());
+                    serverSettingForm.setAuth(n.getAuthType());
 
+                    if(n.getAuthType() == AuthType.USER) {
+                        serverSettingForm.setUser(n.getAuthArgument("user"));
+                        serverSettingForm.setPass(n.getAuthArgument("pass"));
+                    } else {
+                        serverSettingForm.setPass(n.getAuthArgument("password"));
+                    }
+                    select = idx;
                 }
 
                 @Override
                 public void focusLost(FocusEvent e) {
-
+                    focusGained(e);
                 }
             });
             flush(false);
@@ -83,6 +107,10 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                 serverList.add(node.getHost() + ":" + node.getPort(), i++);
             }
         }
+
+        Node selectNode() {
+            return select != -1 ? serverMap.get(select) : null;
+        }
     }
 
     private final class ServerSettingForm {
@@ -98,18 +126,26 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             Text host = new Text(shell, SWT.BORDER);
             Text port = new Text(shell, SWT.BORDER);
             Text certPort = new Text(shell, SWT.BORDER);
-            Combo encrypt = new Combo(shell, SWT.DROP_DOWN);
-            Combo auth = new Combo(shell, SWT.DROP_DOWN);
+            Combo encrypt = new Combo(shell, SWT.DROP_DOWN | SWT.READ_ONLY);
+            Combo auth = new Combo(shell, SWT.DROP_DOWN | SWT.READ_ONLY);
 
             Text user = new Text(shell, SWT.BORDER);
-            Text pass = new Text(shell, SWT.BORDER);
+            Text pass = new Text(shell, SWT.BORDER | SWT.PASSWORD);
 
-            host.setBounds(360, 10, 460, 40);
-            port.setBounds(360, 65, 180, 40); certPort.setBounds(620, 65, 200, 40);
-            encrypt.setBounds(360, 120, 460, 50);
-            auth.setBounds(360, 175, 460, 50);
-            user.setBounds(360,230, 460, 40);
-            pass.setBounds(360, 285, 460, 40);
+            createLabel("地址", 270, 10, 70, 30);
+            createLabel("端口", 270, 50, 70, 30);
+            createLabel("证书端口", 550, 50, 80, 30);
+            createLabel("加密方式", 270, 90, 80, 30);
+            createLabel("认证方式", 270, 130, 80, 30);
+            createLabel("用户名", 270, 170, 70, 30);
+            createLabel("密码", 270, 210, 70, 30);
+
+            host.setBounds(360, 10, 460, 30);
+            port.setBounds(360, 50, 180, 30); certPort.setBounds(640, 50, 180, 30);
+            encrypt.setBounds(360, 90, 460, 30);
+            auth.setBounds(360, 130, 460, 30);
+            user.setBounds(360,170, 460, 30);
+            pass.setBounds(360, 210, 460, 30);
 
             encrypt.add("无加密", 0);
             encrypt.add("TLS/SSL", 1);
@@ -118,6 +154,119 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
             encrypt.select(0);
             auth.select(0);
+
+            auth.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetSelected(SelectionEvent e) {
+                    int idx = auth.getSelectionIndex();
+                    if(idx == 0) {
+                        user.setText("");
+                        user.setEditable(false);
+                    } else {
+                        user.setEditable(true);
+                    }
+                }
+            });
+
+            encrypt.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetSelected(SelectionEvent e) {
+                    int idx = encrypt.getSelectionIndex();
+                    if(idx == 0) {
+                        certPort.setText("");
+                        certPort.setEditable(false);
+                    } else {
+                        certPort.setEditable(true);
+                    }
+                }
+            });
+
+            Button save = new Button(shell, SWT.PUSH);
+            save.setText("保存");
+            save.setBounds(270, 250, 270, 60);
+
+            try(InputStream is = getComponent().getParentComponent().getConfigManager().loadResource("classpath://save-icon.png")) {
+                save.setImage(new Image(null, is));
+            } catch (IOException e) {
+                log.warn("Can not read save-icon image.", e);
+            }
+            save.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetSelected(SelectionEvent e) {
+                    String host = ServerSettingForm.this.host.getText();
+                    if(!BaseUtils.isIPv4Address(host) && !BaseUtils.isHostName(host)) {
+                        showMessageBox("错误", "服务器主机名格式有误:需要为IPv4地址或是合法主机名/域名", SWT.ICON_ERROR | SWT.OK);
+                        return;
+                    }
+
+                    String ports = ServerSettingForm.this.port.getText();
+                    int port;
+                    if(!BaseUtils.isPortString(ports)) {
+                        showMessageBox("错误", "端口号有误,必须为1~65535之间的数字", SWT.ICON_ERROR | SWT.OK);
+                        return;
+                    }
+
+                    port = Integer.parseInt(ports);
+                    int en = encrypt.getSelectionIndex();
+                    String cports = ServerSettingForm.this.certPort.getText();
+                    int cport = 0;
+                    if(en == 1) {
+                        if(!BaseUtils.isPortString(cports)) {
+                            showMessageBox("错误", "证书端口号有误,必须为1~65535之间的数字", SWT.ICON_ERROR | SWT.OK);
+                            return;
+                        }
+                        cport = Integer.parseInt(cports);
+                    }
+
+                    int au = encrypt.getSelectionIndex();
+                    String user = null, pwd;
+                    pwd = ServerSettingForm.this.pass.getText();
+                    if(au == 1) {
+                        user = ServerSettingForm.this.user.getText();
+                    }
+
+                    Node n = serverList.selectNode();
+                    if(n == null) {
+                        n = new Node();
+                    }
+                    n.setHost(host);
+                    n.setPort(port);
+                    n.setCertPort(cport);
+                    n.setEncryptType(en == 1 ? EncryptType.SSL : EncryptType.NONE);
+                    n.setAuthType(au == 1 ? AuthType.USER : AuthType.SIMPLE);
+                    if(au == 0) {
+                        n.setAuthArgument(Collections.singletonMap("password", pwd));
+                    } else {
+                        Map<String, String> map = new HashMap<>(2, 1);
+                        map.put("user", user);
+                        map.put("pass", pwd);
+                        n.setAuthArgument(map);
+                    }
+
+                    if(serverList.select == -1) {
+                        operator.addServerConfig(n);
+                    } else {
+                        operator.updateServerConfig(n);
+                    }
+                }
+            });
+
+            Button delete = new Button(shell, SWT.PUSH);
+            delete.setText("删除");
+            delete.setBounds(550, 250, 270, 60);
+
+            try(InputStream is = getComponent().getParentComponent().getConfigManager().loadResource("classpath://delete-icon.png")) {
+                delete.setImage(new Image(null, is));
+            } catch (IOException e) {
+                log.warn("Can not read delete-icon image.", e);
+            }
+
+            delete.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetSelected(SelectionEvent e) {
+                    super.widgetSelected(e);
+                }
+            });
 
             this.encrypt = encrypt;
             this.auth = auth;
@@ -149,8 +298,15 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
         void setAuth(AuthType type) {
             switch (type) {
-                case SIMPLE: auth.select(0); break;
-                case USER: auth.select(1); break;
+                case SIMPLE: {
+                    auth.select(0);
+                    user.setEditable(false);
+                } break;
+
+                case USER: {
+                    auth.select(1);
+                    user.setEditable(true);
+                } break;
             }
         }
 
@@ -191,5 +347,19 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
     void setVisiable(boolean visiable) {
         shell.setVisible(visiable);
+
+    }
+
+    private void createLabel(String text, int x, int y, int width, int height) {
+        Label l = new Label(shell, SWT.CENTER);
+        l.setBounds(x, y, width, height);
+        l.setText(text);
+    }
+
+    private void showMessageBox(String title, String content, int setting) {
+        MessageBox box = new MessageBox(shell, setting);
+        box.setText(title);
+        box.setMessage(content);
+        box.open();
     }
 }
