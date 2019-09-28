@@ -6,7 +6,11 @@ import io.netty.util.ReferenceCountUtil;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
 
 /**
  * 实现代理功能的核心组件
@@ -36,7 +40,9 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
      */
     private ProxyAutoConfig proxyAutoConfig;
 
-
+    /**
+     * 异步任务执行器
+     */
     private final ExecutorService executors = Executors.newCachedThreadPool();
 
 
@@ -183,8 +189,8 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
             ProxyServerConfig cfg = (ProxyServerConfig) configEvent.getSource();
 
             if(configEvent.getEvent().equals(Config.UPDATE_EVENT)) {
-                ProxyServerConfig.Node[] nodes = cfg.getProxyServerConfig();
-                for(ProxyServerConfig.Node node : nodes) {
+                Node[] nodes = cfg.getProxyServerConfig();
+                for(Node node : nodes) {
                     String name = ProxyServerComponent.generalName(node.getHost(), node.getPort());
                     ProxyServerComponent psc = getComponentByName(name, ProxyServerComponent.class);
 
@@ -197,8 +203,10 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
                         ProxyServerComponent newPsc = new ProxyServerComponent(ProxyComponent.this, node);
                         addComponent(newPsc);
                         executors.submit(() -> { //异步执行，防止连接超时阻塞GUI线程
-                            newPsc.init();
-                            newPsc.start();
+                            synchronized (newPsc) {
+                                newPsc.init();
+                                newPsc.start();
+                            }
                         });
                     } else if(psc != null) { //如果用户需要关闭这个代理服务器连接
                         psc.setUse(false);

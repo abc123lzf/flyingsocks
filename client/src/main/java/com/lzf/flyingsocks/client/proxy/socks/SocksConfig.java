@@ -12,6 +12,7 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
 
 /**
@@ -98,7 +99,7 @@ public class SocksConfig extends AbstractConfig {
 
         String content = socks.toJSONString();
         ByteBuffer buf = ByteBuffer.allocate(content.length());
-        buf.put(content.getBytes(Charset.forName("ASCII")));
+        buf.put(content.getBytes(StandardCharsets.US_ASCII));
         try(FileChannel ch = FileChannel.open(file.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
             buf.rewind();
             ch.write(buf);
@@ -151,9 +152,19 @@ public class SocksConfig extends AbstractConfig {
     }
 
     public void update(boolean auth, String username, String password) {
-        this.username = username;
-        this.password = password;
-        this.auth = auth;
+        if(this.auth == auth) {
+            return;
+        }
+
+        if(auth) {
+            this.username = username;
+            this.password = password;
+            this.auth = auth;
+        } else {
+            this.auth = auth;
+            this.username = username;
+            this.password = password;
+        }
         configManager.updateConfig(this);
     }
 }

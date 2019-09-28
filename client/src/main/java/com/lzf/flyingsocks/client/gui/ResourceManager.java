@@ -22,12 +22,24 @@ public final class ResourceManager {
         }
     }
 
+    public static InputStream openFlyingsocksImageStream() throws IOException {
+        return new URL("classpath://flyingsocks.png").openStream();
+    }
+
     public static InputStream openIconImageStream() throws IOException {
         return new URL("classpath://icon.png").openStream();
     }
 
     public static InputStream openSystemTrayImageStream() throws IOException {
         return new URL("classpath://icon-tray.png").openStream();
+    }
+
+    public static InputStream openSaveIconImageStream() throws IOException {
+        return new URL("classpath://save-icon.png").openStream();
+    }
+
+    public static InputStream openDeleteIconImageStream() throws IOException {
+        return new URL("classpath://delete-icon.png").openStream();
     }
 
     public static Image loadSystemTrayImage() throws IOException {
@@ -37,6 +49,7 @@ public final class ResourceManager {
     public static Image loadIconImage() throws IOException {
         return ImageIO.read(new URL("classpath://icon-tray.png"));
     }
+
 
     private ResourceManager() {
         throw new UnsupportedOperationException();

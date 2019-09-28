@@ -9,8 +9,11 @@ import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.client.GlobalConfig;
 import com.lzf.flyingsocks.protocol.AuthMessage;
 
-import java.io.*;
-import java.nio.charset.Charset;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +48,7 @@ public class ProxyServerConfig extends AbstractConfig {
         try(FileInputStream is = new FileInputStream(file)) {
             byte[] b = new byte[(int)file.length()];
             is.read(b);
-            JSONArray array = JSON.parseArray(new String(b, Charset.forName("UTF-8")));
+            JSONArray array = JSON.parseArray(new String(b, StandardCharsets.UTF_8));
 
             for(int i = 0; i < array.size(); i++) {
                 JSONObject o = array.getJSONObject(i);
@@ -98,7 +101,7 @@ public class ProxyServerConfig extends AbstractConfig {
             JSONObject auth = new JSONObject();
             auth.putAll(node.authArgument);
             o.put("auth-arg", auth);
-            o.put("state", node.isUse());
+            o.put("state", /*node.isUse()*/ false);
             o.put("encrypt", node.encryptType.name());
             arr.add(o);
         }

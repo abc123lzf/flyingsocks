@@ -53,7 +53,7 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
     //代理任务订阅者列表
     private final List<ProxyTaskSubscriber> proxyTaskSubscribers = new CopyOnWriteArrayList<>();
 
-    FastThreadLocal<Map<Channel, ClientSession>> localClientMap = new FastThreadLocal<Map<Channel, ClientSession>>() {
+    private FastThreadLocal<Map<Channel, ClientSession>> localClientMap = new FastThreadLocal<Map<Channel, ClientSession>>() {
         @Override
         protected Map<Channel, ClientSession> initialValue() {
             return new WeakHashMap<>();

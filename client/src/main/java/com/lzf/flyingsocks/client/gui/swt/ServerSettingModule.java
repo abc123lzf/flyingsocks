@@ -5,14 +5,10 @@ import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
 import com.lzf.flyingsocks.util.BaseUtils;
-
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.FocusEvent;
-import org.eclipse.swt.events.FocusListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.widgets.List;
 import org.eclipse.swt.widgets.*;
 import org.slf4j.Logger;
@@ -49,22 +45,22 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         this.shell = initialShell();
         this.serverList = new ServerList();
         this.serverSettingForm = new ServerSettingForm();
-        initialComponent();
     }
 
 
     private final class ServerList {
         private final List serverList;
-        private final Map<Integer, Node> serverMap = new LinkedHashMap<>(8, 1);
+        private final Map<Integer, Node> serverMap = new TreeMap<>();
         int select = -1;
 
         ServerList() {
             serverList = new List(shell, SWT.SINGLE | SWT.V_SCROLL | SWT.BORDER);
             serverList.setBounds(10, 10, 250, 475);
             serverList.setToolTipText("服务器列表");
-            serverList.addFocusListener(new FocusListener() {
+
+            serverList.addSelectionListener(new SelectionAdapter() {
                 @Override
-                public void focusGained(FocusEvent e) {
+                public void widgetSelected(SelectionEvent e) {
                     int idx = serverList.getSelectionIndex();
                     Node n = serverMap.get(idx);
                     if(n == null) {
@@ -83,11 +79,6 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                         serverSettingForm.setPass(n.getAuthArgument("password"));
                     }
                     select = idx;
-                }
-
-                @Override
-                public void focusLost(FocusEvent e) {
-                    focusGained(e);
                 }
             });
             flush(false);
@@ -185,8 +176,8 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             save.setText("保存");
             save.setBounds(270, 250, 270, 60);
 
-            try(InputStream is = getComponent().getParentComponent().getConfigManager().loadResource("classpath://save-icon.png")) {
-                save.setImage(new Image(null, is));
+            try (InputStream is = ResourceManager.openSaveIconImageStream()) {
+                save.setImage(new Image(display, is));
             } catch (IOException e) {
                 log.warn("Can not read save-icon image.", e);
             }
@@ -218,7 +209,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                         cport = Integer.parseInt(cports);
                     }
 
-                    int au = encrypt.getSelectionIndex();
+                    int au = auth.getSelectionIndex();
                     String user = null, pwd;
                     pwd = ServerSettingForm.this.pass.getText();
                     if(au == 1) {
@@ -245,8 +236,10 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
                     if(serverList.select == -1) {
                         operator.addServerConfig(n);
+                        showMessageBox("成功", "成功添加服务器配置 " + host + ":" + port, SWT.ICON_INFORMATION | SWT.OK);
                     } else {
                         operator.updateServerConfig(n);
+                        showMessageBox("成功", "成功修改服务器配置 " + host + ":" + port, SWT.ICON_INFORMATION | SWT.OK);
                     }
                 }
             });
@@ -255,8 +248,8 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             delete.setText("删除");
             delete.setBounds(550, 250, 270, 60);
 
-            try(InputStream is = getComponent().getParentComponent().getConfigManager().loadResource("classpath://delete-icon.png")) {
-                delete.setImage(new Image(null, is));
+            try(InputStream is = ResourceManager.openDeleteIconImageStream()) {
+                delete.setImage(new Image(display, is));
             } catch (IOException e) {
                 log.warn("Can not read delete-icon image.", e);
             }
@@ -325,8 +318,8 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         shell.setText("服务器设置");
         shell.setSize(850, 550);
 
-        try {
-            shell.setImage(new Image(display, new ImageData(ResourceManager.openIconImageStream())));
+        try (InputStream is = ResourceManager.openIconImageStream()) {
+            shell.setImage(new Image(display, is));
         } catch (IOException e) {
             throw new Error(e);
         }
@@ -340,14 +333,8 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         return shell;
     }
 
-    private void initialComponent() {
-
-    }
-
-
     void setVisiable(boolean visiable) {
         shell.setVisible(visiable);
-
     }
 
     private void createLabel(String text, int x, int y, int width, int height) {

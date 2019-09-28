@@ -22,10 +22,11 @@ public class SWTViewComponent extends AbstractComponent<Client> {
 
     private final Display display;
 
-    private volatile SocksSettingModule socksSettingModule;
+    private SocksSettingModule socksSettingModule;
 
-    private volatile ServerSettingModule serverSettingModule;
+    private ServerSettingModule serverSettingModule;
 
+    private MainScreenModule mainScreenModule;
 
     public SWTViewComponent(Client parent) {
         super("SWTViewComponent", Objects.requireNonNull(parent));
@@ -45,6 +46,7 @@ public class SWTViewComponent extends AbstractComponent<Client> {
                 addModule(new TrayModule(this, display));
                 addModule(this.serverSettingModule = new ServerSettingModule(this, display));
                 addModule(this.socksSettingModule = new SocksSettingModule(this, display));
+                addModule(this.mainScreenModule = new MainScreenModule(this, display));
             } catch (Throwable t) {
                 log.error("SWT Thread occur a error", t);
                 System.exit(1);
@@ -81,6 +83,10 @@ public class SWTViewComponent extends AbstractComponent<Client> {
 
     void openServerSettingUI() {
         serverSettingModule.setVisiable(true);
+    }
+
+    void openMainScreenUI() {
+        mainScreenModule.setVisiable(true);
     }
 
     @Override

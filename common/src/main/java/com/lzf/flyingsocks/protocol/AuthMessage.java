@@ -7,6 +7,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
@@ -21,7 +22,7 @@ public class AuthMessage implements Message {
     /**
      * Auth Message字段的编码格式
      */
-    public static final Charset DEFAULT_ENCODING = Charset.forName("UTF-8");
+    public static final Charset DEFAULT_ENCODING = StandardCharsets.UTF_8;
 
     /**
      * 认证方式

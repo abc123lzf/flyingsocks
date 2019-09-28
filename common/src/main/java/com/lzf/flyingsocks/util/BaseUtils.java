@@ -36,6 +36,10 @@ public final class BaseUtils {
         }
     }
 
+    public static boolean isPort(int port) {
+        return port > 0 && port < 65536;
+    }
+
     /**
      * 将点标记法IPV4字符串转换为int
      * @param ipv4 IPV4字符串

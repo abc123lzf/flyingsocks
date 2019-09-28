@@ -5,14 +5,12 @@ import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.*;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.widgets.*;
-import org.eclipse.swt.widgets.Menu;
-import org.eclipse.swt.widgets.MenuItem;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
@@ -26,8 +24,6 @@ import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
 final class TrayModule extends AbstractModule<SWTViewComponent> {
     private static final String GITHUB_PAGE = "https://github.com/abc123lzf/flyingsocks";
     private static final String ISSUE_PAGE = "https://github.com/abc123lzf/flyingsocks/issues";
-
-    private static final Logger log = LoggerFactory.getLogger("SystemTray");
 
     private final Display display;
 
@@ -54,42 +50,24 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         tray.setVisible(true);
         tray.setToolTipText(shell.getText());
 
+        createMenuItem(menu, "打开主界面(&m)", e -> belongComponent.openMainScreenUI());
+
+        //服务器选择菜单
         new ServerChooseMenu(shell, menu);
 
+        //PAC设置菜单
         initialPacMenu(shell, menu);
 
-        MenuItem server = new MenuItem(menu, SWT.PUSH);
-        server.setText("编辑服务器配置...(&e)");
-        server.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                belongComponent.openServerSettingUI();
-            }
-        });
-
-        new MenuItem(menu, SWT.SEPARATOR);
-
-        MenuItem socks = new MenuItem(menu, SWT.PUSH);
-        socks.setText("本地Socks5代理设置...(&l)");
-        socks.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                belongComponent.openSocksSettingUI();
-            }
-        });
-
-        new MenuItem(menu, SWT.SEPARATOR);
+        createMenuItem(menu, "编辑服务器配置...(&e)", e -> belongComponent.openServerSettingUI());
+        createMenuSeparator(menu);
+        createMenuItem(menu, "本地Socks5代理设置...(&l)", e -> belongComponent.openSocksSettingUI());
+        createMenuSeparator(menu);
 
         initialAboutMenu(shell, menu);
-        MenuItem exit = new MenuItem(menu, SWT.PUSH);
-        exit.setText("退出(&x)");
-
-        exit.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                shell.dispose();
-                belongComponent.getParentComponent().stop();
-            }
+        createMenuItem(menu, "退出(&x)", e -> {
+            tray.dispose();
+            shell.dispose();
+            belongComponent.getParentComponent().stop();
         });
 
         try {
@@ -237,42 +215,46 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         Menu about = new Menu(shell, SWT.DROP_DOWN);
         serv.setMenu(about);
 
-        MenuItem openLogDir = new MenuItem(about, SWT.CASCADE);
-        openLogDir.setText("打开日志目录");
-        openLogDir.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                operator.openLogDirectory();
-            }
-        });
+        createCascadeMenuItem(about, "打开日志目录", e -> operator.openLogDirectory());
+        createCascadeMenuItem(about, "清空日志", e -> operator.cleanLogFiles());
+        createMenuSeparator(about);
+        createCascadeMenuItem(about, "GitHub页面", e -> operator.openBrowser(GITHUB_PAGE));
+        createCascadeMenuItem(about, "问题反馈", e -> operator.openBrowser(ISSUE_PAGE));
+    }
 
-        MenuItem cleanLog = new MenuItem(about, SWT.CASCADE);
-        cleanLog.setText("清空日志");
-        cleanLog.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                operator.cleanLogFiles();
-            }
-        });
+    /**
+     * 创建菜单分隔线
+     * @param menu 菜单
+     */
+    private static void createMenuSeparator(Menu menu) {
+        new MenuItem(menu, SWT.SEPARATOR);
+    }
 
-        new MenuItem(about, SWT.SEPARATOR);
+    /**
+     * 创建菜单项
+     * @param menu 菜单
+     * @param text 菜单项文本
+     * @param listener 点击时监听器
+     */
+    private static void createMenuItem(Menu menu, String text, SimpleSelectionListener listener) {
+        MenuItem it = new MenuItem(menu, SWT.PUSH);
+        it.setText(text);
+        if(listener != null) {
+            it.addSelectionListener(listener);
+        }
+    }
 
-        MenuItem github = new MenuItem(about, SWT.CASCADE);
-        github.setText("GitHub页面");
-        github.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent event) {
-                operator.openBrowser(GITHUB_PAGE);
-            }
-        });
-
-        MenuItem problem = new MenuItem(about, SWT.CASCADE);
-        problem.setText("问题反馈");
-        problem.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent event) {
-                operator.openBrowser(ISSUE_PAGE);
-            }
-        });
+    /**
+     * 创建级联菜单项
+     * @param menu 菜单
+     * @param text 菜单项文本
+     * @param listener 点击时监听器
+     */
+    private static void createCascadeMenuItem(Menu menu, String text, SimpleSelectionListener listener) {
+        MenuItem it = new MenuItem(menu, SWT.CASCADE);
+        it.setText(text);
+        if(listener != null) {
+            it.addSelectionListener(listener);
+        }
     }
 }

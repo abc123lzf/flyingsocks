@@ -7,10 +7,10 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.widgets.*;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Objects;
 
 /**
@@ -35,8 +35,8 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
         Shell shell = new Shell(display);
         shell.setText("Socks5本地代理设置");
         shell.setSize(600, 330);
-        try {
-            shell.setImage(new Image(display, new ImageData(ResourceManager.openIconImageStream())));
+        try (InputStream is = ResourceManager.openIconImageStream()){
+            shell.setImage(new Image(display, is));
         } catch (IOException e) {
             throw new Error(e);
         }

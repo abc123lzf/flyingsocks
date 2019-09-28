@@ -3,15 +3,19 @@ package com.lzf.flyingsocks.server;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.lzf.flyingsocks.*;
+import com.lzf.flyingsocks.AbstractConfig;
+import com.lzf.flyingsocks.Config;
+import com.lzf.flyingsocks.ConfigInitializationException;
+import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.protocol.AuthMessage;
+import com.lzf.flyingsocks.util.BaseUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.InputStream;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class ServerConfig extends AbstractConfig implements Config {
@@ -69,7 +73,7 @@ public class ServerConfig extends AbstractConfig implements Config {
             try(InputStream cis = file.toURI().toURL().openStream()) {
                 byte[] b = new byte[102400];
                 int len = cis.read(b);
-                String json = new String(b, 0, len, Charset.forName("UTF-8"));
+                String json = new String(b, 0, len, StandardCharsets.UTF_8);
                 JSONArray arr = JSON.parseArray(json);
                 for(int i = 0; i < arr.size(); i++) {
                     JSONObject obj = arr.getJSONObject(i);
@@ -78,8 +82,18 @@ public class ServerConfig extends AbstractConfig implements Config {
                     int certPort = obj.getIntValue("cert-port");
                     int client = obj.getIntValue("max-client");
 
+                    if(!BaseUtils.isPort(port)) {
+                        log.error("Illegal Port {}, should be large than 0 and smaller than 65536", port);
+                        System.exit(1);
+                    }
+
                     EncryptType encryptType = EncryptType.valueOf(obj.getString("encrypt"));
                     AuthType authType = AuthType.valueOf(obj.getString("auth-type").toUpperCase());
+
+                    if(encryptType == EncryptType.OpenSSL && !BaseUtils.isPort(certPort)) {
+                        log.error("Illegal CertPort {}, should be large than 0 and smaller than 65536", certPort);
+                        System.exit(1);
+                    }
 
                     Node n = new Node(name, port, certPort, client, authType, encryptType);
 
@@ -111,6 +125,7 @@ public class ServerConfig extends AbstractConfig implements Config {
         obj.put("name", "default");
         obj.put("port", 2020);
         obj.put("max-client", 10);
+        obj.put("cert-port", 7060);
         obj.put("encrypt", "OpenSSL");
         obj.put("auth-type", "simple");
         obj.put("password", UUID.randomUUID().toString().replace("-", "").substring(0, 8));
@@ -130,7 +145,7 @@ public class ServerConfig extends AbstractConfig implements Config {
     }
 
     public Node[] getServerNode() {
-        return nodeList.toArray(new Node[nodeList.size()]);
+        return nodeList.toArray(new Node[0]);
     }
 
     /**
@@ -188,7 +203,8 @@ public class ServerConfig extends AbstractConfig implements Config {
         public String toString() {
             StringBuilder sb = new StringBuilder();
             sb.append("[").append("name:").append(name).append(" port:")
-                    .append(port).append(" maxClient:").append(maxClient).append(" Auth:")
+                    .append(port).append(" cert-port:").append(certPort)
+                    .append(" maxClient:").append(maxClient).append(" Auth:")
                     .append(authType.name());
 
             switch (authType) {
