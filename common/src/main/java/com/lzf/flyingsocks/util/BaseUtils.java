@@ -27,6 +27,15 @@ public final class BaseUtils {
         return HOST_PATTERN.matcher(host).matches();
     }
 
+    public static boolean isPortString(String port) {
+        try {
+            int p = Integer.parseInt(port);
+            return p > 0 && p < 65536;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
     /**
      * 将点标记法IPV4字符串转换为int
      * @param ipv4 IPV4字符串
