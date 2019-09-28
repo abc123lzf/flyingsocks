@@ -1,22 +1,19 @@
 package com.lzf.flyingsocks.client.gui.swt;
 
 import com.lzf.flyingsocks.AbstractModule;
-import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.widgets.*;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Objects;
 
 import static com.lzf.flyingsocks.client.proxy.ProxyAutoConfig.*;
-import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
 
 /**
  * SWT系统托盘实现
@@ -51,9 +48,6 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         tray.setToolTipText(shell.getText());
 
         createMenuItem(menu, "打开主界面(&m)", e -> belongComponent.openMainScreenUI());
-
-        //服务器选择菜单
-        new ServerChooseMenu(shell, menu);
 
         //PAC设置菜单
         initialPacMenu(shell, menu);
@@ -127,85 +121,6 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
             case PROXY_PAC: pac1.setSelection(true); break;
             case PROXY_NO: pac0.setSelection(true); break;
             case PROXY_GLOBAL: pac2.setSelection(true); break;
-        }
-    }
-
-
-    private final class ServerChooseMenu {
-        private final Menu serverMenu;
-        private final Map<Node, MenuItem> menuMap = new HashMap<>();
-        private Node usingNode;
-
-        ServerChooseMenu(Shell shell, Menu main) {
-            MenuItem serv = new MenuItem(main, SWT.CASCADE);
-            serv.setText("代理服务器(&s)");
-            this.serverMenu = new Menu(shell, SWT.DROP_DOWN);
-            serv.setMenu(this.serverMenu);
-
-            flushNodes(false);
-            operator.registerProxyServerConfigListener(Config.UPDATE_EVENT, () -> flushNodes(true), false);
-        }
-
-        private void flushNodes(boolean clean) {
-            Node[] nodes = operator.getServerNodes();
-
-            if(clean) {
-                Set<Node> set = new HashSet<>();
-                Collections.addAll(set, nodes);
-                Iterator<Map.Entry<Node, MenuItem>> it = menuMap.entrySet().iterator();
-                while (it.hasNext()) {
-                    Map.Entry<Node, MenuItem> e = it.next();
-                    if(!set.contains(e.getKey())) {
-                        e.getValue().dispose();
-                        it.remove();
-                    }
-                }
-
-                usingNode = null;
-            }
-
-            Set<Node> kSet = menuMap.keySet();
-
-            for (final Node node : nodes) {
-                if(kSet.contains(node)) {
-                    continue;
-                }
-
-                final MenuItem it = new MenuItem(serverMenu, SWT.CASCADE ^ SWT.CHECK);
-                it.setText(node.getHost() + ":" + node.getPort());
-
-                menuMap.put(node, it);
-
-                if(node.isUse()) {
-                    it.setSelection(true);
-                    usingNode = node;
-                }
-
-                SelectionListener sl;
-                it.addSelectionListener(sl = new SelectionAdapter() {
-                    @Override
-                    public void widgetSelected(SelectionEvent e) {
-                        boolean use = node.isUse();
-                        if(use) {
-                            operator.setProxyServerUsing(node, false);
-                            it.setSelection(false);
-                            usingNode = null;
-                        } else {
-                            Map<Node, Boolean> map = new HashMap<>(4);
-                            if(usingNode != null) {
-                                menuMap.get(usingNode).setSelection(false);
-                                map.put(usingNode, false);
-                            }
-                            usingNode = node;
-                            map.put(node, true);
-                            it.setSelection(true);
-                            operator.setProxyServerUsing(map);
-                        }
-                    }
-                });
-
-                it.addDisposeListener(e -> it.removeSelectionListener(sl));
-            }
         }
     }
 
