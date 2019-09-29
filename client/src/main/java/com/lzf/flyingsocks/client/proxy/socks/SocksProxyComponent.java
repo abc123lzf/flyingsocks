@@ -44,7 +44,7 @@ public class SocksProxyComponent extends ProxyComponent {
         manager.registerConfig(cfg);
 
         int cpus = getParentComponent().availableProcessors();
-        nettyWorkerLoopGroup = new NioEventLoopGroup(cpus < 4 ? 4 : cpus);
+        nettyWorkerLoopGroup = new NioEventLoopGroup(Math.max(cpus, 4));
 
         clientMessageProcessor = new ThreadPoolExecutor(0, 12, 180, TimeUnit.SECONDS,
                 new SynchronousQueue<>());
@@ -106,7 +106,7 @@ public class SocksProxyComponent extends ProxyComponent {
      * 这个任务会不断地接收无需进行代理的代理请求(即直连模式)
      * 并获取来自客户端的消息(ByteBuf对象)，然后将其转发给ServerChannel(目标服务器)。
      */
-    private final class ClientMessageTransferTask implements Runnable {
+    private static final class ClientMessageTransferTask implements Runnable {
         private final List<SocksProxyRequest> requests = new LinkedList<>();
         private final BlockingQueue<SocksProxyRequest> newRequestQueue = new LinkedBlockingQueue<>();
 
@@ -117,15 +117,15 @@ public class SocksProxyComponent extends ProxyComponent {
                 ListIterator<SocksProxyRequest> it = requests.listIterator();
                 while(it.hasNext()) {
                     SocksProxyRequest req = it.next();
-                    Channel sc;
-                    Channel cc;
-                    if((cc = req.clientChannel()) != null && !cc.isActive()) {
+                    Channel cc = req.clientChannel();
+                    if(cc != null && !cc.isActive()) {
                         it.remove();
                         clearProxyRequest(req);
                         continue;
                     }
 
-                    if((sc = req.serverChannel()) == null) {
+                    Channel sc = req.serverChannel();
+                    if(sc == null) {
                         continue;
                     }
 

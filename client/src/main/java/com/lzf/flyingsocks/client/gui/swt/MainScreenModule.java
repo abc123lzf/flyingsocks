@@ -4,6 +4,7 @@ import com.lzf.flyingsocks.AbstractModule;
 import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
+import com.lzf.flyingsocks.client.proxy.ConnectionState;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.FocusAdapter;
 import org.eclipse.swt.events.FocusEvent;
@@ -32,6 +33,8 @@ class MainScreenModule extends AbstractModule<SWTViewComponent> {
 
     private final ClientOperator operator;
 
+    private final Label connStatusLabel;
+
     private static final Color BUTTON_FOCUS_COLOR = new Color(null, 101, 181, 255);
     private static final Color BUTTON_NORMAL_COLOR = new Color(null, 81, 161, 243);
 
@@ -39,29 +42,26 @@ class MainScreenModule extends AbstractModule<SWTViewComponent> {
         super(Objects.requireNonNull(component), "Main-Screen");
         this.display = display;
         this.operator = getComponent().getParentComponent();
-        this.shell = initial();
-        initialUI();
-    }
-
-    private Shell initial() {
-        Shell shell = new Shell(display);
-        shell.setSize(640, 540);
-        shell.setText("主界面");
-        shell.setVisible(false);
-        shell.setBackground(new Color(display, 255, 255, 255));
+        Shell sh = new Shell(display);
+        sh.setSize(640, 540);
+        sh.setText("主界面");
+        sh.setVisible(false);
+        sh.setBackground(new Color(display, 255, 255, 255));
         try (InputStream is = ResourceManager.openIconImageStream()) {
-            shell.setImage(new Image(display, is));
+            sh.setImage(new Image(display, is));
         } catch (IOException e) {
             throw new Error(e);
         }
-        shell.addListener(SWT.Close, e -> {
+        sh.addListener(SWT.Close, e -> {
             e.doit = false;
             setVisiable(false);
         });
-        return shell;
-    }
+        this.shell = sh;
 
-    private void initialUI() {
+        Label status = new Label(sh, SWT.LEFT);
+        status.setBounds(0, 455, 620, 30);
+        this.connStatusLabel = status;
+
         try (InputStream is = ResourceManager.openFlyingsocksImageStream()) {
             createLabel(null, 0, 0, 620, 180, new Image(display, is));
         } catch (IOException e) {
@@ -69,12 +69,12 @@ class MainScreenModule extends AbstractModule<SWTViewComponent> {
         }
 
         createLabel("选择服务器", 20, 200, 140, 40, null);
-        new ServerList(160, 200, 460, 40);
+        new ServerList(160, 200, 450, 40);
     }
-
 
     private final class ServerList {
         private final SortedMap<Integer, Node> nodeMap = new TreeMap<>();
+        private Node usingNode;
         private final Combo combo;
         private final Button connBtn;
         private boolean disconnect;
@@ -98,7 +98,7 @@ class MainScreenModule extends AbstractModule<SWTViewComponent> {
                 }
             });
             this.connBtn = conn;
-
+            setStatusLabelText("未连接");
             changeConnBtn(false);
             update();
             operator.registerProxyServerConfigListener(Config.UPDATE_EVENT, this::update, false);
@@ -106,15 +106,42 @@ class MainScreenModule extends AbstractModule<SWTViewComponent> {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
                     if(disconnect) {
-                        nodeMap.forEach((k, v) -> {
-                            if(v.isUse()) {
-                                operator.setProxyServerUsing(v, false);
-                            }
-                        });
+                        operator.setProxyServerUsing(usingNode, false);
+                        setStatusLabelText("未连接");
                     } else {
                         Node n = selectNode();
                         if(n != null) {
                             operator.setProxyServerUsing(n, true);
+                            display.timerExec(300, new Runnable() {
+                                @Override
+                                public void run() {
+                                    if(!n.isUse()) {
+                                        return;
+                                    }
+
+                                    ConnectionState cs = operator.queryProxyServerConnectionState(n);
+                                    switch (cs) {
+                                        case NEW: setStatusLabelText("初始化中..."); break;
+                                        case SSL_INITIAL: setStatusLabelText("准备SSL证书连接..."); break;
+                                        case SSL_CONNECTING: setStatusLabelText("正在发起SSL证书连接..."); break;
+                                        case SSL_CONNECT_TIMEOUT: setStatusLabelText("SSL证书连接超时,请检查服务器配置"); break;
+                                        case SSL_CONNECT_AUTH_FAILURE: setStatusLabelText("未通过服务器认证,请检查认证信息是否正确"); break;
+                                        case SSL_CONNECT: setStatusLabelText("正在获取SSL证书..."); break;
+                                        case SSL_CONNECT_DONE: setStatusLabelText("SSL证书获取完成"); break;
+                                        case SSL_CONNECT_ERROR: setStatusLabelText("SSL证书连接错误"); break;
+                                        case PROXY_INITIAL: setStatusLabelText("准备发起代理连接..."); break;
+                                        case PROXY_CONNECTING: setStatusLabelText("正在连接代理服务..."); break;
+                                        case PROXY_CONNECT_TIMEOUT: setStatusLabelText("代理服务连接超时"); break;
+                                        case PROXY_CONNECT: setStatusLabelText("成功与服务器建立代理服务连接"); break;
+                                        case PROXY_CONNECT_AUTH_FAILURE: setStatusLabelText("代理服务认证失败,请检查认证信息是否正确"); break;
+                                        case PROXY_CONNECT_ERROR: setStatusLabelText("与代理服务连接发生错误"); break;
+                                        case PROXY_DISCONNECT: setStatusLabelText("暂时与服务器断开连接,尝试进行重连..."); break;
+                                        case UNUSED: setStatusLabelText("代理服务器连接已停止"); break;
+                                    }
+
+                                    display.timerExec(cs != ConnectionState.PROXY_CONNECT ? 300 : 1000, this);
+                                }
+                            });
                         } else {
                             showMessageBox("提示", "请选择一个有效的服务器", SWT.ICON_INFORMATION | SWT.OK);
                         }
@@ -138,6 +165,7 @@ class MainScreenModule extends AbstractModule<SWTViewComponent> {
 
                 if(nodes[i].isUse()) {
                     combo.select(i);
+                    usingNode = nodes[i];
                     use = true;
                 }
             }
@@ -164,15 +192,16 @@ class MainScreenModule extends AbstractModule<SWTViewComponent> {
         }
     }
 
+
     void setVisiable(boolean visiable) {
         shell.setVisible(visiable);
     }
+
 
     private void createLabel(String text, int x, int y, int width, int height, Image image) {
         Label l = new Label(shell, SWT.CENTER);
         l.setBounds(x, y, width, height);
         l.setBackground(new Color(display, 255, 255, 255));
-        /*l.setFont(new Font(display, "微软雅黑", height - 4, SWT.NORMAL));*/
         if(text != null) {
             l.setText(text);
         }
@@ -182,10 +211,16 @@ class MainScreenModule extends AbstractModule<SWTViewComponent> {
         }
     }
 
+
     private void showMessageBox(String title, String content, int setting) {
         MessageBox box = new MessageBox(shell, setting);
         box.setText(title);
         box.setMessage(content);
         box.open();
+    }
+
+
+    private void setStatusLabelText(String text) {
+        connStatusLabel.setText(text);
     }
 }

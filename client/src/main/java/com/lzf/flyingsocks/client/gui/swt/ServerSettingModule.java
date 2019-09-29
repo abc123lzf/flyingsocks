@@ -99,7 +99,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             }
         }
 
-        Node selectNode() {
+        private Node selectNode() {
             return select != -1 ? serverMap.get(select) : null;
         }
     }

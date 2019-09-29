@@ -2,7 +2,9 @@ package com.lzf.flyingsocks.client;
 
 import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.client.gui.swt.SWTViewComponent;
+import com.lzf.flyingsocks.client.proxy.ConnectionState;
 import com.lzf.flyingsocks.client.proxy.ProxyAutoConfig;
+import com.lzf.flyingsocks.client.proxy.ProxyComponent;
 import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksProxyComponent;
@@ -187,6 +189,12 @@ public final class StandardClient extends Client {
             return;
 
         cfg.setProxyServerUsing(map);
+    }
+
+    @Override
+    public ConnectionState queryProxyServerConnectionState(Node node) {
+        ProxyComponent pc = getComponentByName(ProxyComponent.NAME, ProxyComponent.class);
+        return pc.queryProxyServerConnectionState(node.getHost(), node.getPort());
     }
 
     private ProxyServerConfig getProxyServerConfig() {

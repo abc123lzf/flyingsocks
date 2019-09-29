@@ -17,6 +17,8 @@ import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
  */
 public abstract class ProxyComponent extends AbstractComponent<Client> implements ProxyRequestManager {
 
+    public static final String NAME = "ProxyCore";
+
 
     private final List<ProxyRequestSubscriber> requestSubscribers = new CopyOnWriteArrayList<>();
 
@@ -47,7 +49,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
 
 
     protected ProxyComponent(Client client) {
-        super("ProxyCore", Objects.requireNonNull(client));
+        super(NAME, Objects.requireNonNull(client));
     }
 
 
@@ -133,6 +135,13 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
                 log.warn("ProxyRequest was not consume");
         }
     }
+
+
+    public ConnectionState queryProxyServerConnectionState(String host, int port) {
+        ProxyServerComponent psc = getComponentByName(ProxyServerComponent.generalName(host, port), ProxyServerComponent.class);
+        return psc != null ? psc.connectionState() : null;
+    }
+
 
     /**
      * 根据PAC配置判断是否需要进行代理

@@ -1,6 +1,7 @@
 package com.lzf.flyingsocks.client;
 
 import com.lzf.flyingsocks.ConfigEventListener;
+import com.lzf.flyingsocks.client.proxy.ConnectionState;
 
 import java.util.Map;
 
@@ -113,4 +114,12 @@ public interface ClientOperator {
      * @param password 密码
      */
     void updateSocksProxyAuthentication(boolean auth, String username, String password);
+
+
+    /**
+     * 查询代理服务器连接状态
+     * @param node 配置节点
+     * @return 连接状态，如果查询不到返回null
+     */
+    ConnectionState queryProxyServerConnectionState(Node node);
 }
