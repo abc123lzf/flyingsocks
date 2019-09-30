@@ -25,7 +25,7 @@ import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
 /**
  * 主界面
  */
-class MainScreenModule extends AbstractModule<SWTViewComponent> {
+final class MainScreenModule extends AbstractModule<SWTViewComponent> {
 
     private final Display display;
 
@@ -59,7 +59,7 @@ class MainScreenModule extends AbstractModule<SWTViewComponent> {
         this.shell = sh;
 
         Label status = new Label(sh, SWT.LEFT);
-        status.setBounds(0, 455, 620, 30);
+        status.setBounds(0, 425, 620, 30);
         this.connStatusLabel = status;
 
         try (InputStream is = ResourceManager.openFlyingsocksImageStream()) {
@@ -120,6 +120,10 @@ class MainScreenModule extends AbstractModule<SWTViewComponent> {
                                     }
 
                                     ConnectionState cs = operator.queryProxyServerConnectionState(n);
+                                    if(cs == null) {
+                                        return;
+                                    }
+
                                     switch (cs) {
                                         case NEW: setStatusLabelText("初始化中..."); break;
                                         case SSL_INITIAL: setStatusLabelText("准备SSL证书连接..."); break;
@@ -137,6 +141,10 @@ class MainScreenModule extends AbstractModule<SWTViewComponent> {
                                         case PROXY_CONNECT_ERROR: setStatusLabelText("与代理服务连接发生错误"); break;
                                         case PROXY_DISCONNECT: setStatusLabelText("暂时与服务器断开连接,尝试进行重连..."); break;
                                         case UNUSED: setStatusLabelText("代理服务器连接已停止"); break;
+                                    }
+
+                                    if(!cs.isNormal() && !cs.canRetry()) {
+                                        return;
                                     }
 
                                     display.timerExec(cs != ConnectionState.PROXY_CONNECT ? 300 : 1000, this);

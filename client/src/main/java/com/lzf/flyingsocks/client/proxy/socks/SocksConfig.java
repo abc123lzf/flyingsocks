@@ -3,6 +3,7 @@ package com.lzf.flyingsocks.client.proxy.socks;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.lzf.flyingsocks.AbstractConfig;
 import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
@@ -116,7 +117,6 @@ public class SocksConfig extends AbstractConfig {
         GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
 
         File f = new File(cfg.configPath(), SOCKS_CONFIG_FILE);
-
         JSONObject socks = new JSONObject();
         socks.put("address", address);
         socks.put("port", port);
@@ -127,7 +127,7 @@ public class SocksConfig extends AbstractConfig {
         }
 
         try(FileWriter writer = new FileWriter(f)) {
-            writer.write(socks.toJSONString());
+            writer.write(socks.toString(SerializerFeature.PrettyFormat));
         }
     }
 

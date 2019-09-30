@@ -371,7 +371,7 @@ final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
             certPortField.setBounds(330, 40, 110, 30);
 
             JComboBox<String> encrypt = new JComboBox<>();
-            JLabel encryptl = new JLabel("加密方式");
+            JLabel encryptl = new JLabel("加密");
             encryptl.setFont(font);
             DefaultComboBoxModel<String> encryptModel = new DefaultComboBoxModel<>();
             encryptModel.addElement("TLS/SSL");
@@ -385,7 +385,7 @@ final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
             this.encryptBoxModel = encryptModel;
 
             JComboBox<String> auth = new JComboBox<>();
-            JLabel authl = new JLabel("认证方式");
+            JLabel authl = new JLabel("认证");
             authl.setFont(font);
             DefaultComboBoxModel<String> authModel = new DefaultComboBoxModel<>();
             authModel.addElement("选择认证方式");

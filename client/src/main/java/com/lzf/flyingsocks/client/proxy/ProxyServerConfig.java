@@ -3,6 +3,7 @@ package com.lzf.flyingsocks.client.proxy;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.lzf.flyingsocks.AbstractConfig;
 import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
@@ -47,7 +48,11 @@ public class ProxyServerConfig extends AbstractConfig {
 
         try(FileInputStream is = new FileInputStream(file)) {
             byte[] b = new byte[(int)file.length()];
-            is.read(b);
+            int cnt = is.read(b);
+            if(cnt != file.length()) {
+                throw new ConfigInitializationException("File size is abnormalcy, you can restart this application");
+            }
+
             JSONArray array = JSON.parseArray(new String(b, StandardCharsets.UTF_8));
 
             for(int i = 0; i < array.size(); i++) {
@@ -107,7 +112,7 @@ public class ProxyServerConfig extends AbstractConfig {
         }
 
         try(FileWriter writer = new FileWriter(f)) {
-            writer.write(arr.toJSONString());
+            writer.write(arr.toString(SerializerFeature.PrettyFormat));
         }
     }
 

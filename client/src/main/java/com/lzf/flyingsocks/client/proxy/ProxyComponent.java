@@ -131,8 +131,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
 
         if(!consume) {
             ReferenceCountUtil.release(request.takeClientMessage());
-            if(log.isWarnEnabled())
-                log.warn("ProxyRequest was not consume");
+            log.warn("ProxyRequest was not consume");
         }
     }
 
@@ -179,9 +178,9 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
 
     private void initProxyServerComponent() {
         assert getState() == LifecycleState.INITIALIZING;
-        ProxyServerConfig.Node[] nodes = proxyServerConfig.getProxyServerConfig();
+        Node[] nodes = proxyServerConfig.getProxyServerConfig();
 
-        for(ProxyServerConfig.Node node : nodes) {
+        for(Node node : nodes) {
             if(node.isUse()) {
                 ProxyServerComponent c = new ProxyServerComponent(this, node);
                 addComponent(c);
