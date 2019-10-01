@@ -2,8 +2,10 @@ package com.lzf.flyingsocks.client.proxy;
 
 import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.client.Client;
+import io.netty.buffer.ByteBuf;
 import io.netty.util.ReferenceCountUtil;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -108,30 +110,29 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
             log.warn("No RequestSubscriber found in manager");
         //根据PAC文件的配置自动选择代理模式
         boolean np = needProxy(request.getHost());
-        boolean consume = false;
-        int count = 0;
+        int index = 0;
+        List<Integer> list = new ArrayList<>(3);
         for(ProxyRequestSubscriber sub : requestSubscribers) {
             if(sub.requestType().isAssignableFrom(request.getClass()) &&
                     (sub.receiveNeedProxy() && np || sub.receiveNeedlessProxy() && !np) &&
                     sub.requestProtcol().contains(request.protocol())) {
-                if(count == 0) {
-                    sub.receive(request);
-                } else {
-                    try {
-                        sub.receive(request.clone());
-                    } catch (CloneNotSupportedException e) {
-                        throw new Error(e);
-                    }
-                }
-
-                consume = true;
-                count++;
+                list.add(index);
             }
+            index++;
         }
 
-        if(!consume) {
+        if(list.isEmpty()) {
             ReferenceCountUtil.release(request.takeClientMessage());
             log.warn("ProxyRequest was not consume");
+        } else {
+            int hash = request.hashCode();
+            int size = list.size();
+            try {
+                requestSubscribers.get(list.get(hash % size)).receive(request);
+            } catch (IndexOutOfBoundsException e) {
+                log.warn("ProxySubscriber object changed");
+                publish(request);
+            }
         }
     }
 

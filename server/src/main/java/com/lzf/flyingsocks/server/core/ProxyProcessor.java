@@ -161,22 +161,18 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
 
     @Override
     public void publish(ProxyTask task) {
-        if(proxyTaskSubscribers.size() == 0)
-            log.warn("No ProxyTaskSubscriber register.");
+        if(proxyTaskSubscribers.size() == 0) {
+            log.error("No ProxyTaskSubscriber register.");
+            task.getRequestMessage().getMessage().release();
+            return;
+        }
 
-        int count = 0;
-        for(ProxyTaskSubscriber subscriber : proxyTaskSubscribers) {
-            if(count == 0) {
-                subscriber.receive(task);
-            } else {
-                try {
-                    subscriber.receive(task.clone());
-                } catch (CloneNotSupportedException e) {
-                    throw new IllegalStateException(e);
-                }
-            }
-
-            count++;
+        int hash = task.hashCode();
+        int size = proxyTaskSubscribers.size();
+        try {
+            proxyTaskSubscribers.get(hash % size).receive(task);
+        } catch (IndexOutOfBoundsException e) {
+            publish(task);
         }
     }
 

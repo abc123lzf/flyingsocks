@@ -26,7 +26,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
     /**
      * 对于长时间没有通信的活跃TCP连接/UDP通信端口，当超出这个时间时关闭连接
      */
-    private static final long DEFAULT_TIMEOUT = 80 * 1000L;
+    private static final long DEFAULT_TIMEOUT = 60 * 1000L;
 
     /**
      * TCP客户端连接引导模板
@@ -58,7 +58,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
     @Override
     protected void initInternal() {
-        requestReceiver = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
+        requestReceiver = new ThreadPoolExecutor(0, 4, 0L, TimeUnit.MILLISECONDS,
                 new SynchronousQueue<>(), Executors.defaultThreadFactory(), new ThreadPoolExecutor.DiscardPolicy());
         requestReceiver.submit(new DispatcherTask());
 
@@ -83,7 +83,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
     static final class ActiveConnection {
         final String host;              //目标主机IP/域名
         final int port;                 //目标主机端口号
-        final int clientSerialId;          //客户端的客户端的ChannelID
+        final int clientSerialId;       //客户端事务ID
         ChannelFuture future;           //该连接的ChannelFuture
         final Queue<ByteBuf> msgQueue;  //若上述future持有的Channel尚未Active，则该队列负责保存该连接的客户端数据
         long lastActiveTime;            //最近一次的数据发送/接收时间，对长时间无数据发送、接收的连接采取关闭策略
@@ -98,7 +98,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
         @Override
         public int hashCode() {
-            return host.hashCode() ^ port ^ clientSerialId;
+            return host.hashCode() ^ (port << 16) ^ clientSerialId;
         }
 
         @Override
@@ -126,7 +126,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
             try {
                 final Thread thread = Thread.currentThread();
                 while (!thread.isInterrupted()) {
-                    final ProxyTask task = taskQueue.poll(1000, TimeUnit.MILLISECONDS);
+                    final ProxyTask task = taskQueue.poll(5, TimeUnit.MILLISECONDS);
                     if(task == null) {
                         checkoutConnection();
                         continue;
@@ -136,8 +136,8 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                         log.trace("Receive ProxyTask at DispatcherTask thread");
 
                     try {
-                        final ProxyRequestMessage prm = task.getProxyRequestMessage();
-                        final ClientSession cs = task.getSession();
+                        final ProxyRequestMessage prm = task.getRequestMessage();
+                        final ClientSession cs = task.session();
 
                         if(!cs.isActive())
                             continue;
@@ -150,8 +150,9 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
                         ActiveConnection conn = new ActiveConnection(host, port, prm.serialId());
                         ActiveConnection sconn;
-                        if((sconn = set.getIfContains(conn)) != null)
+                        if((sconn = set.getIfContains(conn)) != null) {
                             conn = sconn;
+                        }
                         if(sconn != null) {
                             if(prm.getProtocol() == ProxyRequestMessage.Protocol.CLOSE) {
                                 conn.future.channel().close();
@@ -164,7 +165,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                             if(f.isDone() && f.isSuccess()) { //如果连接成功
                                 if (c.isActive()) { //如果连接仍处于活跃状态
                                     ByteBuf buf;
-                                    while((buf = conn.msgQueue.poll()) != null) {
+                                    while((buf = conn.msgQueue.poll()) != null) {  //优先处理消息队列中的消息,保证其顺序
                                         c.write(buf);
                                     }
                                     c.writeAndFlush(prm.getMessage());
@@ -179,13 +180,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                             switch (prm.getProtocol()) {
                                 case TCP: {
                                     Bootstrap b = tcpBootstrap.clone();
-                                    b.handler(new ChannelInitializer<SocketChannel>() {
-                                        @Override
-                                        protected void initChannel(SocketChannel ch) {
-                                            ch.pipeline().addLast(new TCPDispatchHandler(task));
-                                        }
-                                    });
-
+                                    b.handler(new TCPDispatchHandler(task));
                                     conn.future = b.connect(host, port).addListener(future -> {
                                         if (!future.isSuccess()) { //如果连接没有建立成功，那么向客户端返回一个错误的消息
                                             log.warn("Can not connect to {}:{}", host, port);
@@ -198,13 +193,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
                                 case UDP: {
                                     Bootstrap b = udpBootstrap.clone();
-                                    b.handler(new ChannelInitializer<DatagramChannel>() {
-                                        @Override
-                                        protected void initChannel(DatagramChannel ch) {
-                                            ch.pipeline().addLast(new UDPDisaptchHandler(task));
-                                        }
-                                    });
-
+                                    b.handler(new UDPDisaptchHandler(task));
                                     conn.future = b.bind(0).addListener(future -> {
                                         if (!future.isSuccess()) {
                                             log.warn("Can not bind UDP Port");
@@ -320,41 +309,40 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
         private TCPDispatchHandler(ProxyTask task) {
             super(false);
             this.proxyTask = task;
-            this.host = proxyTask.getProxyRequestMessage().getHost();
-            this.port = proxyTask.getProxyRequestMessage().getPort();
+            this.host = proxyTask.getRequestMessage().getHost();
+            this.port = proxyTask.getRequestMessage().getPort();
         }
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            if(cause instanceof IOException && log.isInfoEnabled())
+            if(cause instanceof IOException) {
                 log.info("Target remote host {}:{} close, cause IOException", host, port);
-            else if(log.isWarnEnabled())
+            } else {
                 log.warn("DispathcerHandelr occur a exception", cause);
+            }
         }
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
-            if(log.isTraceEnabled())
-                log.trace("Connection close by {}:{}", host, port);
+            log.trace("Connection close by {}:{}", host, port);
         }
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
-            ByteBuf buf = proxyTask.getProxyRequestMessage().getMessage();
+            ByteBuf buf = proxyTask.getRequestMessage().getMessage();
             ctx.writeAndFlush(buf);
             super.channelActive(ctx);
         }
 
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
-            if(log.isTraceEnabled())
-                log.trace("Receive from {}:{} response.", host, port);
+            log.trace("Receive from {}:{} response.", host, port);
 
-            ProxyResponseMessage prm = new ProxyResponseMessage(proxyTask.getProxyRequestMessage().serialId());
+            ProxyResponseMessage prm = new ProxyResponseMessage(proxyTask.getRequestMessage().serialId());
             prm.setState(ProxyResponseMessage.State.SUCCESS);
             prm.setMessage(msg);
             try {
-                proxyTask.getSession().writeAndFlushMessage(prm.serialize());
+                proxyTask.session().writeAndFlushMessage(prm.serialize());
             } catch (IllegalStateException e) {
                 ctx.close();
             } finally {
@@ -374,13 +362,13 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
         private UDPDisaptchHandler(ProxyTask task) {
             super(false);
             this.proxyTask = task;
-            this.host = proxyTask.getProxyRequestMessage().getHost();
-            this.port = proxyTask.getProxyRequestMessage().getPort();
+            this.host = proxyTask.getRequestMessage().getHost();
+            this.port = proxyTask.getRequestMessage().getPort();
         }
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
-            ByteBuf buf = proxyTask.getProxyRequestMessage().getMessage();
+            ByteBuf buf = proxyTask.getRequestMessage().getMessage();
             DatagramPacket packet = new DatagramPacket(buf, new InetSocketAddress(host, port));
             ctx.writeAndFlush(packet);
             super.channelActive(ctx);
@@ -388,14 +376,13 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket msg) throws Exception {
-            if(log.isTraceEnabled())
-                log.trace("Receive from {}:{} Datagram.", host, port);
+            log.trace("Receive from {}:{} Datagram.", host, port);
 
-            ProxyResponseMessage prm = new ProxyResponseMessage(proxyTask.getProxyRequestMessage().serialId());
+            ProxyResponseMessage prm = new ProxyResponseMessage(proxyTask.getRequestMessage().serialId());
             prm.setState(ProxyResponseMessage.State.SUCCESS);
             prm.setMessage(msg.content());
             try {
-                proxyTask.getSession().writeAndFlushMessage(prm.serialize());
+                proxyTask.session().writeAndFlushMessage(prm.serialize());
             } catch (IllegalStateException e) {
                 ctx.close();
             } finally {

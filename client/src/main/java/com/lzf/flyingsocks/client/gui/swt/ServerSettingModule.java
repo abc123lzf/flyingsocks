@@ -144,7 +144,8 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             auth.add("用户认证", 1);
 
             encrypt.select(0);
-            auth.select(0);
+            auth.select(1);
+            user.setEditable(false);
 
             auth.addSelectionListener(new SelectionAdapter() {
                 @Override

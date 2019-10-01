@@ -15,6 +15,10 @@ public class ReturnableLinkedHashSet<E> extends AbstractSet<E> implements Return
         map = new LinkedHashMap<>(size);
     }
 
+    public ReturnableLinkedHashSet(int size, float loadFactor) {
+        map = new LinkedHashMap<>(size, loadFactor);
+    }
+
     @Override
     public int size() {
         return map.size();

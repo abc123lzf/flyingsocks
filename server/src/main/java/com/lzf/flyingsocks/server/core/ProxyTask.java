@@ -18,12 +18,23 @@ class ProxyTask implements Cloneable {
         this.session = Objects.requireNonNull(clientSession, "ClientSession must not be null");
     }
 
-    ProxyRequestMessage getProxyRequestMessage() {
+    ProxyRequestMessage getRequestMessage() {
         return proxyRequestMessage;
     }
 
-    ClientSession getSession() {
+    ClientSession session() {
         return session;
+    }
+
+    @Override
+    public int hashCode() {
+        return session.hashCode() ^ proxyRequestMessage.getHost().hashCode() ^
+                (proxyRequestMessage.getPort() << 16) ^ proxyRequestMessage.getProtocol().hashCode();
+    }
+
+    @Override
+    public final boolean equals(Object obj) {
+        return this == obj;
     }
 
     @Override
