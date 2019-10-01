@@ -4,14 +4,14 @@ import com.lzf.flyingsocks.AbstractModule;
 import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.SelectionAdapter;
-import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.*;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
+
+import static com.lzf.flyingsocks.client.gui.swt.Utils.*;
 
 /**
  * Socks5代理设置界面
@@ -28,91 +28,50 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
         super(Objects.requireNonNull(component));
         this.display = display;
         this.operator = component.getParentComponent();
-        this.shell = initial();
-    }
 
-    private Shell initial() {
-        Shell shell = new Shell(display);
-        shell.setText("Socks5本地代理设置");
-        shell.setSize(600, 330);
+        Image icon;
         try (InputStream is = ResourceManager.openIconImageStream()){
-            shell.setImage(new Image(display, is));
+            icon = loadImage(is);
         } catch (IOException e) {
             throw new Error(e);
         }
 
-        shell.addListener(SWT.Close, e -> {
-            e.doit = false;
-            setVisiable(false);
-        });
+        this.shell = createShell(display, "Socks5本地代理设置", icon, 600, 300);
+        initial();
+    }
 
-        Label openl = new Label(shell, SWT.CENTER | SWT.RIGHT);
-        openl.setText("验证");
-        openl.setBounds(20, 5, 80, 50);
-
-        Button open = new Button(shell, SWT.RADIO);
-        open.setText("打开");
-        open.setBounds(160, 5, 80, 50);
-        Button off = new Button(shell, SWT.RADIO);
-        off.setText("关闭");
-        off.setBounds(250, 5, 80, 50);
-
-        Label userl = new Label(shell, SWT.CENTER | SWT.RIGHT);
-        userl.setText("用户名");
-        userl.setBounds(20, 60, 80, 50);
+    private void initial() {
+        createLabel(shell, "验证", 20, 5, 80, 50, SWT.CENTER);
+        createLabel(shell, "用户名", 20, 60, 80, 50, SWT.CENTER);
+        createLabel(shell, "密码", 20, 130, 80, 50, SWT.CENTER);
+        Button open = createRadio(shell, "打开", 160, 5, 80, 50);
+        Button off = createRadio(shell, "关闭", 250, 5, 80, 50);
 
         Text user = new Text(shell, SWT.BORDER);
         user.setBounds(160, 60, 380, 50);
-
-        Label passl = new Label(shell, SWT.CENTER | SWT.RIGHT);
-        passl.setText("密码");
-        passl.setBounds(20, 130, 80, 50);
-
         Text pass = new Text(shell, SWT.BORDER | SWT.PASSWORD);
         pass.setBounds(160, 130, 380, 50);
 
-        Button enter = new Button(shell, SWT.NONE);
-        enter.setText("确认");
-        enter.setBounds(170, 200, 150, 50);
-        enter.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                boolean auth = open.getSelection();
-                String username = user.getText();
-                String password = user.getText();
-                operator.updateSocksProxyAuthentication(auth, username, password);
-            }
+        Button enter = createButton(shell, "确认", 170, 200, 150, 50);
+        addButtonSelectionListener(enter, e -> {
+            boolean auth = open.getSelection();
+            String username = user.getText();
+            String password = user.getText();
+            operator.updateSocksProxyAuthentication(auth, username, password);
         });
 
-        open.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                user.setEditable(true);
-                pass.setEditable(true);
-            }
+        addButtonSelectionListener(open, e -> {
+            user.setEditable(true);
+            pass.setEditable(true);
         });
 
-        off.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                user.setEditable(false);
-                pass.setEditable(false);
-            }
+        addButtonSelectionListener(off, e -> {
+            user.setEditable(false);
+            pass.setEditable(false);
         });
 
-        Button cancel = new Button(shell, SWT.NONE);
-        cancel.setText("取消");
-        cancel.setBounds(360, 200, 150, 50);
-        cancel.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                setVisiable(false);
-            }
-        });
-
-        shell.setVisible(false);
-
-        return shell;
+        Button cancel = createButton(shell, "取消", 360, 200, 150, 50);
+        addButtonSelectionListener(cancel, e -> setVisiable(false));
     }
 
     void setVisiable(boolean visiable) {

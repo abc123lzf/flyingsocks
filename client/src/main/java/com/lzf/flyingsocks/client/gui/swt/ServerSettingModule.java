@@ -6,8 +6,6 @@ import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
 import com.lzf.flyingsocks.util.BaseUtils;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.SelectionAdapter;
-import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.List;
 import org.eclipse.swt.widgets.*;
@@ -19,6 +17,7 @@ import java.io.InputStream;
 import java.util.*;
 
 import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.*;
+import static com.lzf.flyingsocks.client.gui.swt.Utils.*;
 
 /**
  * @create 2019.8.17 23:05
@@ -58,29 +57,27 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             serverList.setBounds(10, 10, 250, 475);
             serverList.setToolTipText("服务器列表");
 
-            serverList.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    int idx = serverList.getSelectionIndex();
-                    Node n = serverMap.get(idx);
-                    if(n == null) {
-                        return;
-                    }
-                    serverSettingForm.setHostText(n.getHost());
-                    serverSettingForm.setPortText(n.getPort());
-                    serverSettingForm.setCertPortText(n.getCertPort());
-                    serverSettingForm.setEncrypt(n.getEncryptType());
-                    serverSettingForm.setAuth(n.getAuthType());
-
-                    if(n.getAuthType() == AuthType.USER) {
-                        serverSettingForm.setUser(n.getAuthArgument("user"));
-                        serverSettingForm.setPass(n.getAuthArgument("pass"));
-                    } else {
-                        serverSettingForm.setPass(n.getAuthArgument("password"));
-                    }
-                    select = idx;
+            addListSelectionListener(serverList, e -> {
+                int idx = serverList.getSelectionIndex();
+                Node n = serverMap.get(idx);
+                if(n == null) {
+                    return;
                 }
+                serverSettingForm.setHostText(n.getHost());
+                serverSettingForm.setPortText(n.getPort());
+                serverSettingForm.setCertPortText(n.getCertPort());
+                serverSettingForm.setEncrypt(n.getEncryptType());
+                serverSettingForm.setAuth(n.getAuthType());
+
+                if(n.getAuthType() == AuthType.USER) {
+                    serverSettingForm.setUser(n.getAuthArgument("user"));
+                    serverSettingForm.setPass(n.getAuthArgument("pass"));
+                } else {
+                    serverSettingForm.setPass(n.getAuthArgument("password"));
+                }
+                select = idx;
             });
+
             flush(false);
             operator.registerProxyServerConfigListener(Config.UPDATE_EVENT, () -> flush(true), false);
         }
@@ -132,13 +129,14 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             Text user = new Text(shell, SWT.BORDER);
             Text pass = new Text(shell, SWT.BORDER | SWT.PASSWORD);
 
-            createLabel("地址", 270, 10, 70, 30);
-            createLabel("端口", 270, 50, 70, 30);
-            createLabel("证书端口", 550, 50, 80, 30);
-            createLabel("加密方式", 270, 90, 80, 30);
-            createLabel("认证方式", 270, 130, 80, 30);
-            createLabel("用户名", 270, 170, 70, 30);
-            createLabel("密码", 270, 210, 70, 30);
+            createLabel(shell, "地址", 270, 10, 70, 30, SWT.CENTER);
+            createLabel(shell, "地址", 270, 10, 70, 30, SWT.CENTER);
+            createLabel(shell, "端口", 270, 50, 70, 30, SWT.CENTER);
+            createLabel(shell, "证书端口", 550, 50, 80, 30, SWT.CENTER);
+            createLabel(shell, "加密方式", 270, 90, 80, 30, SWT.CENTER);
+            createLabel(shell, "认证方式", 270, 130, 80, 30, SWT.CENTER);
+            createLabel(shell, "用户名", 270, 170, 70, 30, SWT.CENTER);
+            createLabel(shell, "密码", 270, 210, 70, 30, SWT.CENTER);
 
             host.setBounds(360, 10, 460, 30);
             port.setBounds(360, 50, 180, 30); certPort.setBounds(640, 50, 180, 30);
@@ -156,29 +154,23 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             auth.select(1);
             user.setEditable(false);
 
-            auth.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    int idx = auth.getSelectionIndex();
-                    if(idx == 0) {
-                        user.setText("");
-                        user.setEditable(false);
-                    } else {
-                        user.setEditable(true);
-                    }
+            addComboSelectionListener(auth, e -> {
+                int idx = auth.getSelectionIndex();
+                if(idx == 0) {
+                    user.setText("");
+                    user.setEditable(false);
+                } else {
+                    user.setEditable(true);
                 }
             });
 
-            encrypt.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    int idx = encrypt.getSelectionIndex();
-                    if(idx == 0) {
-                        certPort.setText("");
-                        certPort.setEditable(false);
-                    } else {
-                        certPort.setEditable(true);
-                    }
+            addComboSelectionListener(encrypt, e -> {
+                int idx = encrypt.getSelectionIndex();
+                if(idx == 0) {
+                    certPort.setText("");
+                    certPort.setEditable(false);
+                } else {
+                    certPort.setEditable(true);
                 }
             });
 
@@ -191,70 +183,68 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             } catch (IOException e) {
                 log.warn("Can not read save-icon image.", e);
             }
-            save.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    String host = ServerSettingForm.this.host.getText();
-                    if(!BaseUtils.isIPv4Address(host) && !BaseUtils.isHostName(host)) {
-                        showMessageBox("错误", "服务器主机名格式有误:需要为IPv4地址或是合法主机名/域名", SWT.ICON_ERROR | SWT.OK);
+
+            addButtonSelectionListener(save, e -> {
+                String _host = ServerSettingForm.this.host.getText();
+                if(!BaseUtils.isIPv4Address(_host) && !BaseUtils.isHostName(_host)) {
+                    showMessageBox(shell, "错误", "服务器主机名格式有误:需要为IPv4地址或是合法主机名/域名", SWT.ICON_ERROR | SWT.OK);
+                    return;
+                }
+
+                String _ports = ServerSettingForm.this.port.getText();
+                int _port;
+                if(!BaseUtils.isPortString(_ports)) {
+                    showMessageBox(shell, "错误", "端口号有误,必须为1~65535之间的数字", SWT.ICON_ERROR | SWT.OK);
+                    return;
+                }
+
+                _port = Integer.parseInt(_ports);
+                int en = encrypt.getSelectionIndex();
+                String cports = ServerSettingForm.this.certPort.getText();
+                int cport = 0;
+                if(en == 1) {
+                    if(!BaseUtils.isPortString(cports)) {
+                        showMessageBox(shell, "错误", "证书端口号有误,必须为1~65535之间的数字", SWT.ICON_ERROR | SWT.OK);
                         return;
                     }
+                    cport = Integer.parseInt(cports);
+                }
 
-                    String ports = ServerSettingForm.this.port.getText();
-                    int port;
-                    if(!BaseUtils.isPortString(ports)) {
-                        showMessageBox("错误", "端口号有误,必须为1~65535之间的数字", SWT.ICON_ERROR | SWT.OK);
+                int au = auth.getSelectionIndex();
+                String _user = null, pwd;
+                pwd = ServerSettingForm.this.pass.getText();
+                if(au == 1) {
+                    _user = ServerSettingForm.this.user.getText();
+                }
+
+                Node n = serverList.selectNode();
+                if(n == null) {
+                    n = new Node();
+                }
+                n.setHost(_host);
+                n.setPort(_port);
+                n.setCertPort(cport);
+                n.setEncryptType(en == 1 ? EncryptType.SSL : EncryptType.NONE);
+                n.setAuthType(au == 1 ? AuthType.USER : AuthType.SIMPLE);
+                if(au == 0) {
+                    n.setAuthArgument(Collections.singletonMap("password", pwd));
+                } else {
+                    Map<String, String> map = new HashMap<>(2, 1);
+                    map.put("user", _user);
+                    map.put("pass", pwd);
+                    n.setAuthArgument(map);
+                }
+
+                if(serverList.select == -1) {
+                    if(serverList.contains(_host, _port)) {
+                        showMessageBox(shell, "提示", "已经包含服务器 " + _host + ":" + _port + " 的配置", SWT.ICON_ERROR | SWT.OK);
                         return;
                     }
-
-                    port = Integer.parseInt(ports);
-                    int en = encrypt.getSelectionIndex();
-                    String cports = ServerSettingForm.this.certPort.getText();
-                    int cport = 0;
-                    if(en == 1) {
-                        if(!BaseUtils.isPortString(cports)) {
-                            showMessageBox("错误", "证书端口号有误,必须为1~65535之间的数字", SWT.ICON_ERROR | SWT.OK);
-                            return;
-                        }
-                        cport = Integer.parseInt(cports);
-                    }
-
-                    int au = auth.getSelectionIndex();
-                    String user = null, pwd;
-                    pwd = ServerSettingForm.this.pass.getText();
-                    if(au == 1) {
-                        user = ServerSettingForm.this.user.getText();
-                    }
-
-                    Node n = serverList.selectNode();
-                    if(n == null) {
-                        n = new Node();
-                    }
-                    n.setHost(host);
-                    n.setPort(port);
-                    n.setCertPort(cport);
-                    n.setEncryptType(en == 1 ? EncryptType.SSL : EncryptType.NONE);
-                    n.setAuthType(au == 1 ? AuthType.USER : AuthType.SIMPLE);
-                    if(au == 0) {
-                        n.setAuthArgument(Collections.singletonMap("password", pwd));
-                    } else {
-                        Map<String, String> map = new HashMap<>(2, 1);
-                        map.put("user", user);
-                        map.put("pass", pwd);
-                        n.setAuthArgument(map);
-                    }
-
-                    if(serverList.select == -1) {
-                        if(serverList.contains(host, port)) {
-                            showMessageBox("提示", "已经包含服务器 " + host + ":" + port + " 的配置", SWT.ICON_ERROR | SWT.OK);
-                            return;
-                        }
-                        operator.addServerConfig(n);
-                        showMessageBox("成功", "成功添加服务器配置 " + host + ":" + port, SWT.ICON_INFORMATION | SWT.OK);
-                    } else {
-                        operator.updateServerConfig(n);
-                        showMessageBox("成功", "成功修改服务器配置 " + host + ":" + port, SWT.ICON_INFORMATION | SWT.OK);
-                    }
+                    operator.addServerConfig(n);
+                    showMessageBox(shell, "成功", "成功添加服务器配置 " + _host + ":" + _port, SWT.ICON_INFORMATION | SWT.OK);
+                } else {
+                    operator.updateServerConfig(n);
+                    showMessageBox(shell, "成功", "成功修改服务器配置 " + _host + ":" + _port, SWT.ICON_INFORMATION | SWT.OK);
                 }
             });
 
@@ -268,21 +258,18 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                 log.warn("Can not read delete-icon image.", e);
             }
 
-            delete.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    Node n = serverList.selectNode();
-                    if(n == null) {
-                        showMessageBox("提示", "请选择需要删除的服务器配置", SWT.ICON_INFORMATION | SWT.OK);
-                        return;
-                    }
-
-                    if(n.isUse()) {
-                        operator.setProxyServerUsing(n, false);
-                    }
-
-                    operator.removeServer(n);
+            addButtonSelectionListener(delete, e -> {
+                Node n = serverList.selectNode();
+                if(n == null) {
+                    showMessageBox(shell, "提示", "请选择需要删除的服务器配置", SWT.ICON_INFORMATION | SWT.OK);
+                    return;
                 }
+
+                if(n.isUse()) {
+                    operator.setProxyServerUsing(n, false);
+                }
+
+                operator.removeServer(n);
             });
 
             this.encrypt = encrypt;
@@ -361,16 +348,5 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         shell.setVisible(visiable);
     }
 
-    private void createLabel(String text, int x, int y, int width, int height) {
-        Label l = new Label(shell, SWT.CENTER);
-        l.setBounds(x, y, width, height);
-        l.setText(text);
-    }
 
-    private void showMessageBox(String title, String content, int setting) {
-        MessageBox box = new MessageBox(shell, setting);
-        box.setText(title);
-        box.setMessage(content);
-        box.open();
-    }
 }

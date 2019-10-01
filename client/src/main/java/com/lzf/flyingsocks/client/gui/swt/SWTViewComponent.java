@@ -20,13 +20,24 @@ public class SWTViewComponent extends AbstractComponent<Client> {
      */
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
+
     private final Display display;
 
+    /**
+     * Socks代理设置页面
+     */
     private SocksSettingModule socksSettingModule;
 
+    /**
+     * 服务器设置页面
+     */
     private ServerSettingModule serverSettingModule;
 
+    /**
+     * 主界面
+     */
     private MainScreenModule mainScreenModule;
+
 
     public SWTViewComponent(Client parent) {
         super("SWTViewComponent", Objects.requireNonNull(parent));

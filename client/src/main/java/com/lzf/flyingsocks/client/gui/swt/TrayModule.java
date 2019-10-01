@@ -4,8 +4,6 @@ import com.lzf.flyingsocks.AbstractModule;
 import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.SelectionAdapter;
-import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.widgets.*;
@@ -14,6 +12,7 @@ import java.io.IOException;
 import java.util.Objects;
 
 import static com.lzf.flyingsocks.client.proxy.ProxyAutoConfig.*;
+import static com.lzf.flyingsocks.client.gui.swt.Utils.*;
 
 /**
  * SWT系统托盘实现
@@ -33,11 +32,12 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         this.display = Objects.requireNonNull(display);
         this.operator = getComponent().getParentComponent();
         this.shell = new Shell(display);
+        shell.setText("flyingsocks");
+
         initial();
     }
 
     private void initial() {
-        shell.setText("flyingsocks");
         final Tray trayTool = display.getSystemTray();
 
         final TrayItem tray = new TrayItem(trayTool, SWT.NONE);
@@ -86,34 +86,25 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         pac1.setText("PAC模式");
         pac2.setText("全局模式");
 
-        pac0.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                operator.setProxyMode(0);
-                pac0.setSelection(true);
-                pac1.setSelection(false);
-                pac2.setSelection(false);
-            }
+        addMenuItemSelectionListener(pac0, e -> {
+            operator.setProxyMode(0);
+            pac0.setSelection(true);
+            pac1.setSelection(false);
+            pac2.setSelection(false);
         });
 
-        pac1.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                operator.setProxyMode(1);
-                pac0.setSelection(false);
-                pac1.setSelection(true);
-                pac2.setSelection(false);
-            }
+        addMenuItemSelectionListener(pac1, e -> {
+            operator.setProxyMode(1);
+            pac0.setSelection(false);
+            pac1.setSelection(true);
+            pac2.setSelection(false);
         });
 
-        pac2.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                operator.setProxyMode(2);
-                pac0.setSelection(false);
-                pac1.setSelection(false);
-                pac2.setSelection(true);
-            }
+        addMenuItemSelectionListener(pac2, e -> {
+            operator.setProxyMode(2);
+            pac0.setSelection(false);
+            pac1.setSelection(false);
+            pac2.setSelection(true);
         });
 
         int mode = operator.proxyMode();
@@ -137,39 +128,4 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         createCascadeMenuItem(about, "问题反馈", e -> operator.openBrowser(ISSUE_PAGE));
     }
 
-    /**
-     * 创建菜单分隔线
-     * @param menu 菜单
-     */
-    private static void createMenuSeparator(Menu menu) {
-        new MenuItem(menu, SWT.SEPARATOR);
-    }
-
-    /**
-     * 创建菜单项
-     * @param menu 菜单
-     * @param text 菜单项文本
-     * @param listener 点击时监听器
-     */
-    private static void createMenuItem(Menu menu, String text, SimpleSelectionListener listener) {
-        MenuItem it = new MenuItem(menu, SWT.PUSH);
-        it.setText(text);
-        if(listener != null) {
-            it.addSelectionListener(listener);
-        }
-    }
-
-    /**
-     * 创建级联菜单项
-     * @param menu 菜单
-     * @param text 菜单项文本
-     * @param listener 点击时监听器
-     */
-    private static void createCascadeMenuItem(Menu menu, String text, SimpleSelectionListener listener) {
-        MenuItem it = new MenuItem(menu, SWT.CASCADE);
-        it.setText(text);
-        if(listener != null) {
-            it.addSelectionListener(listener);
-        }
-    }
 }
