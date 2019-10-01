@@ -116,6 +116,10 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
                                 @Override
                                 public void run() {
                                     if(!n.isUse()) {
+                                        if(disconnect) {
+                                            setStatusLabelText("未连接");
+                                            changeConnBtn(false);
+                                        }
                                         return;
                                     }
 

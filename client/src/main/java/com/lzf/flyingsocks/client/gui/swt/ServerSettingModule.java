@@ -102,6 +102,15 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         private Node selectNode() {
             return select != -1 ? serverMap.get(select) : null;
         }
+
+        boolean contains(String host, int port) {
+            for (Node n : serverMap.values()) {
+                if(n.getHost().equals(host) && n.getPort() == port) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     private final class ServerSettingForm {
@@ -236,6 +245,10 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                     }
 
                     if(serverList.select == -1) {
+                        if(serverList.contains(host, port)) {
+                            showMessageBox("提示", "已经包含服务器 " + host + ":" + port + " 的配置", SWT.ICON_ERROR | SWT.OK);
+                            return;
+                        }
                         operator.addServerConfig(n);
                         showMessageBox("成功", "成功添加服务器配置 " + host + ":" + port, SWT.ICON_INFORMATION | SWT.OK);
                     } else {
@@ -258,7 +271,17 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             delete.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
-                    super.widgetSelected(e);
+                    Node n = serverList.selectNode();
+                    if(n == null) {
+                        showMessageBox("提示", "请选择需要删除的服务器配置", SWT.ICON_INFORMATION | SWT.OK);
+                        return;
+                    }
+
+                    if(n.isUse()) {
+                        operator.setProxyServerUsing(n, false);
+                    }
+
+                    operator.removeServer(n);
                 }
             });
 

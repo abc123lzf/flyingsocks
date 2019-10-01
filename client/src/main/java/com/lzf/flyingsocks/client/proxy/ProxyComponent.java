@@ -2,7 +2,6 @@ package com.lzf.flyingsocks.client.proxy;
 
 import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.client.Client;
-import io.netty.buffer.ByteBuf;
 import io.netty.util.ReferenceCountUtil;
 
 import java.util.ArrayList;
@@ -125,7 +124,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
             ReferenceCountUtil.release(request.takeClientMessage());
             log.warn("ProxyRequest was not consume");
         } else {
-            int hash = request.hashCode();
+            int hash = Math.abs(request.hashCode());
             int size = list.size();
             try {
                 requestSubscribers.get(list.get(hash % size)).receive(request);

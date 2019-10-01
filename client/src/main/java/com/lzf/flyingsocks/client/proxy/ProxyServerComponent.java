@@ -247,13 +247,12 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             sslGroup.shutdownGracefully();
 
             if(!connectionState.isNormal()) {
-                if(log.isWarnEnabled())
-                    log.error("Can not connect to cert service {}:{}", host, config.getCertPort());
+                log.warn("Can not connect to cert service {}:{}", host, config.getCertPort());
                 stop();
                 return;
             }
 
-            OpenSSLConfig sslcfg = new OpenSSLConfig(cm, host);
+            OpenSSLConfig sslcfg = new OpenSSLConfig(cm, host, config.getPort());
             cm.registerConfig(sslcfg);
 
             provider = EncryptSupport.lookupProvider("OpenSSL", OpenSSLEncryptProvider.class);
@@ -278,9 +277,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         taskWaitLatch = new CountDownLatch(1);
 
-        Map<String, Object> m = new HashMap<>(2);
-        m.put("alloc", PooledByteBufAllocator.DEFAULT);
-        final Map<String, Object> params = Collections.unmodifiableMap(m);
+        Map<String, Object> params = new HashMap<>(2);
+        params.put("alloc", PooledByteBufAllocator.DEFAULT);
 
         loopGroup = new NioEventLoopGroup(1);
         bootstrap = new Bootstrap()
@@ -309,11 +307,11 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
     @Override
     protected void startInternal() {
-        if(!connectionState.isNormal()) {
+        if(!connectionState.isNormal() || connectionState == ConnectionState.UNUSED) {
             return;
         }
 
-        if(use) {
+        if(isUse()) {
             doConnect(true);
         }
 
@@ -322,7 +320,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         super.startInternal();
 
-        if(active) {
+        if(isActive()) {
             parent.addActiveProxyServer(this);
         }
     }
@@ -446,7 +444,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         active = false;
         parent.removeSubscriber(this);
         parent.removeProxyServer(this);
-        parent.getParentComponent().getConfigManager().removeConfig(OpenSSLConfig.generalName(config.getHost()));
+        parent.getParentComponent().getConfigManager().removeConfig(OpenSSLConfig.generalName(config.getHost(), config.getPort()));
 
         if(loopGroup != null) {
             loopGroup.shutdownGracefully().addListener(future -> {
@@ -549,8 +547,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
      * @return MD5值，若文件不存在则返回一个长度为16，值全部为0的byte数组
      */
     private byte[] calcuateCertFileMD5(String location) {
-        String host = config.getHost();
-        File folder = new File(location, host);
+        File folder = new File(location, OpenSSLConfig.folderName(config.getHost(), config.getPort()));
 
         if(!folder.exists()) {
             if(!folder.mkdirs()) {
@@ -596,7 +593,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
 
     private void writeCertFile(String location, final InputStream is, final int len) throws IOException {
-        File file = new File(new File(location, config.getHost()), OpenSSLConfig.CERT_FILE_NAME);
+        File file = new File(new File(location, OpenSSLConfig.folderName(config.getHost(), config.getPort())), OpenSSLConfig.CERT_FILE_NAME);
         byte[] b = new byte[len];
         int r = is.read(b);
         if(r != len) {

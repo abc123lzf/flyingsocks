@@ -15,15 +15,22 @@ public class OpenSSLConfig extends AbstractConfig {
 
     private final String host;
 
+    private final int port;
+
     private File rootCertFile;
 
-    OpenSSLConfig(ConfigManager<?> configManager, String host) {
-        super(configManager, NAME_PREFIX + host);
+    OpenSSLConfig(ConfigManager<?> configManager, String host, int port) {
+        super(configManager, generalName(host, port));
         this.host = host;
+        this.port = port;
     }
 
-    public static String generalName(String host) {
-        return NAME_PREFIX + host;
+    public static String generalName(String host, int port) {
+        return NAME_PREFIX + host + "#" + port;
+    }
+
+    public static String folderName(String host, int port) {
+        return host + "#" + port;
     }
 
     @Override
@@ -37,7 +44,7 @@ public class OpenSSLConfig extends AbstractConfig {
 
     private synchronized void loadResource() throws Exception {
         GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
-        this.rootCertFile = new File(new File(cfg.configPath(), host), CERT_FILE_NAME);
+        this.rootCertFile = new File(new File(cfg.configPath(), folderName(host, port)), CERT_FILE_NAME);
         if(!rootCertFile.exists())
             throw new FileNotFoundException("CA cert file at location " + rootCertFile.getAbsolutePath() + " doesn't exists.");
     }

@@ -58,9 +58,24 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
     @Override
     protected void initInternal() {
-        requestReceiver = new ThreadPoolExecutor(0, 4, 0L, TimeUnit.MILLISECONDS,
+        requestReceiver = new ThreadPoolExecutor(0, 4, 30, TimeUnit.SECONDS,
                 new SynchronousQueue<>(), Executors.defaultThreadFactory(), new ThreadPoolExecutor.DiscardPolicy());
-        requestReceiver.submit(new DispatcherTask());
+
+        int cpus = Runtime.getRuntime().availableProcessors();
+        int task;
+        if(cpus <= 2) {
+            task = 2;
+        } else if(cpus <= 6) {
+            task = 3;
+        } else {
+            task = 4;
+        }
+
+        log.info("Using {} dispatcher thread.", task);
+
+        for (int i = 0; i < task; i++) {
+            requestReceiver.submit(new DispatcherTask());
+        }
 
         super.initInternal();
     }

@@ -1,4 +1,5 @@
 package com.lzf.flyingsocks;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -13,7 +14,8 @@ public abstract class LifecycleBase implements Lifecycle {
     protected LifecycleBase() { }
 
     protected LifecycleBase(LifecycleEventListener... listeners) {
-        List<LifecycleEventListener> l = Arrays.asList(listeners);
+        List<LifecycleEventListener> l = new ArrayList<>();
+        Collections.addAll(l, listeners);
         l.removeAll(Collections.singleton(null));
         this.listeners.addAll(l);
     }

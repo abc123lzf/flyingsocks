@@ -167,12 +167,13 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
             return;
         }
 
-        int hash = task.hashCode();
+        int hash = Math.abs(task.hashCode());
         int size = proxyTaskSubscribers.size();
         try {
             proxyTaskSubscribers.get(hash % size).receive(task);
         } catch (IndexOutOfBoundsException e) {
-            publish(task);
+            log.error("ProxyTaskManager status error.", e);
+            task.getRequestMessage().getMessage().release();
         }
     }
 
