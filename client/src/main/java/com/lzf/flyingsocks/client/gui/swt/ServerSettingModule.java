@@ -50,12 +50,14 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
     private final class ServerList {
         private final List serverList;
         private final Map<Integer, Node> serverMap = new TreeMap<>();
-        int select = -1;
+        int select = 0;
 
         ServerList() {
             serverList = new List(shell, SWT.SINGLE | SWT.V_SCROLL | SWT.BORDER);
             serverList.setBounds(10, 10, 250, 475);
             serverList.setToolTipText("服务器列表");
+            serverList.add("点击此处进行添加", 0);
+            serverList.select(0);
 
             addListSelectionListener(serverList, e -> {
                 int idx = serverList.getSelectionIndex();
@@ -84,12 +86,12 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
         private void flush(boolean clean) {
             if(clean) {
-                serverList.removeAll();
+                serverList.remove(1, serverList.getItemCount() - 1);
                 serverMap.clear();
             }
 
             Node[] nodes = operator.getServerNodes();
-            int i = 0;
+            int i = 1;
             for (Node node : nodes) {
                 serverMap.put(i, node);
                 serverList.add(node.getHost() + ":" + node.getPort(), i++);
@@ -97,7 +99,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         }
 
         private Node selectNode() {
-            return select != -1 ? serverMap.get(select) : null;
+            return select != -1 && select != 0 ? serverMap.get(select) : null;
         }
 
         boolean contains(String host, int port) {
@@ -235,7 +237,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                     n.setAuthArgument(map);
                 }
 
-                if(serverList.select == -1) {
+                if(serverList.select == -1 || serverList.select == 0) {
                     if(serverList.contains(_host, _port)) {
                         showMessageBox(shell, "提示", "已经包含服务器 " + _host + ":" + _port + " 的配置", SWT.ICON_ERROR | SWT.OK);
                         return;

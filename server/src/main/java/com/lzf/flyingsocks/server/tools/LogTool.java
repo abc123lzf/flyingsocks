@@ -26,7 +26,7 @@ public final class LogTool {
         Map<String, String> map = processArgument(args);
 
         String folder = null;   //日志文件夹
-        String src = null;      //log4j配置文件路径
+        String src;      //log4j配置文件路径
         String level = null;
 
         if(map.containsKey("-path")) {

@@ -38,11 +38,12 @@ public class ServerConfig extends AbstractConfig implements Config {
         try(InputStream is = configManager.loadResource("classpath://config.properties")) {
             Properties p = new Properties();
             p.load(is);
-            String os = configManager.getSystemProperties("os.name").toLowerCase();
-            boolean windows = os.startsWith("win");
+
             String location;
-            if(windows) {
+            if(configManager.isWindows()) {
                 location = p.getProperty("config.location.windows");
+            } else if(configManager.isMacOS()) {
+                location = p.getProperty("config.location.mac");
             } else {
                 location = p.getProperty("config.location.linux");
             }
@@ -56,8 +57,7 @@ public class ServerConfig extends AbstractConfig implements Config {
 
             this.location = location;
 
-            if(configManager.getSystemProperties("os.name").toLowerCase().startsWith("win") ||
-                    !location.startsWith("/")) {
+            if(configManager.isWindows() || !location.startsWith("/")) {
                 this.locationURL = "file:///" + this.location;
             } else {
                 this.locationURL = "file://" + this.location;
