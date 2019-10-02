@@ -69,11 +69,11 @@ public final class StandardClient extends Client {
     }
 
     @Override
-    public void updateSocksProxyAuthentication(boolean auth, String username, String password) {
+    public void updateSocksProxyAuthentication(int port, boolean auth, String username, String password) {
         SocksConfig cfg = getConfigManager().getConfig(SocksConfig.NAME, SocksConfig.class);
         if(cfg == null)
             return;
-        cfg.update(auth, username, password);
+        cfg.update(port, auth, username, password);
     }
 
     @Override
@@ -195,6 +195,12 @@ public final class StandardClient extends Client {
     public ConnectionState queryProxyServerConnectionState(Node node) {
         ProxyComponent pc = getComponentByName(ProxyComponent.NAME, ProxyComponent.class);
         return pc.queryProxyServerConnectionState(node.getHost(), node.getPort());
+    }
+
+    @Override
+    public SocksConfig getSocksConfig() {
+        SocksConfig cfg = getConfigManager().getConfig(SocksConfig.NAME, SocksConfig.class);
+        return cfg.configFacade();
     }
 
     private ProxyServerConfig getProxyServerConfig() {

@@ -155,7 +155,8 @@ final class SocksSettingModule extends AbstractModule<SwingViewComponent> {
                 username.equals(cfg.getUsername()) && password.equals(cfg.getPassword()))
             return;
 
-        cfg.update(cfg.isAuth(), username, password);
+
+        cfg.update(-1, cfg.isAuth(), username, password);
     }
 
     void setVisiable(boolean visiable) {

@@ -13,6 +13,35 @@ import java.io.InputStream;
  */
 abstract class Utils {
 
+    private static final float DPI_SCALE = Display.getDefault().getDPI().x / 144.0f;
+
+    /**
+     * 调整SWT组件大小以适应操作系统DPI
+     * @param composite SWT组件
+     */
+    static void adaptDPI(Composite composite) {
+        if(composite instanceof Shell) {
+            int x = (int) (composite.getLocation().x * DPI_SCALE);
+            int y = (int) (composite.getLocation().y * DPI_SCALE);
+            int w = (int) (composite.getSize().x * DPI_SCALE);
+            int h = (int) (composite.getSize().y * DPI_SCALE);
+            composite.setBounds(x, y, w, h);
+        }
+
+        for(Control control : composite.getChildren()) {
+            if(control instanceof Composite) {
+                adaptDPI((Composite) control);
+            }
+
+            int x = (int) (control.getLocation().x * DPI_SCALE);
+            int y = (int) (control.getLocation().y * DPI_SCALE);
+            int w = (int) (control.getSize().x * DPI_SCALE);
+            int h = (int) (control.getSize().y * DPI_SCALE);
+            control.setBounds(x, y, w, h);
+        }
+    }
+
+
     static void addButtonSelectionListener(Button button, SimpleSelectionListener listener) {
         button.addSelectionListener(listener);
     }

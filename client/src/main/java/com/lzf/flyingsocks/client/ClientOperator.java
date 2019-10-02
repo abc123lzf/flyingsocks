@@ -2,6 +2,7 @@ package com.lzf.flyingsocks.client;
 
 import com.lzf.flyingsocks.ConfigEventListener;
 import com.lzf.flyingsocks.client.proxy.ConnectionState;
+import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
 
 import java.util.Map;
 
@@ -83,6 +84,11 @@ public interface ClientOperator {
     Node[] getServerNodes();
 
     /**
+     * @return 获取本地Socks代理包装对象
+     */
+    SocksConfig getSocksConfig();
+
+    /**
      * @return 系统代理模式
      */
     int proxyMode();
@@ -109,11 +115,12 @@ public interface ClientOperator {
 
     /**
      * 修改本地Socks5代理端口身份验证机制
+     * @param port 本地Socks代理端口
      * @param auth 是否打开身份验证
      * @param username 用户名
      * @param password 密码
      */
-    void updateSocksProxyAuthentication(boolean auth, String username, String password);
+    void updateSocksProxyAuthentication(int port, boolean auth, String username, String password);
 
 
     /**

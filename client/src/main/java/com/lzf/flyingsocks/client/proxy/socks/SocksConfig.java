@@ -151,20 +151,54 @@ public class SocksConfig extends AbstractConfig {
         return address;
     }
 
-    public void update(boolean auth, String username, String password) {
-        if(this.auth == auth) {
-            return;
+    public void update(int port, boolean auth, String username, String password) {
+        if(port > 0)
+            this.port = port;
+
+        if(this.auth != auth) {
+            if(auth) {
+                this.username = username;
+                this.password = password;
+                this.auth = auth;
+            } else {
+                this.auth = auth;
+                this.username = username;
+                this.password = password;
+            }
         }
 
-        if(auth) {
-            this.username = username;
-            this.password = password;
-            this.auth = auth;
-        } else {
-            this.auth = auth;
-            this.username = username;
-            this.password = password;
-        }
         configManager.updateConfig(this);
+    }
+
+
+    public SocksConfig configFacade() {
+        return new Facade(configManager, this);
+    }
+
+
+    static class Facade extends SocksConfig {
+        Facade(ConfigManager<?> configManager, SocksConfig config) {
+            super(configManager);
+            super.auth = config.auth;
+            super.address = config.address;
+            super.username = config.username;
+            super.password = config.password;
+            super.port = config.port;
+        }
+
+        @Override
+        public void save() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void update(int port, boolean auth, String username, String password) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public SocksConfig configFacade() {
+            throw new UnsupportedOperationException();
+        }
     }
 }

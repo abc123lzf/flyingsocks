@@ -10,7 +10,7 @@ public interface Server extends Component<VoidComponent>, Environment {
     /**
      * 服务器版本
      */
-    String VERSION = "v1.1";
+    String VERSION = "v2.0";
 
     /**
      * @return 服务器配置信息

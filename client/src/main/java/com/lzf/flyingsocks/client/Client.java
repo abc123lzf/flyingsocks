@@ -20,7 +20,7 @@ public abstract class Client extends TopLevelComponent
     /**
      * 当前版本号
      */
-    public static final String VERSION = "v1.1";
+    public static final String VERSION = "v2.0";
 
     public Client() {
         super(DEFAULT_COMPONENT_NAME);

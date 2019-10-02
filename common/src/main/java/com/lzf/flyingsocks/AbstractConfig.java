@@ -73,8 +73,7 @@ public abstract class AbstractConfig implements Config {
 
         if(obj.getClass() == getClass()) {
             AbstractConfig c = (AbstractConfig) obj;
-            if(c.configManager.equals(this.configManager) && c.name.equals(this.name))
-                return true;
+            return c.configManager.equals(this.configManager) && c.name.equals(this.name);
         }
 
         return false;

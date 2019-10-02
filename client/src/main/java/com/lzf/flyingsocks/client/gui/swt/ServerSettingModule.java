@@ -44,6 +44,8 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         this.shell = initialShell();
         this.serverList = new ServerList();
         this.serverSettingForm = new ServerSettingForm();
+
+        adaptDPI(shell);
     }
 
 
@@ -54,15 +56,17 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
         ServerList() {
             serverList = new List(shell, SWT.SINGLE | SWT.V_SCROLL | SWT.BORDER);
-            serverList.setBounds(10, 10, 250, 475);
+            serverList.setBounds(10, 10, 250, 305);
             serverList.setToolTipText("服务器列表");
             serverList.add("点击此处进行添加", 0);
             serverList.select(0);
 
             addListSelectionListener(serverList, e -> {
                 int idx = serverList.getSelectionIndex();
+                select = idx;
                 Node n = serverMap.get(idx);
                 if(n == null) {
+                    serverSettingForm.cleanForm();
                     return;
                 }
                 serverSettingForm.setHostText(n.getHost());
@@ -77,7 +81,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                 } else {
                     serverSettingForm.setPass(n.getAuthArgument("password"));
                 }
-                select = idx;
+
             });
 
             flush(false);
@@ -288,11 +292,19 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         }
 
         void setPortText(int num) {
-            port.setText(String.valueOf(num));
+            if(num < 0) {
+                port.setText("");
+            } else {
+                port.setText(String.valueOf(num));
+            }
         }
 
         void setCertPortText(int num) {
-            certPort.setText(String.valueOf(num));
+            if(num < 0) {
+                certPort.setText("");
+            } else {
+                certPort.setText(String.valueOf(num));
+            }
         }
 
         void setEncrypt(EncryptType type) {
@@ -323,13 +335,23 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         void setPass(String text) {
             pass.setText(text);
         }
+
+        void cleanForm() {
+            setHostText("");
+            setPortText(-1);
+            setCertPortText(-1);
+            setEncrypt(EncryptType.SSL);
+            setAuth(AuthType.SIMPLE);
+            setUser("");
+            setPass("");
+        }
     }
 
 
     private Shell initialShell() {
         final Shell shell = new Shell(display);
         shell.setText("服务器设置");
-        shell.setSize(850, 550);
+        shell.setSize(850, 380);
 
         try (InputStream is = ResourceManager.openIconImageStream()) {
             shell.setImage(new Image(display, is));
