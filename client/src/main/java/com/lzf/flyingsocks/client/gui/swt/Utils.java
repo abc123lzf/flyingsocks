@@ -68,7 +68,7 @@ abstract class Utils {
      * @return 窗口对象
      */
     static Shell createShell(Display display, String title, Image icon, int width, int height) {
-        Shell sh = new Shell(display);
+        Shell sh = new Shell(display, SWT.SHELL_TRIM & (~SWT.RESIZE));
         sh.setText(title);
         sh.setSize(width, height);
         sh.setVisible(false);

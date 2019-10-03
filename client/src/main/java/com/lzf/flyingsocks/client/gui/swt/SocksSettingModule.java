@@ -63,7 +63,7 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
         addButtonSelectionListener(enter, e -> {
             boolean auth = open.getSelection();
             String username = user.getText();
-            String password = user.getText();
+            String password = pass.getText();
             int p;
             if(BaseUtils.isPortString(port.getText())) {
                 p = Integer.valueOf(port.getText());

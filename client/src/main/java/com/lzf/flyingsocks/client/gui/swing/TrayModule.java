@@ -65,10 +65,10 @@ final class TrayModule extends AbstractModule<SwingViewComponent> {
             });
 
             proxyItemPac.addActionListener(e -> {
-                if(select == ProxyAutoConfig.PROXY_PAC)
+                if(select == ProxyAutoConfig.PROXY_GFW_LIST)
                     return;
 
-                select = ProxyAutoConfig.PROXY_PAC;
+                select = ProxyAutoConfig.PROXY_GFW_LIST;
                 operator.setProxyMode(select);
             });
 
@@ -96,7 +96,7 @@ final class TrayModule extends AbstractModule<SwingViewComponent> {
                     proxyItemPac.setLabel("PAC模式");
                     proxyItemGlobal.setLabel("全局模式");
                     break;
-                case ProxyAutoConfig.PROXY_PAC:
+                case ProxyAutoConfig.PROXY_GFW_LIST:
                     proxyItemClose.setLabel("关闭代理");
                     proxyItemPac.setLabel("√ PAC模式");
                     proxyItemGlobal.setLabel("全局模式");

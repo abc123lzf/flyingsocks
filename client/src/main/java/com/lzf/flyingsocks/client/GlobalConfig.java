@@ -65,33 +65,25 @@ public class GlobalConfig extends AbstractConfig {
      */
     @Override
     protected void initInternal() throws ConfigInitializationException {
-        //加载基本配置文件
-        try(InputStream is = configManager.loadResource(PATH)) {
-            Properties p = new Properties();
-            p.load(is);
-            String location;
-            if(configManager.isWindows()) {
-                location = p.getProperty("config.location.windows");
-            } else if(configManager.isMacOS()) {
-                location = p.getProperty("config.location.mac");
-            } else {
-                location = p.getProperty("config.location.linux");
-            }
-
-            File folder = new File(location);
-            if(!folder.exists() && !folder.mkdirs())
-                throw new ConfigInitializationException("Can not create folder at " + folder.getAbsolutePath());
-
-            if(!location.endsWith("/"))
-                location += "/";
-
-            this.path = location;
-            location += "config.json";
-            this.location = location;
-
-        } catch (IOException e) {
-            throw new ConfigInitializationException(e);
+        String location;
+        if(configManager.isWindows()) {
+            location = configManager.getSystemProperties("config.location.windows");
+        } else if(configManager.isMacOS()) {
+            location = configManager.getSystemProperties("config.location.mac");
+        } else {
+            location = configManager.getSystemProperties("config.location.linux");
         }
+
+        File folder = new File(location);
+        if(!folder.exists() && !folder.mkdirs())
+            throw new ConfigInitializationException("Can not create folder at " + folder.getAbsolutePath());
+
+        if(!location.endsWith("/"))
+            location += "/";
+
+        this.path = location;
+        location += "config.json";
+        this.location = location;
 
         File connTimeoutFile = new File(this.path, CONNECT_TIMEOUT_FILE);
         if(connTimeoutFile.exists()) {
@@ -178,9 +170,6 @@ public class GlobalConfig extends AbstractConfig {
     public int getConnectTimeout() {
         return connectTimeout;
     }
-
-
-
 
     /**
      * 创建一个默认的记录connectTimeout的文件

@@ -41,7 +41,15 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         super(Objects.requireNonNull(component));
         this.display = display;
         this.operator = component.getParentComponent();
-        this.shell = initialShell();
+
+        Image icon;
+        try (InputStream is = ResourceManager.openIconImageStream()) {
+            icon = new Image(display, is);
+        } catch (IOException e) {
+            throw new Error(e);
+        }
+
+        this.shell = createShell(display, "服务器设置", icon, 850, 370);
         this.serverList = new ServerList();
         this.serverSettingForm = new ServerSettingForm();
 
@@ -347,26 +355,6 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         }
     }
 
-
-    private Shell initialShell() {
-        final Shell shell = new Shell(display);
-        shell.setText("服务器设置");
-        shell.setSize(850, 380);
-
-        try (InputStream is = ResourceManager.openIconImageStream()) {
-            shell.setImage(new Image(display, is));
-        } catch (IOException e) {
-            throw new Error(e);
-        }
-
-        shell.addListener(SWT.Close, e -> {
-            setVisiable(false);
-            e.doit = false;
-        });
-
-        shell.setVisible(false);
-        return shell;
-    }
 
     void setVisiable(boolean visiable) {
         shell.setVisible(visiable);

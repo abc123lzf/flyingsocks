@@ -16,11 +16,9 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
-import java.util.Collections;
-import java.util.Scanner;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 
 /**
  * PAC模式配置
@@ -30,24 +28,32 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
 
     private static final Logger log = LoggerFactory.getLogger(ProxyAutoConfig.class);
 
-    private static final String DEFAULT_PAC_CONFIG_LOCATION = "classpath://pac.txt";
-    private static final Charset DEFAULT_CONFIG_ENCODING = Charset.forName("UTF-8");
+    private static final Charset DEFAULT_CONFIG_ENCODING = StandardCharsets.UTF_8;
 
     private static final String PAC_CONFIG_FILE = "pac-setting";
+    private static final String GFWLIST_FILE = "gfwlist.txt";
 
     public static final int PROXY_NO = 0;
-    public static final int PROXY_PAC = 1;
+    public static final int PROXY_GFW_LIST = 1;
     public static final int PROXY_GLOBAL = 2;
+    public static final int PROXY_NON_CN = 3;
+
 
     /**
      * 系统代理模式
      */
-    private int proxyMode;
+    private volatile int proxyMode;
 
     /**
-     * 需要代理的域名/IP列表
+     * 需要代理的域名/IP列表,仅PAC模式使用
      */
-    private final Set<String> proxySet = Collections.newSetFromMap(new ConcurrentHashMap<>(2048));
+    private Set<String> proxySet = Collections.emptySet();
+
+    /**
+     * 中国IP地址Map
+     */
+    private Map<Integer, Integer> chinaIpv4Map = Collections.emptyMap();
+
 
     ProxyAutoConfig(ConfigManager<?> configManager) {
         super(configManager, DEFAULT_NAME);
@@ -55,19 +61,25 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
 
     @Override
     protected void initInternal() throws ConfigInitializationException {
-        try(InputStream is = configManager.loadResource(DEFAULT_PAC_CONFIG_LOCATION)) {
-            loadDefaultPacFile(is);
-        } catch (IOException e) {
-            throw new ConfigInitializationException(e);
+        GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
+        File gfwFile = new File(cfg.configPath(), GFWLIST_FILE);
+        if(!gfwFile.exists()) {
+            copyGFWListConfig();
         }
 
-        GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
-        File file = new File(cfg.configPath(), PAC_CONFIG_FILE);
+        try {
+            loadDefaultPacFile(gfwFile);
+        } catch (IOException e) {
+            log.error("Read GFWList file occur a exception", e);
+            System.exit(1);
+        }
 
+
+        File file = new File(cfg.configPath(), PAC_CONFIG_FILE);
         if(!file.exists()) {
             try {
-                this.proxyMode = PROXY_PAC;
-                makeTemplatePACFile(file);
+                this.proxyMode = PROXY_GFW_LIST;
+                makeTemplatePACSettingFile(file);
             } catch (IOException e) {
                 throw new ConfigInitializationException("Can not create new File at " + file.getAbsolutePath());
             }
@@ -81,11 +93,11 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
                 String s = sc.next();
                 switch (s) {
                     case "no": this.proxyMode = PROXY_NO; break;
-                    case "pac": this.proxyMode = PROXY_PAC; break;
+                    case "pac": this.proxyMode = PROXY_GFW_LIST; break;
                     case "global": this.proxyMode = PROXY_GLOBAL; break;
                     default: {
                         log.warn("Config file pac setting is not correct, only 'no' / 'pac' / 'global'");
-                        this.proxyMode = PROXY_PAC;
+                        this.proxyMode = PROXY_GFW_LIST;
                     }
                 }
             } catch (IOException e) {
@@ -95,28 +107,32 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     }
 
     /**
-     * 加载默认的PAC文件
-     * @param is 文件输入流
+     * 加载默认的GFWList文件
+     * @param f GFWList文件路径
      * @throws IOException 加载错误
      */
-    private void loadDefaultPacFile(InputStream is) throws IOException {
-        byte[] b = new byte[5120000];
-        int r = is.read(b);
+    private void loadDefaultPacFile(File f) throws IOException {
+        byte[] b = new byte[(int)f.length()];
+        try(FileInputStream fis = new FileInputStream(f)) {
+            fis.read(b);
+        }
 
-        String str = new String(b, 0, r, DEFAULT_CONFIG_ENCODING);
-        JSONObject object;
+        String str = new String(b, 0, b.length, DEFAULT_CONFIG_ENCODING);
+        JSONObject object = null;
         try {
             object = JSON.parseObject(str);
         } catch (JSONException e) {
-            if(log.isErrorEnabled())
-                log.error("PAC file format is not illegal.");
-            throw new ConfigInitializationException(e);
+            log.error("GFWList file format is not illegal.", e);
+            System.exit(1);
         }
 
+        Set<String> set = new HashSet<>(8192);
         object.forEach((host, enabled) -> {
-            if(object.getInteger(host) != 0)
-                proxySet.add(host);
+            if((int)enabled != 0)
+                set.add(host);
         });
+
+        proxySet = Collections.unmodifiableSet(set);
     }
 
 
@@ -133,7 +149,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
         String content;
         switch (this.proxyMode) {
             case PROXY_NO: content = "no"; break;
-            case PROXY_PAC: content = "pac"; break;
+            case PROXY_GFW_LIST: content = "pac"; break;
             case PROXY_GLOBAL: content = "global"; break;
             default:
                 content = "";
@@ -165,7 +181,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
             return false;
         if(proxyMode == PROXY_GLOBAL)
             return true;
-        if(proxyMode == PROXY_PAC) {
+        if(proxyMode == PROXY_GFW_LIST) {
             String[] strings = BaseUtils.splitPreserveAllTokens(host, '.');
             int len = strings.length;
             if (len <= 1)
@@ -177,13 +193,31 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
         }
     }
 
-    private void makeTemplatePACFile(File file) throws IOException {
+    private void makeTemplatePACSettingFile(File file) throws IOException {
         String content = "pac";
         ByteBuffer buf = ByteBuffer.allocate(content.length());
-        buf.put(content.getBytes(Charset.forName("ASCII")));
+        buf.put(content.getBytes(StandardCharsets.US_ASCII));
         try(FileChannel ch = FileChannel.open(file.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
             buf.rewind();
             ch.write(buf);
+        }
+    }
+
+    private void copyGFWListConfig() {
+        log.info("Can not found GFWList file on User DIR, ready to copy default file to User DIR.");
+
+        byte[] b = new byte[5120000];
+        try(InputStream is = configManager.loadResource(configManager.getSystemProperties("pac.gfwlist.config.url"))) {
+            int r = is.read(b);
+            String str = new String(b, 0, r, DEFAULT_CONFIG_ENCODING);
+            GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
+            File f = new File(cfg.configPath(), GFWLIST_FILE);
+            try(FileWriter fw = new FileWriter(f)) {
+                fw.write(str);
+            }
+        } catch (IOException e) {
+            log.error("Can not find default pac file", e);
+            System.exit(1);
         }
     }
 }

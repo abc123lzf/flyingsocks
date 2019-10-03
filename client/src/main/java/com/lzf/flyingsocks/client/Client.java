@@ -8,6 +8,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.Properties;
 
 public abstract class Client extends TopLevelComponent
         implements Component<VoidComponent>, Environment, ClientOperator {
@@ -22,7 +24,7 @@ public abstract class Client extends TopLevelComponent
      */
     public static final String VERSION = "v2.0";
 
-    public Client() {
+    Client() {
         super(DEFAULT_COMPONENT_NAME);
     }
 
@@ -48,7 +50,7 @@ public abstract class Client extends TopLevelComponent
         GlobalConfig gc = getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
         if(gc != null) {
             File folder = new File(gc.configPath() + "/log");
-            if(!folder.exists() || folder.isDirectory())
+            if(!folder.exists() || !folder.isDirectory())
                 return;
 
             File[] files = folder.listFiles();

@@ -109,7 +109,7 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
 
         int mode = operator.proxyMode();
         switch (mode) {
-            case PROXY_PAC: pac1.setSelection(true); break;
+            case PROXY_GFW_LIST: pac1.setSelection(true); break;
             case PROXY_NO: pac0.setSelection(true); break;
             case PROXY_GLOBAL: pac2.setSelection(true); break;
         }

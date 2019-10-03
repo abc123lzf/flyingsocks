@@ -2,6 +2,7 @@ package com.lzf.flyingsocks.client.proxy.socks;
 
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.ComponentException;
+import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.util.BaseUtils;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -61,14 +62,21 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
 
     @Override
     protected void initInternal() {
-        SocksConfig cfg = parent.getParentComponent().getConfigManager()
-                .getConfig(SocksConfig.NAME, SocksConfig.class);
+        SocksConfig cfg = parent.getParentComponent().getConfigManager().getConfig(SocksConfig.NAME, SocksConfig.class);
 
         this.auth = cfg.isAuth();
         this.port = cfg.getPort();
         this.username = cfg.getUsername();
         this.password = cfg.getPassword();
         this.bindAddress = cfg.getAddress();
+
+        parent.getParentComponent().registerConfigEventListener(event -> {
+            if(event.getSource() instanceof SocksConfig && event.getEvent().equals(Config.UPDATE_EVENT)) {
+                this.auth = cfg.isAuth();
+                this.username = cfg.getUsername();
+                this.password = cfg.getPassword();
+            }
+        });
 
         socksReceiveGroup = new NioEventLoopGroup(2);
 
@@ -151,10 +159,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
         });
 
         future.awaitUninterruptibly();
-        if(future.isSuccess())
-            return ((DatagramChannel)future.channel());
-        else
-            return null;
+        return future.isSuccess() ? ((DatagramChannel)future.channel()) : null;
     }
 
     /**
@@ -168,8 +173,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
 
             switch (request.requestType()) {
                 case INIT: {  //如果是Socks5初始化请求
-                    if(log.isTraceEnabled())
-                        log.trace("Socks init, thread:" + Thread.currentThread().getName());
+                    log.trace("Socks init");
 
                     if(!auth) {
                         cp.addFirst(new SocksCmdRequestDecoder());
@@ -181,8 +185,6 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                     break;
                 }
                 case AUTH: {  //如果是Socks5认证请求
-                    if(log.isTraceEnabled())
-                        log.trace("Socks auth, thread:" + Thread.currentThread().getName());
                     if(!(cp.first() instanceof SocksCmdRequestDecoder))
                         cp.addFirst(new SocksCmdRequestDecoder());
 
@@ -190,6 +192,9 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                         ctx.writeAndFlush(new SocksAuthResponse(SocksAuthStatus.SUCCESS));
                     } else {
                         SocksAuthRequest req = (SocksAuthRequest) request;
+                        if(log.isInfoEnabled())
+                            log.info("Socks auth, user:{} pass:{}", req.username(), req.password());
+
                         if(req.username().equals(username) && req.password().equals(password)) {
                             ctx.writeAndFlush(new SocksAuthResponse(SocksAuthStatus.SUCCESS));
                         } else {
