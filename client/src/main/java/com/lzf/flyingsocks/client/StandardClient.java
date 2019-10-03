@@ -10,7 +10,9 @@ import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksProxyComponent;
 import com.lzf.flyingsocks.client.gui.swing.SwingViewComponent;
 
+import java.io.IOException;
 import java.util.Map;
+import java.util.Properties;
 
 import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
 
@@ -28,6 +30,15 @@ public final class StandardClient extends Client {
      */
     @Override
     protected void initInternal() {
+        try {
+            Properties p = new Properties();
+            p.load(loadResource("classpath://config.properties"));
+            p.forEach((k, v) -> setSystemProperties((String) k, (String) v));
+        } catch (IOException e) {
+            log.error("Read config.properties occur a exception", e);
+            System.exit(1);
+        }
+
         GlobalConfig cfg = new GlobalConfig(getConfigManager());
         getConfigManager().registerConfig(cfg);
 
