@@ -26,7 +26,10 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-
+/**
+ * Socks5代理请求组件
+ * 负责处理本地的Socks5代理请求
+ */
 public final class SocksReceiverComponent extends AbstractComponent<SocksProxyComponent> {
 
     // 引导类
@@ -42,7 +45,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
     private final ConcurrentMap<String, DatagramChannel> udpProxyChannelMap = new ConcurrentHashMap<>(128);
 
     // 是否进行Socks认证
-    private boolean auth;
+    private volatile boolean auth;
 
     // 绑定的端口
     private int port;
@@ -51,10 +54,10 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
     private String bindAddress;
 
     // Socks5认证用户名，如果无需认证则为null
-    private String username;
+    private volatile String username;
 
     // Socks5认证密码，如果无需认证则为null
-    private String password;
+    private volatile String password;
 
     SocksReceiverComponent(SocksProxyComponent proxyComponent) {
         super("SocksRequestReceiver", Objects.requireNonNull(proxyComponent));
@@ -72,13 +75,13 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
 
         parent.getParentComponent().registerConfigEventListener(event -> {
             if(event.getSource() instanceof SocksConfig && event.getEvent().equals(Config.UPDATE_EVENT)) {
-                this.auth = cfg.isAuth();
                 this.username = cfg.getUsername();
                 this.password = cfg.getPassword();
+                this.auth = cfg.isAuth();
             }
         });
 
-        socksReceiveGroup = new NioEventLoopGroup(2);
+        this.socksReceiveGroup = new NioEventLoopGroup(2);
 
         ServerBootstrap boot = new ServerBootstrap();
         boot.group(socksReceiveGroup, parent.getWorkerEventLoopGroup())
@@ -87,13 +90,13 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                 @Override
                 protected void initChannel(SocketChannel channel) {
                     ChannelPipeline cp = channel.pipeline();
-                    cp.addLast(new SocksInitRequestDecoder());
-                    cp.addLast(new SocksMessageEncoder());
-                    cp.addLast(new SocksRequestHandler());
+                    cp.addLast(new SocksInitRequestDecoder());  //Socks5初始化(INIT)请求解码器
+                    cp.addLast(new SocksMessageEncoder());      //Socks5响应编码器
+                    cp.addLast(new SocksRequestHandler());      //Socks5请求处理器
                 }
             });
 
-        serverBootstrap = boot;
+        this.serverBootstrap = boot;
 
         Bootstrap udpBoot = new Bootstrap();
         udpBoot.group(socksReceiveGroup)
@@ -174,21 +177,20 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
             switch (request.requestType()) {
                 case INIT: {  //如果是Socks5初始化请求
                     log.trace("Socks init");
-
                     if(!auth) {
                         cp.addFirst(new SocksCmdRequestDecoder());
                         ctx.writeAndFlush(new SocksInitResponse(SocksAuthScheme.NO_AUTH));
                     } else {
+                        cp.addFirst(new SocksAuthRequestDecoder());
                         ctx.writeAndFlush(new SocksInitResponse(SocksAuthScheme.AUTH_PASSWORD));
                     }
 
                     break;
                 }
                 case AUTH: {  //如果是Socks5认证请求
-                    if(!(cp.first() instanceof SocksCmdRequestDecoder))
-                        cp.addFirst(new SocksCmdRequestDecoder());
-
+                    log.trace("Socks auth");
                     if(!auth) {
+                        cp.addFirst(new SocksCmdRequestDecoder());
                         ctx.writeAndFlush(new SocksAuthResponse(SocksAuthStatus.SUCCESS));
                     } else {
                         SocksAuthRequest req = (SocksAuthRequest) request;
@@ -196,6 +198,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                             log.info("Socks auth, user:{} pass:{}", req.username(), req.password());
 
                         if(req.username().equals(username) && req.password().equals(password)) {
+                            cp.addFirst(new SocksCmdRequestDecoder());
                             ctx.writeAndFlush(new SocksAuthResponse(SocksAuthStatus.SUCCESS));
                         } else {
                             ctx.writeAndFlush(new SocksAuthResponse(SocksAuthStatus.FAILURE));

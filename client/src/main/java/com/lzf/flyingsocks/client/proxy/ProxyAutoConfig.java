@@ -13,12 +13,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.regex.Pattern;
 
 /**
  * PAC模式配置
@@ -32,6 +35,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
 
     private static final String PAC_CONFIG_FILE = "pac-setting";
     private static final String GFWLIST_FILE = "gfwlist.txt";
+    private static final String CNIPV4_FILE = "cnipv4.txt";
 
     public static final int PROXY_NO = 0;
     public static final int PROXY_GFW_LIST = 1;
@@ -50,9 +54,9 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     private Set<String> proxySet = Collections.emptySet();
 
     /**
-     * 中国IP地址Map
+     * 中国IP地址Map,键为32位的IPV4地址,值为32位的掩码
      */
-    private Map<Integer, Integer> chinaIpv4Map = Collections.emptyMap();
+    private Map<Integer, Integer> cnIPv4Map = Collections.emptyMap();
 
 
     ProxyAutoConfig(ConfigManager<?> configManager) {
@@ -68,9 +72,21 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
         }
 
         try {
-            loadDefaultPacFile(gfwFile);
+            loadGFWListFile(gfwFile);
         } catch (IOException e) {
             log.error("Read GFWList file occur a exception", e);
+            System.exit(1);
+        }
+
+        File cnipv4file = new File(cfg.configPath(), CNIPV4_FILE);
+        if(!cnipv4file.exists()) {
+            copyCNIPv4Config();
+        }
+
+        try {
+            loadIPv4CNAddressFile(cnipv4file);
+        } catch (IOException e) {
+            log.error("Read CN IPv4 file occur a exception", e);
             System.exit(1);
         }
 
@@ -95,8 +111,9 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
                     case "no": this.proxyMode = PROXY_NO; break;
                     case "pac": this.proxyMode = PROXY_GFW_LIST; break;
                     case "global": this.proxyMode = PROXY_GLOBAL; break;
+                    case "noncn": this.proxyMode = PROXY_NON_CN; break;
                     default: {
-                        log.warn("Config file pac setting is not correct, only 'no' / 'pac' / 'global'");
+                        log.warn("Config file pac setting is not correct, only 'no' / 'pac' / 'global' / 'noncn'");
                         this.proxyMode = PROXY_GFW_LIST;
                     }
                 }
@@ -107,11 +124,11 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     }
 
     /**
-     * 加载默认的GFWList文件
+     * 加载GFWList文件
      * @param f GFWList文件路径
      * @throws IOException 加载错误
      */
-    private void loadDefaultPacFile(File f) throws IOException {
+    private void loadGFWListFile(File f) throws IOException {
         byte[] b = new byte[(int)f.length()];
         try(FileInputStream fis = new FileInputStream(f)) {
             fis.read(b);
@@ -135,6 +152,27 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
         proxySet = Collections.unmodifiableSet(set);
     }
 
+    /**
+     * 加载中国IPV4地址列表文件
+     * @param f cnipv4.txt文件路径
+     * @throws IOException 加载错误
+     */
+    private void loadIPv4CNAddressFile(File f) throws IOException {
+        Pattern tar = Pattern.compile("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/\\d{1,2}");
+        Map<Integer, Integer> map = new HashMap<>(16384);
+        try(FileInputStream fis = new FileInputStream(f);
+            Scanner sc = new Scanner(fis)) {
+            String str = sc.next(tar);
+            int idx = str.lastIndexOf('/');
+            int ip = BaseUtils.parseIPv4StringToInteger(str.substring(0, idx));
+            int mask = 0xFFFFFFFF << (32 - Integer.parseInt(str.substring(idx + 1)));
+            map.put(ip, mask);
+        }
+
+        this.cnIPv4Map = Collections.unmodifiableMap(map);
+    }
+
+
 
     @Override
     public boolean canSave() {
@@ -151,6 +189,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
             case PROXY_NO: content = "no"; break;
             case PROXY_GFW_LIST: content = "pac"; break;
             case PROXY_GLOBAL: content = "global"; break;
+            case PROXY_NON_CN: content = "noncn"; break;
             default:
                 content = "";
         }
@@ -169,7 +208,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
         if(this.proxyMode == proxyMode)
             return;
 
-        if(proxyMode < 0 || proxyMode > 2)
+        if(proxyMode < 0 || proxyMode > 3)
             throw new IllegalArgumentException();
 
         this.proxyMode = proxyMode;
@@ -177,20 +216,59 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     }
 
     boolean needProxy(String host) {
-        if(proxyMode == PROXY_NO)
+        if(proxyMode == PROXY_NO) {
             return false;
-        if(proxyMode == PROXY_GLOBAL)
+        }
+
+        if(proxyMode == PROXY_GLOBAL) {
             return true;
+        }
+
         if(proxyMode == PROXY_GFW_LIST) {
+            if(BaseUtils.isIPAddress(host)) {
+                return false;
+            }
             String[] strings = BaseUtils.splitPreserveAllTokens(host, '.');
             int len = strings.length;
             if (len <= 1)
                 return false;
             String realHost = strings[len - 2] + "." + strings[len - 1];
             return proxySet.contains(realHost);
-        } else {
-            throw new IllegalStateException("ProxyMode is not correct");
         }
+
+        if(proxyMode == PROXY_NON_CN) {
+            final int ip;
+            if(BaseUtils.isHostName(host)) {
+                try {
+                    byte[] b = InetAddress.getByName(host).getAddress();
+                    if(b.length > 4)
+                        return true;
+                    ip = BaseUtils.parseByteArrayToIPv4Integer(b);
+                } catch (UnknownHostException e) {
+                    log.warn("Unknown host name {}", host);
+                    return false;
+                }
+
+            } else if(BaseUtils.isIPv4Address(host)) {
+                ip = BaseUtils.parseIPv4StringToInteger(host);
+            } else {
+                return true; //暂时IPV6统一代理
+            }
+
+            int net;
+            Integer mask;
+            for (int i = 8; i <= 22; i++) {
+                net = ip & (-(1 << i));
+                if((mask = cnIPv4Map.get(net)) != null && BaseUtils.isIPv4AddressInRange(ip, net, mask)) {  //如果是中国IP
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+
+        throw new IllegalStateException("ProxyMode is not correct");
     }
 
     private void makeTemplatePACSettingFile(File file) throws IOException {
@@ -206,7 +284,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     private void copyGFWListConfig() {
         log.info("Can not found GFWList file on User DIR, ready to copy default file to User DIR.");
 
-        byte[] b = new byte[5120000];
+        byte[] b = new byte[1024000];
         try(InputStream is = configManager.loadResource(configManager.getSystemProperties("pac.gfwlist.config.url"))) {
             int r = is.read(b);
             String str = new String(b, 0, r, DEFAULT_CONFIG_ENCODING);
@@ -217,6 +295,23 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
             }
         } catch (IOException e) {
             log.error("Can not find default pac file", e);
+            System.exit(1);
+        }
+    }
+
+    private void copyCNIPv4Config() {
+        log.info("Can not found China IPv4 Address file on User DIR, ready to copy default file to User DIR.");
+        byte[] b = new byte[5120000];
+        try(InputStream is = configManager.loadResource(configManager.getSystemProperties("pac.cnipv4.config.url"))) {
+            int r = is.read(b);
+            String str = new String(b, 0, r, StandardCharsets.US_ASCII);
+            GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
+            File f = new File(cfg.configPath(), CNIPV4_FILE);
+            try(FileWriter fw = new FileWriter(f)) {
+                fw.write(str);
+            }
+        } catch (IOException e) {
+            log.error("Can not find default CN IPv4 file", e);
             System.exit(1);
         }
     }

@@ -12,30 +12,64 @@ public final class BaseUtils {
     //主机名正则表达式
     private static final Pattern HOST_PATTERN = Pattern.compile("^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$");
 
-    //IP地址正则表达式
-    private static final Pattern IP_PATTERN = Pattern.compile("^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+    //IPV4地址正则表达式
+    private static final Pattern IPV4_PATTERN = Pattern.compile("^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+
+    //IPV6正则表达式
+    private static final Pattern IPV6_PATTERN = Pattern.compile("^\\s*((([0-9A-Fa-f]{1,4}:){7}(([0-9A-Fa-f]{1,4})|:))|(([0-9A-Fa-f]{1,4}:){6}(:|((25[0-5]|2[0-4]\\d|[01]?\\d{1,2})(\\.(25[0-5]|2[0-4]\\d|[01]?\\d{1,2})){3})|(:[0-9A-Fa-f]{1,4})))|(([0-9A-Fa-f]{1,4}:){5}((:((25[0-5]|2[0-4]\\d|[01]?\\d{1,2})(\\.(25[0-5]|2[0-4]\\d|[01]?\\d{1,2})){3})?)|((:[0-9A-Fa-f]{1,4}){1,2})))|(([0-9A-Fa-f]{1,4}:){4}(:[0-9A-Fa-f]{1,4}){0,1}((:((25[0-5]|2[0-4]\\d|[01]?\\d{1,2})(\\.(25[0-5]|2[0-4]\\d|[01]?\\d{1,2})){3})?)|((:[0-9A-Fa-f]{1,4}){1,2})))|(([0-9A-Fa-f]{1,4}:){3}(:[0-9A-Fa-f]{1,4}){0,2}((:((25[0-5]|2[0-4]\\d|[01]?\\d{1,2})(\\.(25[0-5]|2[0-4]\\d|[01]?\\d{1,2})){3})?)|((:[0-9A-Fa-f]{1,4}){1,2})))|(([0-9A-Fa-f]{1,4}:){2}(:[0-9A-Fa-f]{1,4}){0,3}((:((25[0-5]|2[0-4]\\d|[01]?\\d{1,2})(\\.(25[0-5]|2[0-4]\\d|[01]?\\d{1,2})){3})?)|((:[0-9A-Fa-f]{1,4}){1,2})))|(([0-9A-Fa-f]{1,4}:)(:[0-9A-Fa-f]{1,4}){0,4}((:((25[0-5]|2[0-4]\\d|[01]?\\d{1,2})(\\.(25[0-5]|2[0-4]\\d|[01]?\\d{1,2})){3})?)|((:[0-9A-Fa-f]{1,4}){1,2})))|(:(:[0-9A-Fa-f]{1,4}){0,5}((:((25[0-5]|2[0-4]\\d|[01]?\\d{1,2})(\\.(25[0-5]|2[0-4]\\d|[01]?\\d{1,2})){3})?)|((:[0-9A-Fa-f]{1,4}){1,2})))|(((25[0-5]|2[0-4]\\d|[01]?\\d{1,2})(\\.(25[0-5]|2[0-4]\\d|[01]?\\d{1,2})){3})))(%.+)?\\s*$");
 
     /**
      * @param ip 点标记法IPV4字符串
      * @return 判断该字符串是否符合
      */
     public static boolean isIPv4Address(String ip) {
-        return IP_PATTERN.matcher(ip).matches();
+        return IPV4_PATTERN.matcher(ip).matches();
     }
 
+    /**
+     * 判断是否是主机名
+     * @param host 主机名
+     * @return 是否是主机名
+     */
     public static boolean isHostName(String host) {
         return HOST_PATTERN.matcher(host).matches();
     }
 
+    /**
+     * 判断是否是IPV6地址字符串
+     * @param ip IP字符串
+     * @return 是否是IPV6地址
+     */
+    public static boolean isIPv6Address(String ip) {
+        return IPV6_PATTERN.matcher(ip).matches();
+    }
+
+    /**
+     * 是否是IPV4或IPV6地址
+     * @param ip IP地址
+     * @return 是否是IPV4或IPV6地址
+     */
+    public static boolean isIPAddress(String ip) {
+        return isIPv4Address(ip) || isIPv6Address(ip);
+    }
+
+    /**
+     * @param port 字符串
+     * @return 判断一个字符串是否可能是端口号
+     */
     public static boolean isPortString(String port) {
         try {
             int p = Integer.parseInt(port);
-            return p > 0 && p < 65536;
+            return isPort(p);
         } catch (NumberFormatException e) {
             return false;
         }
     }
 
+    /**
+     * @param port 数字
+     * @return 该数字是否符合端口范围
+     */
     public static boolean isPort(int port) {
         return port > 0 && port < 65536;
     }
@@ -67,6 +101,10 @@ public final class BaseUtils {
         return d0 + "." + d1 + "." + d2 + "." + d3;
     }
 
+    /**
+     * @param b IPv4地址
+     * @return 点标记法IPv4地址字符串
+     */
     public static String parseByteArrayToIPv4Address(byte[] b) {
         return (b[0] & 0x0FF) + "." + (b[1] & 0x0FF) + "." + (b[2] & 0x0FF) + "." + (b[3] & 0x0FF);
     }
@@ -79,6 +117,18 @@ public final class BaseUtils {
         num |= b[2] << 8;
         return num | b[3];
     }
+
+    /**
+     * 判断一个IPV4地址是否在目标网络号中
+     * @param ip 需要判断的IPv4地址
+     * @param network 网络号
+     * @param mask 网络号子网掩码
+     * @return 判定结果
+     */
+    public static boolean isIPv4AddressInRange(int ip, int network, int mask) {
+        return (ip & mask) == (network & mask);
+    }
+
 
     /**
      * 将无符号short转换为Int数字

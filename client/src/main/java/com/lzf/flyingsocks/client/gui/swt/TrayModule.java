@@ -11,8 +11,11 @@ import org.eclipse.swt.widgets.*;
 import java.io.IOException;
 import java.util.Objects;
 
-import static com.lzf.flyingsocks.client.proxy.ProxyAutoConfig.*;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.*;
+import static com.lzf.flyingsocks.client.proxy.ProxyAutoConfig.PROXY_NO;
+import static com.lzf.flyingsocks.client.proxy.ProxyAutoConfig.PROXY_GFW_LIST;
+import static com.lzf.flyingsocks.client.proxy.ProxyAutoConfig.PROXY_GLOBAL;
+import static com.lzf.flyingsocks.client.proxy.ProxyAutoConfig.PROXY_NON_CN;
 
 /**
  * SWT系统托盘实现
@@ -81,30 +84,44 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         pac.setMenu(pacMenu);
         MenuItem pac0 = new MenuItem(pacMenu, SWT.CASCADE ^ SWT.CHECK);
         MenuItem pac1 = new MenuItem(pacMenu, SWT.CASCADE ^ SWT.CHECK);
+        MenuItem pac3 = new MenuItem(pacMenu, SWT.CASCADE ^ SWT.CHECK);
         MenuItem pac2 = new MenuItem(pacMenu, SWT.CASCADE ^ SWT.CHECK);
-        pac0.setText("直连模式");
-        pac1.setText("PAC模式");
-        pac2.setText("全局模式");
+
+        pac0.setText("不代理");
+        pac1.setText("GFW List模式");
+        pac2.setText("全局代理模式");
+        pac3.setText("仅代理境外地址");
 
         addMenuItemSelectionListener(pac0, e -> {
-            operator.setProxyMode(0);
+            operator.setProxyMode(PROXY_NO);
             pac0.setSelection(true);
             pac1.setSelection(false);
             pac2.setSelection(false);
+            pac3.setSelection(false);
         });
 
         addMenuItemSelectionListener(pac1, e -> {
-            operator.setProxyMode(1);
+            operator.setProxyMode(PROXY_GFW_LIST);
             pac0.setSelection(false);
             pac1.setSelection(true);
             pac2.setSelection(false);
+            pac3.setSelection(false);
         });
 
         addMenuItemSelectionListener(pac2, e -> {
-            operator.setProxyMode(2);
+            operator.setProxyMode(PROXY_NON_CN);
             pac0.setSelection(false);
             pac1.setSelection(false);
             pac2.setSelection(true);
+            pac3.setSelection(false);
+        });
+
+        addMenuItemSelectionListener(pac3, e -> {
+            operator.setProxyMode(PROXY_NON_CN);
+            pac0.setSelection(false);
+            pac1.setSelection(false);
+            pac2.setSelection(false);
+            pac3.setSelection(true);
         });
 
         int mode = operator.proxyMode();
