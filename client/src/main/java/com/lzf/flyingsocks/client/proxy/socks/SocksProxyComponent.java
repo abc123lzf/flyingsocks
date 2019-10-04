@@ -94,7 +94,7 @@ public class SocksProxyComponent extends ProxyComponent {
     @Override
     public void publish(ProxyRequest request) {
         super.publish(request);
-        if(!super.needProxy(request.getHost())) {
+        if(!request.needProxy()) {
             if(request instanceof SocksProxyRequest) {
                 ClientMessageTransferTask task = transferTaskList.get(Math.abs(request.hashCode() % transferTaskList.size()));
                 task.pushProxyRequest((SocksProxyRequest) request);

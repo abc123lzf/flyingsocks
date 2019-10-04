@@ -109,6 +109,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
             log.warn("No RequestSubscriber found in manager");
         //根据PAC文件的配置自动选择代理模式
         boolean np = needProxy(request.getHost());
+        request.setProxy(np);
         int index = 0;
         List<Integer> list = new ArrayList<>(3);
         for(ProxyRequestSubscriber sub : requestSubscribers) {
@@ -122,7 +123,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
 
         if(list.isEmpty()) {
             ReferenceCountUtil.release(request.takeClientMessage());
-            log.warn("ProxyRequest was not consume");
+            log.warn("ProxyRequest was not consume, target server: {}", request.host);
         } else {
             int hash = Math.abs(request.hashCode());
             int size = list.size();

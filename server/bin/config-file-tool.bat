@@ -1,6 +1,6 @@
 @echo off
 
-set jarpath=../lib/flyingsocks-server-1.1.jar
+set jarpath=../lib/flyingsocks-server-2.0.jar
 set allparam=
 
 :param

@@ -84,8 +84,7 @@ public final class BaseUtils {
         int num = Integer.valueOf(str[0]) << 24;
         num |= Integer.parseInt(str[1]) << 16;
         num |= Integer.parseInt(str[2]) << 8;
-        num |= Integer.parseInt(str[3]);
-        return num;
+        return num | Integer.parseInt(str[3]);
     }
 
     /**
@@ -112,10 +111,10 @@ public final class BaseUtils {
     public static int parseByteArrayToIPv4Integer(byte[] b) {
         if(b.length != 4)
             throw new IllegalArgumentException("illegal ipv4 byte array");
-        int num = b[0] << 24;
-        num |= b[1] << 16;
-        num |= b[2] << 8;
-        return num | b[3];
+        int num = (b[0] & 0x0FF) << 24;
+        num |= (b[1] & 0x0FF) << 16;
+        num |= (b[2] & 0x0FF) << 8;
+        return (num | (b[3] & 0x0FF));
     }
 
     /**

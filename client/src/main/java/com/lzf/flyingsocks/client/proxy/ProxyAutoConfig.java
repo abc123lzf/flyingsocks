@@ -1,8 +1,5 @@
 package com.lzf.flyingsocks.client.proxy;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONException;
-import com.alibaba.fastjson.JSONObject;
 import com.lzf.flyingsocks.AbstractConfig;
 import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.ConfigInitializationException;
@@ -34,7 +31,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     private static final Charset DEFAULT_CONFIG_ENCODING = StandardCharsets.UTF_8;
 
     private static final String PAC_CONFIG_FILE = "pac-setting";
-    private static final String GFWLIST_FILE = "gfwlist.txt";
+    private static final String GFWLIST_FILE = "pac.txt";
     private static final String CNIPV4_FILE = "cnipv4.txt";
 
     public static final int PROXY_NO = 0;
@@ -51,12 +48,12 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     /**
      * 需要代理的域名/IP列表,仅PAC模式使用
      */
-    private Set<String> proxySet = Collections.emptySet();
+    private volatile Set<String> proxySet = Collections.emptySet();
 
     /**
      * 中国IP地址Map,键为32位的IPV4地址,值为32位的掩码
      */
-    private Map<Integer, Integer> cnIPv4Map = Collections.emptyMap();
+    private volatile Map<Integer, Integer> cnIPv4Map = Collections.emptyMap();
 
 
     ProxyAutoConfig(ConfigManager<?> configManager) {
@@ -129,27 +126,19 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
      * @throws IOException 加载错误
      */
     private void loadGFWListFile(File f) throws IOException {
-        byte[] b = new byte[(int)f.length()];
-        try(FileInputStream fis = new FileInputStream(f)) {
-            fis.read(b);
-        }
-
-        String str = new String(b, 0, b.length, DEFAULT_CONFIG_ENCODING);
-        JSONObject object = null;
-        try {
-            object = JSON.parseObject(str);
-        } catch (JSONException e) {
-            log.error("GFWList file format is not illegal.", e);
-            System.exit(1);
-        }
-
         Set<String> set = new HashSet<>(8192);
-        object.forEach((host, enabled) -> {
-            if((int)enabled != 0)
-                set.add(host);
-        });
+        try(FileInputStream fis = new FileInputStream(f);
+            Scanner sc = new Scanner(fis)) {
+            while (sc.hasNext()) {
+                String host = sc.next();
+                if (BaseUtils.isHostName(host)) {
+                    set.add(host);
+                }
+            }
+        }
 
         proxySet = Collections.unmodifiableSet(set);
+        log.info("GFWList size: {}", proxySet.size());
     }
 
     /**
@@ -162,14 +151,17 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
         Map<Integer, Integer> map = new HashMap<>(16384);
         try(FileInputStream fis = new FileInputStream(f);
             Scanner sc = new Scanner(fis)) {
-            String str = sc.next(tar);
-            int idx = str.lastIndexOf('/');
-            int ip = BaseUtils.parseIPv4StringToInteger(str.substring(0, idx));
-            int mask = 0xFFFFFFFF << (32 - Integer.parseInt(str.substring(idx + 1)));
-            map.put(ip, mask);
+            while (sc.hasNext(tar)) {
+                String str = sc.next(tar);
+                int idx = str.lastIndexOf('/');
+                int ip = BaseUtils.parseIPv4StringToInteger(str.substring(0, idx));
+                int mask = 0xFFFFFFFF << (32 - Integer.parseInt(str.substring(idx + 1)));
+                map.put(ip, mask);
+            }
         }
 
         this.cnIPv4Map = Collections.unmodifiableMap(map);
+        log.info("CNIPv4 List size: {}", map.size());
     }
 
 
@@ -237,7 +229,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
         }
 
         if(proxyMode == PROXY_NON_CN) {
-            final int ip;
+            int ip;
             if(BaseUtils.isHostName(host)) {
                 try {
                     byte[] b = InetAddress.getByName(host).getAddress();
@@ -255,12 +247,13 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
                 return true; //暂时IPV6统一代理
             }
 
-            int net;
+            int net = ip & 0xFFFFFF00;
             Integer mask;
-            for (int i = 8; i <= 22; i++) {
-                net = ip & (-(1 << i));
-                if((mask = cnIPv4Map.get(net)) != null && BaseUtils.isIPv4AddressInRange(ip, net, mask)) {  //如果是中国IP
-                    return false;
+            for (int i = 9; i <= 22; i++) {
+                net &= (-(1 << i));
+                if((mask = cnIPv4Map.get(net)) != null) {  //如果是中国IP
+                    if(BaseUtils.isIPv4AddressInRange(ip, net, mask))
+                        return false;
                 }
             }
 

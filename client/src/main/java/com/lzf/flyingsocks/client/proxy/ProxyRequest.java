@@ -37,6 +37,12 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
     protected int ctl;
 
     /**
+     * 是否进行代理
+     */
+    protected boolean proxy;
+
+
+    /**
      * 代理协议枚举，目前支持UDP、TCP
      */
     public enum Protocol {
@@ -85,6 +91,10 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
         return ctl;
     }
 
+    public final boolean needProxy() {
+        return proxy;
+    }
+
     protected void setCtl(int ctl) {
         this.ctl = ctl;
     }
@@ -112,6 +122,10 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
     protected void closeClientChannel() {
         if(clientChannel.isActive())
             clientChannel.close();
+    }
+
+    protected void setProxy(boolean proxy) {
+        this.proxy = proxy;
     }
 
     /**

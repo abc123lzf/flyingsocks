@@ -129,6 +129,7 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
             case PROXY_GFW_LIST: pac1.setSelection(true); break;
             case PROXY_NO: pac0.setSelection(true); break;
             case PROXY_GLOBAL: pac2.setSelection(true); break;
+            case PROXY_NON_CN: pac3.setSelection(true); break;
         }
     }
 

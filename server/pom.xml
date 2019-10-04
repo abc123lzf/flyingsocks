@@ -5,7 +5,7 @@
     <parent>
         <artifactId>flyingsocks</artifactId>
         <groupId>com.lzf</groupId>
-        <version>1.1</version>
+        <version>2.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -15,14 +15,7 @@
         <dependency>
             <groupId>com.lzf</groupId>
             <artifactId>flyingsocks-common</artifactId>
-            <version>1.1</version>
-        </dependency>
-
-        <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>javax.servlet-api</artifactId>
-            <version>4.0.1</version>
-            <scope>provided</scope>
+            <version>2.0</version>
         </dependency>
 
     </dependencies>
