@@ -5,6 +5,7 @@ if [ "$1" == "-install" ]; then
     mkdir /var/log/flyingsocks-cli
     echo "make folder /etc/flyingsocks-cli"
     mkdir /etc/flyingsocks-cli
+    echo "Install Done, you can use config-file-tool to configure server"
     exit 0
 fi
 

@@ -301,7 +301,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
 
     private void copyCNIPv4Config() {
         log.info("Can not found China IPv4 Address file on User DIR, ready to copy default file to User DIR.");
-        byte[] b = new byte[5120000];
+        byte[] b = new byte[1024000];
         try(InputStream is = configManager.loadResource(configManager.getSystemProperties("pac.cnipv4.config.url"))) {
             int r = is.read(b);
             String str = new String(b, 0, r, StandardCharsets.US_ASCII);

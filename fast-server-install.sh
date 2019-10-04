@@ -29,13 +29,14 @@ fi
 
 echo "服务器配置"
 read -p "输入端口号：" FS_PORT
+read -p "输入证书端口号：" FS_CERT_PORT
 read -p "输入最大客户端连接数：" FS_MAX_CLI
 read -p "输入密码：" FS_PWD
 
 mkdir /etc/flyingsocks-server
 cd /etc/flyingsocks-server
 touch config.json
-echo "[{ \"name\": \"default\"," "\"port\":$FS_PORT," "\"max-client\": $FS_MAX_CLI," "\"encrypt\": \"OpenSSL\"," \
+echo "[{ \"name\": \"default\"," "\"port\":$FS_PORT,"  "\"cert-port\":$FS_CERT_PORT,"  "\"max-client\": $FS_MAX_CLI," "\"encrypt\": \"OpenSSL\"," \
         "\"auth-type\": \"simple\"," "\"password\": \"$FS_PWD\"" "}]" > config.json
 
 cd /tmp
