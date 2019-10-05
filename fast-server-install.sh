@@ -40,7 +40,7 @@ echo "[{ \"name\": \"default\"," "\"port\":$FS_PORT,"  "\"cert-port\":$FS_CERT_P
         "\"auth-type\": \"simple\"," "\"password\": \"$FS_PWD\"" "}]" > config.json
 
 cd /tmp
-wget https://raw.githubusercontent.com/abc123lzf/flyingsocks/master/flyingsocks-server-1.0.zip
+wget https://raw.githubusercontent.com/abc123lzf/flyingsocks/master/flyingsocks-server-2.0.zip
 unzip flyingsocks-server-1.0.zip -d /usr
 cd /usr/flyingsocks-server-1.0/conf/encrypt
 
@@ -56,5 +56,5 @@ chmod 770 startup.sh
 
 cd ..
 
-echo "Install path: /usr/flyingsocks-server-1.0"
+echo "Install path: /usr/flyingsocks-server-2.0"
 echo "Done"

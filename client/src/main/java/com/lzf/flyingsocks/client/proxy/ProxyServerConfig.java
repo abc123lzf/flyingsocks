@@ -106,7 +106,11 @@ public class ProxyServerConfig extends AbstractConfig {
             JSONObject auth = new JSONObject();
             auth.putAll(node.authArgument);
             o.put("auth-arg", auth);
-            o.put("state", /*node.isUse()*/ false);
+            if(cfg.isOpenGUI()) {
+                o.put("state", false);
+            } else {  //仅当GUI关闭时才可将自连接设为true
+                o.put("state", node.isUse());
+            }
             o.put("encrypt", node.encryptType.name());
             arr.add(o);
         }

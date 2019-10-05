@@ -20,6 +20,7 @@ public abstract class ClientBoot {
             Client client = new StandardClient();
             client.init();
             client.start();
+            System.gc();
         } catch (ComponentException e) {
             log.error("flyingsocks client {} start failure, cause:", VERSION, e);
             log.info("If it caused by BUG, please submit issue at https://github.com/abc123lzf/flyingsocks , Thanks");

@@ -43,10 +43,13 @@ public final class StandardClient extends Client {
         getConfigManager().registerConfig(cfg);
 
         addComponent(new SocksProxyComponent(this));
-        if(!isWindows()) {
-            addComponent(new SwingViewComponent(this));
-        } else {
-            addComponent(new SWTViewComponent(this));
+
+        if(cfg.isOpenGUI()) {
+            if (!isWindows()) {
+                addComponent(new SwingViewComponent(this));
+            } else {
+                addComponent(new SWTViewComponent(this));
+            }
         }
 
         super.initInternal();

@@ -77,7 +77,7 @@ public class SWTViewComponent extends AbstractComponent<Client> {
                 }
                 display.dispose();
             } catch (RuntimeException | Error t) {
-                log.error("SWT Thread occur a error", t);
+                log.error("SWT Thread occur a error, please submit this issue to GitHub, thanks", t);
                 System.exit(1);
             }
         });
