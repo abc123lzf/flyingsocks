@@ -114,7 +114,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
         List<Integer> list = new ArrayList<>(3);
         for(ProxyRequestSubscriber sub : requestSubscribers) {
             if(sub.requestType().isAssignableFrom(request.getClass()) &&
-                    (sub.receiveNeedProxy() && np || sub.receiveNeedlessProxy() && !np) &&
+                    (sub.receiveNeedProxy() && np || sub.receiveNeedlessProxy() && !np) &&  //false&&true || true&&false
                     sub.requestProtcol().contains(request.protocol())) {
                 list.add(index);
             }

@@ -167,6 +167,7 @@ public class DefaultConfigManager<T extends Component<?> & Environment>
 
     @Override
     public void setSystemProperties(String key, String value) {
+        log.info("System Property set: {}={}", key, value);
         getComponent().setSystemProperties(key, value);
     }
 

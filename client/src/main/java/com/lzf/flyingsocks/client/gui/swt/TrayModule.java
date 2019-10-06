@@ -47,6 +47,7 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         final Menu menu = new Menu(shell, SWT.POP_UP);
 
         tray.addMenuDetectListener(e -> menu.setVisible(true));
+
         tray.setVisible(true);
         tray.setToolTipText(shell.getText());
 
@@ -109,7 +110,7 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         });
 
         addMenuItemSelectionListener(pac2, e -> {
-            operator.setProxyMode(PROXY_NON_CN);
+            operator.setProxyMode(PROXY_GLOBAL);
             pac0.setSelection(false);
             pac1.setSelection(false);
             pac2.setSelection(true);

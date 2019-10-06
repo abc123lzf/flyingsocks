@@ -21,7 +21,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 /**
- * PAC模式配置
+ * 代理模式相关组件
  */
 public class ProxyAutoConfig extends AbstractConfig implements Config {
     public static final String DEFAULT_NAME = "Config-PAC";
@@ -62,6 +62,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
 
     @Override
     protected void initInternal() throws ConfigInitializationException {
+        configManager.setSystemProperties("sun.net.spi.nameservice.provider.1", "dns,sun");//解决部分情况IPV6解析失败的场景
         GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
         File gfwFile = new File(cfg.configPath(), GFWLIST_FILE);
         if(!gfwFile.exists()) {
@@ -220,12 +221,18 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
             if(BaseUtils.isIPAddress(host)) {
                 return false;
             }
-            String[] strings = BaseUtils.splitPreserveAllTokens(host, '.');
-            int len = strings.length;
+            String[] hs = BaseUtils.splitPreserveAllTokens(host, '.');
+            int len = hs.length;
             if (len <= 1)
                 return false;
-            String realHost = strings[len - 2] + "." + strings[len - 1];
-            return proxySet.contains(realHost);
+            String realHost = hs[len - 2] + '.' + hs[len - 1];
+            if(proxySet.contains(realHost)) {
+                return true;
+            } else if(realHost.length() < 7 && len >= 3) {  //解决部分域名为xxx.co.jp情况
+                return proxySet.contains(hs[len - 3] + '.' + realHost);
+            } else {
+                return false;
+            }
         }
 
         if(proxyMode == PROXY_NON_CN) {
@@ -233,7 +240,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
             if(BaseUtils.isHostName(host)) {
                 try {
                     byte[] b = InetAddress.getByName(host).getAddress();
-                    if(b.length > 4)
+                    if(b.length > 4)  //IPV6暂时全局代理
                         return true;
                     ip = BaseUtils.parseByteArrayToIPv4Integer(b);
                 } catch (UnknownHostException e) {

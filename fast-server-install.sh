@@ -40,9 +40,9 @@ echo "[{ \"name\": \"default\"," "\"port\":$FS_PORT,"  "\"cert-port\":$FS_CERT_P
         "\"auth-type\": \"simple\"," "\"password\": \"$FS_PWD\"" "}]" > config.json
 
 cd /tmp
-wget https://raw.githubusercontent.com/abc123lzf/flyingsocks/master/flyingsocks-server-2.0.zip
-unzip flyingsocks-server-1.0.zip -d /usr
-cd /usr/flyingsocks-server-1.0/conf/encrypt
+wget https://raw.githubusercontent.com/abc123lzf/flyingsocks/v2.0/flyingsocks-server-2.0.zip
+unzip flyingsocks-server-2.0.zip -d /usr
+cd /usr/flyingsocks-server-2.0/conf/encrypt
 
 openssl req -new -nodes -x509 -keyout ca.key -out ca.crt
 openssl genrsa -out server.key 1024

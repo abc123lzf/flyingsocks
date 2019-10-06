@@ -134,7 +134,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
      * @return 是否是合法的主机名/IP地址
      */
     private boolean vaildateAddress(String address) {
-        return BaseUtils.isHostName(address) || BaseUtils.isIPv4Address(address);
+        return BaseUtils.isHostName(address) || BaseUtils.isIPAddress(address);
     }
 
     /**
