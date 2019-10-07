@@ -13,6 +13,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 
+@Deprecated
 final class SocksSettingModule extends AbstractModule<SwingViewComponent> {
     private static final Logger log = LoggerFactory.getLogger(SocksSettingModule.class);
     static final String NAME = "module.socks";

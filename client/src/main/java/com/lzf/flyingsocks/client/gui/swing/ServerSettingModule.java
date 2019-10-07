@@ -21,6 +21,7 @@ import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.AuthType;
 import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.EncryptType;
 import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
 
+@Deprecated
 final class ServerSettingModule extends AbstractModule<SwingViewComponent> {
 
     private static final Logger log = LoggerFactory.getLogger(ServerSettingModule.class);

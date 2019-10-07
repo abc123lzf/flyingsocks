@@ -8,7 +8,6 @@ import com.lzf.flyingsocks.client.proxy.ProxyComponent;
 import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksProxyComponent;
-import com.lzf.flyingsocks.client.gui.swing.SwingViewComponent;
 
 import java.io.IOException;
 import java.util.Map;
@@ -45,11 +44,7 @@ public final class StandardClient extends Client {
         addComponent(new SocksProxyComponent(this));
 
         if(cfg.isOpenGUI()) {
-            if (!isWindows()) {
-                addComponent(new SwingViewComponent(this));
-            } else {
-                addComponent(new SWTViewComponent(this));
-            }
+            addComponent(new SWTViewComponent(this));
         }
 
         super.initInternal();

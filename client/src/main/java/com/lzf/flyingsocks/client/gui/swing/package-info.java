@@ -1,4 +1,6 @@
 /**
- * Mac OS / Linux环境下的GUI组件
+ * 旧版本GUI组件
+ * 已过时，新版本采用SWT组件
  */
+@Deprecated
 package com.lzf.flyingsocks.client.gui.swing;

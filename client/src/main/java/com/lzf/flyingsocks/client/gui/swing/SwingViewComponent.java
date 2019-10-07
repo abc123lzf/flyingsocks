@@ -10,6 +10,7 @@ import java.util.Objects;
 /**
  * Swing GUI组件
  */
+@Deprecated
 public class SwingViewComponent extends AbstractComponent<Client> {
 
     /**

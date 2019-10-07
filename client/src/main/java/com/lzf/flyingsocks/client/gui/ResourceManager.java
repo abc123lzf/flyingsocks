@@ -42,10 +42,12 @@ public final class ResourceManager {
         return new URL("classpath://delete-icon.png").openStream();
     }
 
+    @Deprecated
     public static Image loadSystemTrayImage() throws IOException {
         return ImageIO.read(new URL("classpath://icon.png"));
     }
 
+    @Deprecated
     public static Image loadIconImage() throws IOException {
         return ImageIO.read(new URL("classpath://icon-tray.png"));
     }

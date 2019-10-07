@@ -17,6 +17,7 @@ import java.util.Map;
 
 import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
 
+@Deprecated
 final class TrayModule extends AbstractModule<SwingViewComponent> {
     private static final Logger log = LoggerFactory.getLogger("PopupMenu");
 
