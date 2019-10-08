@@ -2,10 +2,9 @@ package com.lzf.flyingsocks.client.gui.swt;
 
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.client.Client;
-import org.eclipse.swt.widgets.*;
+import org.eclipse.swt.widgets.Display;
 
 import java.util.Objects;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -42,9 +41,8 @@ public class SWTViewComponent extends AbstractComponent<Client> {
     public SWTViewComponent(Client parent) {
         super("SWTViewComponent", Objects.requireNonNull(parent));
 
-        Callable<Display> swtBuilder = Display::new;
         try {
-            this.display = executor.submit(swtBuilder).get();
+            this.display = executor.submit(Display::getDefault).get();
         } catch (Exception e) {
             throw new Error(e);
         }
@@ -52,41 +50,52 @@ public class SWTViewComponent extends AbstractComponent<Client> {
 
     @Override
     protected void initInternal() {
-        executor.submit(() -> {
-            try {
-                addModule(new TrayModule(this, display));
-                addModule(this.serverSettingModule = new ServerSettingModule(this, display));
-                addModule(this.socksSettingModule = new SocksSettingModule(this, display));
-                addModule(this.mainScreenModule = new MainScreenModule(this, display));
-            } catch (Throwable t) {
-                log.error("SWT Thread occur a error", t);
-                System.exit(1);
-            }
-        });
+        executor.submit(this::initialUI);
     }
 
     @Override
     protected void startInternal() {
-        executor.submit(() -> {
-            try {
-                Thread t = Thread.currentThread();
-                while (!t.isInterrupted()) {
-                    if (!display.readAndDispatch()) {
-                        display.sleep();
-                    }
-                }
-                display.dispose();
-            } catch (RuntimeException | Error t) {
-                log.error("SWT Thread occur a error, please submit this issue to GitHub, thanks", t);
-                System.exit(1);
-            }
-        });
+        executor.submit(this::running);
     }
 
     @Override
     protected void stopInternal() {
         executor.shutdownNow();
     }
+
+    /**
+     * 初始化UI
+     */
+    private void initialUI() {
+        try {
+            addModule(new TrayModule(this, display));
+            addModule(this.serverSettingModule = new ServerSettingModule(this, display));
+            addModule(this.socksSettingModule = new SocksSettingModule(this, display));
+            addModule(this.mainScreenModule = new MainScreenModule(this, display));
+        } catch (Throwable t) {
+            log.error("SWT Thread occur a error", t);
+            System.exit(1);
+        }
+    }
+
+    /**
+     * 执行GUI任务
+     */
+    private void running() {
+        try {
+            Thread t = Thread.currentThread();
+            while (!t.isInterrupted()) {
+                if (!display.readAndDispatch()) {
+                    display.sleep();
+                }
+            }
+            display.dispose();
+        } catch (RuntimeException | Error t) {
+            log.error("SWT Thread occur a error, please submit this issue to GitHub, thanks", t);
+            System.exit(1);
+        }
+    }
+
 
     void openSocksSettingUI() {
         socksSettingModule.setVisiable(true);

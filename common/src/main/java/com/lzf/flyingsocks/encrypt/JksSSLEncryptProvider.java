@@ -16,6 +16,7 @@ import java.util.Map;
  * 提供基于JKS的SSL加密连接
  */
 @SuppressWarnings("unused")
+@Deprecated
 public final class JksSSLEncryptProvider implements EncryptProvider {
 
     static final String NAME = "JKS";

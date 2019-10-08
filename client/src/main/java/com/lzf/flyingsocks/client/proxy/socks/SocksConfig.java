@@ -9,10 +9,12 @@ import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.client.GlobalConfig;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
 
@@ -71,8 +73,8 @@ public class SocksConfig extends AbstractConfig {
 
         try(FileInputStream is = new FileInputStream(file)) {
             byte[] b = new byte[(int)file.length()];
-            is.read(b);
-            String json = new String(b, Charset.forName("UTF-8"));
+            int cnt = is.read(b);
+            String json = new String(b, 0, cnt, StandardCharsets.UTF_8);
             JSONObject obj = JSON.parseObject(json);
             this.port = obj.getIntValue("port");
             this.auth = obj.getBooleanValue("auth");

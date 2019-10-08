@@ -1,4 +1,4 @@
-package com.lzf.flyingsocks.server;
+package com.lzf.flyingsocks.server.db;
 
 /**
  * 用于实现用户认证方式
@@ -39,4 +39,15 @@ public interface UserDatabase {
      * @return 是否修改成功
      */
     boolean changePassword(String group, String username, String newPassword);
+
+    /**
+     * 用户组
+     */
+    interface UserGroup {
+
+        /**
+         * @return 用户组名
+         */
+        String name();
+    }
 }

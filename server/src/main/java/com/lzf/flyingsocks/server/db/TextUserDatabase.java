@@ -1,16 +1,17 @@
-package com.lzf.flyingsocks.server;
+package com.lzf.flyingsocks.server.db;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.lzf.flyingsocks.*;
+import com.lzf.flyingsocks.server.ServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -23,17 +24,22 @@ public class TextUserDatabase extends AbstractConfig implements UserDatabase {
 
     public static final String NAME = "userdatabase.text";
 
-    private final Map<String, UserGroup> groupMap = new ConcurrentHashMap<>(8);
+    private final Map<String, UserGroupImpl> groupMap = new ConcurrentHashMap<>(8);
 
     /**
      * 用户组对象
      */
-    private final class UserGroup {
+    private static final class UserGroupImpl implements UserGroup {
         private final String name;
         private final ConcurrentMap<String, String> userMap = new ConcurrentHashMap<>(8);
 
-        public UserGroup(String name) {
+        public UserGroupImpl(String name) {
             this.name = name;
+        }
+
+        @Override
+        public String name() {
+            return name;
         }
     }
 
@@ -68,12 +74,12 @@ public class TextUserDatabase extends AbstractConfig implements UserDatabase {
         try(InputStream is = new URL("file:///" + cfg.getLocationURL() + "user.json").openStream()) {
             byte[] b = new byte[512000];
             int len = is.read(b);
-            String json = new String(b, 0, len, Charset.forName("UTF-8"));
+            String json = new String(b, 0, len, StandardCharsets.UTF_8);
 
             JSONArray arr = JSON.parseArray(json);
             for(int i = 0; i < arr.size(); i++) {
                 JSONObject obj = arr.getJSONObject(i);
-                UserGroup group = new UserGroup(obj.getString("group"));
+                UserGroupImpl group = new UserGroupImpl(obj.getString("group"));
 
                 JSONArray userArr = obj.getJSONArray("user");
                 for(int j = 0; j < userArr.size(); j++) {
@@ -96,7 +102,7 @@ public class TextUserDatabase extends AbstractConfig implements UserDatabase {
 
     @Override
     public boolean doAuth(String group, String username, String password) {
-        UserGroup ug = groupMap.get(group);
+        UserGroupImpl ug = groupMap.get(group);
         if(ug == null)
             return false;
 
@@ -105,7 +111,7 @@ public class TextUserDatabase extends AbstractConfig implements UserDatabase {
 
     @Override
     public boolean register(String group, String username, String password) {
-        UserGroup ug = groupMap.get(group);
+        UserGroupImpl ug = groupMap.get(group);
         if(ug == null)
             return false;
 
@@ -118,7 +124,7 @@ public class TextUserDatabase extends AbstractConfig implements UserDatabase {
 
     @Override
     public boolean delete(String group, String username) {
-        UserGroup ug = groupMap.get(group);
+        UserGroupImpl ug = groupMap.get(group);
         if(ug == null)
             return false;
 
@@ -127,7 +133,7 @@ public class TextUserDatabase extends AbstractConfig implements UserDatabase {
 
     @Override
     public boolean changePassword(String group, String username, String newPassword) {
-        UserGroup ug = groupMap.get(group);
+        UserGroupImpl ug = groupMap.get(group);
         if(ug == null)
             return false;
 

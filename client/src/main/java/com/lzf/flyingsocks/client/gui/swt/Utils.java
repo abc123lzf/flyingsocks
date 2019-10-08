@@ -21,11 +21,7 @@ abstract class Utils {
      */
     static void adaptDPI(Composite composite) {
         if(composite instanceof Shell) {
-            int x = (int) (composite.getLocation().x * DPI_SCALE);
-            int y = (int) (composite.getLocation().y * DPI_SCALE);
-            int w = (int) (composite.getSize().x * DPI_SCALE);
-            int h = (int) (composite.getSize().y * DPI_SCALE);
-            composite.setBounds(x, y, w, h);
+            adaptControlDPI(composite);
         }
 
         for(Control control : composite.getChildren()) {
@@ -33,12 +29,16 @@ abstract class Utils {
                 adaptDPI((Composite) control);
             }
 
-            int x = (int) (control.getLocation().x * DPI_SCALE);
-            int y = (int) (control.getLocation().y * DPI_SCALE);
-            int w = (int) (control.getSize().x * DPI_SCALE);
-            int h = (int) (control.getSize().y * DPI_SCALE);
-            control.setBounds(x, y, w, h);
+            adaptControlDPI(control);
         }
+    }
+
+    private static void adaptControlDPI(Control control) {
+        int x = (int) (control.getLocation().x * DPI_SCALE);
+        int y = (int) (control.getLocation().y * DPI_SCALE);
+        int w = (int) (control.getSize().x * DPI_SCALE);
+        int h = (int) (control.getSize().y * DPI_SCALE);
+        control.setBounds(x, y, w, h);
     }
 
 
@@ -85,7 +85,7 @@ abstract class Utils {
     }
 
 
-    static Combo createCombo(Shell shell, int x, int y, int width, int height) {
+    static Combo createCombo(Composite shell, int x, int y, int width, int height) {
         Combo c = new Combo(shell, SWT.READ_ONLY);
         c.setBounds(x, y, width, height);
         return c;
@@ -103,7 +103,7 @@ abstract class Utils {
 
     /**
      * 创建文本栏
-     * @param shell 窗口
+     * @param comp 窗口
      * @param text 文本
      * @param x 左上角横坐标
      * @param y 左上角纵坐标
@@ -111,31 +111,32 @@ abstract class Utils {
      * @param height 高度
      * @param style 样式
      */
-    static void createLabel(Shell shell, String text, int x, int y, int width, int height, int style) {
-        Label l = new Label(shell, style);
+    static Label createLabel(Composite comp, String text, int x, int y, int width, int height, int style) {
+        Label l = new Label(comp, style);
         l.setBounds(x, y, width, height);
         if(text != null) {
             l.setText(text);
         }
+        return l;
     }
 
-    static void createImageLabel(Shell shell, Image image, int x, int y, int width, int height) {
-        Label l = new Label(shell, SWT.CENTER);
+    static void createLabel(Composite comp, Image image, int x, int y, int width, int height) {
+        Label l = new Label(comp, SWT.CENTER);
         l.setBounds(x, y, width, height);
         l.setImage(image);
     }
 
 
-    static Button createButton(Shell shell, String text, int x, int y, int width, int height) {
-        Button b = new Button(shell, SWT.PUSH);
+    static Button createButton(Composite comp, String text, int x, int y, int width, int height) {
+        Button b = new Button(comp, SWT.PUSH);
         b.setText(text);
         b.setBounds(x, y, width, height);
         return b;
     }
 
 
-    static Button createRadio(Shell shell, String text, int x, int y, int width, int height) {
-        Button b = new Button(shell, SWT.RADIO);
+    static Button createRadio(Composite comp, String text, int x, int y, int width, int height) {
+        Button b = new Button(comp, SWT.RADIO);
         b.setText(text);
         b.setBounds(x, y, width, height);
         return b;

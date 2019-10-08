@@ -21,7 +21,7 @@ import java.util.*;
 public class ServerConfig extends AbstractConfig implements Config {
     private static final Logger log = LoggerFactory.getLogger(ServerConfig.class);
 
-    static final String NAME = "config.server";
+    public static final String NAME = "config.server";
 
     private final List<Node> nodeList = new ArrayList<>();
 

@@ -4,6 +4,7 @@ import com.lzf.flyingsocks.Component;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.Environment;
 import com.lzf.flyingsocks.VoidComponent;
+import com.lzf.flyingsocks.server.db.UserDatabase;
 
 public interface Server extends Component<VoidComponent>, Environment {
 
@@ -15,7 +16,7 @@ public interface Server extends Component<VoidComponent>, Environment {
     /**
      * @return 服务器配置信息
      */
-    ServerConfig getServerConfig();
+    ServerConfig config();
 
     /**
      * @return 服务器配置管理器

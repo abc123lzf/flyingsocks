@@ -3,6 +3,8 @@ package com.lzf.flyingsocks.server;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.TopLevelComponent;
 import com.lzf.flyingsocks.server.core.ProxyProcessor;
+import com.lzf.flyingsocks.server.db.TextUserDatabase;
+import com.lzf.flyingsocks.server.db.UserDatabase;
 
 
 public class StandardServer extends TopLevelComponent implements Server {
@@ -41,7 +43,7 @@ public class StandardServer extends TopLevelComponent implements Server {
     }
 
     @Override
-    public ServerConfig getServerConfig() {
+    public ServerConfig config() {
         return serverConfig;
     }
 

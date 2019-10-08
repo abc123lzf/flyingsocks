@@ -53,6 +53,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         this.serverList = new ServerList();
         this.serverSettingForm = new ServerSettingForm();
 
+        setVisiable(false);
         adaptDPI(shell);
     }
 

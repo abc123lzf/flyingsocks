@@ -52,18 +52,17 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
         sh.setBackground(new Color(display, 255, 255, 255));
         this.shell = sh;
 
-        Label status = new Label(sh, SWT.LEFT);
-        status.setBounds(0, 425, 620, 30);
-        this.connStatusLabel = status;
+        this.connStatusLabel = createLabel(sh, "", 0, 425, 620, 30, SWT.LEFT);
 
         try (InputStream is = ResourceManager.openFlyingsocksImageStream()) {
-            createImageLabel(shell, loadImage(is), 0, 0, 620, 180);
+            createLabel(shell, loadImage(is), 0, 0, 620, 180);
         } catch (IOException e) {
             throw new Error(e);
         }
 
-        createLabel(shell, "选择服务器", 20, 200, 140, 40, SWT.CENTER);
+        createLabel(shell, "选择服务器", 20, 200, 140, 40, SWT.CENTER).setBackground(new Color(display, 255,255, 255));
         new ServerList(160, 200, 450, 40);
+        setVisiable(false);
     }
 
     private final class ServerList {
@@ -195,9 +194,10 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
     }
 
 
-    void setVisiable(boolean visiable) {
-        shell.setVisible(visiable);
+    void setVisiable(boolean visible) {
+        shell.setVisible(visible);
     }
+
 
     private void setStatusLabelText(String text) {
         connStatusLabel.setText(text);

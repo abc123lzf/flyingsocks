@@ -9,7 +9,7 @@ import com.lzf.flyingsocks.encrypt.JksSSLEncryptProvider;
 import com.lzf.flyingsocks.encrypt.OpenSSLEncryptProvider;
 import com.lzf.flyingsocks.protocol.*;
 import com.lzf.flyingsocks.server.ServerConfig;
-import com.lzf.flyingsocks.server.UserDatabase;
+import com.lzf.flyingsocks.server.db.UserDatabase;
 import com.lzf.flyingsocks.util.FSMessageChannelOutboundHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
