@@ -162,11 +162,10 @@ flyingsocks提供了四种代理模式，可通过右键托盘图标，在“代
 如果需要将所有代理连接转发到该
 
 ## 使用的框架
-1. Netty 4.1.36 Final
-2. BeautyEye
-3. slf4j 1.7.26 / Apache log4j
-4. Alibaba FastJSON 1.2.57
-5. Eclipse SWT 4.2
+- Netty 4.1.36 Final
+- slf4j 1.7.26 / Apache log4j
+- Alibaba FastJSON 1.2.57
+- Eclipse SWT 4.2
 
 ## 最后
 如果在使用过程中有任何BUG可以在ISSUE中提出，或是提供修复的Pull Request，谢谢大家的支持
