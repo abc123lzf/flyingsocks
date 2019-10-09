@@ -1,0 +1,31 @@
+<component name="ArtifactManager">
+  <artifact name="server:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/flyingsocks-server</output-path>
+    <root id="root">
+      <element id="directory" name="lib">
+        <element id="library" level="project" name="Maven: com.alibaba:fastjson:1.2.57" />
+        <element id="library" level="project" name="Maven: log4j:log4j:1.2.17" />
+        <element id="library" level="project" name="Maven: net.sf.trove4j:core:3.1.0" />
+        <element id="library" level="project" name="Maven: org.slf4j:slf4j-api:1.7.26" />
+        <element id="library" level="project" name="Maven: org.slf4j:slf4j-log4j12:1.7.26" />
+        <element id="archive" name="flyingsocks-server-v1.0.jar">
+          <element id="module-output" name="server" />
+          <element id="module-output" name="flyingsocks" />
+        </element>
+        <element id="library" level="project" name="Maven: io.netty:netty-all:4.1.36.Final" />
+      </element>
+      <element id="directory" name="conf">
+        <element id="file-copy" path="$PROJECT_DIR$/server/src/main/resources/config.properties" />
+        <element id="file-copy" path="$PROJECT_DIR$/server/src/main/resources/log4j.properties" />
+        <element id="directory" name="encrypt" />
+      </element>
+      <element id="file-copy" path="$PROJECT_DIR$/openssl-tool.sh" />
+      <element id="file-copy" path="$PROJECT_DIR$/openssl-tool.bat" />
+      <element id="file-copy" path="$PROJECT_DIR$/LICENSE" />
+      <element id="directory" name="bin">
+        <element id="file-copy" path="$PROJECT_DIR$/server/src/main/resources/bin/startup.bat" />
+        <element id="file-copy" path="$PROJECT_DIR$/server/src/main/resources/bin/startup.sh" />
+      </element>
+    </root>
+  </artifact>
+</component>
