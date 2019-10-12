@@ -19,7 +19,7 @@ JAVA_VERSION=`java -version 2>&1 |awk 'NR==1{ gsub(/"/,""); print $3 }'`
 echo "Java version: " $JAVA_VERSION
 
 if [ "$1" == "-daemon" ]; then
-    nohup java -server -Xbootclasspath/a:../conf:../ -jar ../lib/flyingsocks-server-2.0.jar >/dev/null  &
+    nohup java -server -Xbootclasspath/a:../conf:../ -cp ../lib/flyingsocks-server-2.0.jar >/dev/null com.lzf.flyingsocks.server.ServerBoot &
 else
-    java -server -Xbootclasspath/a:../conf:../ -jar ../lib/flyingsocks-server-2.0.jar
+    java -server -Xbootclasspath/a:../conf:../ -cp ../lib/flyingsocks-server-2.0.jar com.lzf.flyingsocks.server.ServerBoot
 fi

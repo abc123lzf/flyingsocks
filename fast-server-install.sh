@@ -44,11 +44,7 @@ wget https://raw.githubusercontent.com/abc123lzf/flyingsocks/v2.0/flyingsocks-se
 unzip flyingsocks-server-2.0.zip -d /usr
 cd /usr/flyingsocks-server-2.0/conf/encrypt
 
-openssl req -new -nodes -x509 -keyout ca.key -out ca.crt
-openssl genrsa -out server.key 1024
-openssl req -new -key server.key -out server.csr
-openssl x509 -req -days 3650 -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
-openssl pkcs8 -topk8 -in server.key -out pkcs8_server.key -nocrypt
+openssl req -new -nodes -x509 -keyout private.key -out ca.crt
 
 cd /usr/flyingsocks-server-1.0/bin
 chmod 770 startup.sh

@@ -9,9 +9,9 @@ if "%1%" == "-install" (
 
 echo "Run flyingsocks-server..."
 if "%1%" == "-daemon" (
-    start /b java -server -Xbootclasspath/a:../conf;../ -jar ../lib/flyingsocks-server-2.0.jar
+    start /b java -server -Xbootclasspath/a:../conf;../ -cp ../lib/flyingsocks-server-2.0.jar
 ) else (
-    java -server -Xbootclasspath/a:../conf;../ -jar ../lib/flyingsocks-server-2.0.jar
+    java -server -Xbootclasspath/a:../conf;../ -cp ../lib/flyingsocks-server-2.0.jar
 )
 echo "Complete."
 pause

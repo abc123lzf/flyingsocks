@@ -8,7 +8,7 @@ if "%1%" == "-install" (
 )
 
 echo "Run flyingsocks-client..."
-if "%1%" == "-daemon" (
+if "%1%" == "-debug" (
     start /b java -Xbootclasspath/a:../conf;../resources -jar ../lib/flyingsocks-cli-2.0.jar
 ) else (
     javaw -Xbootclasspath/a:../conf;../resources -jar ../lib/flyingsocks-cli-2.0.jar

@@ -21,7 +21,7 @@ import io.netty.handler.codec.socks.*;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -99,8 +99,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
         this.serverBootstrap = boot;
 
         Bootstrap udpBoot = new Bootstrap();
-        udpBoot.group(socksReceiveGroup)
-                .channel(NioDatagramChannel.class);
+        udpBoot.group(socksReceiveGroup).channel(NioDatagramChannel.class);
         this.udpProxyBootstrap = udpBoot;
     }
 
@@ -210,6 +209,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                 case CMD: {  //如果是Socks5命令请求
                     SocksCmdRequest req = (SocksCmdRequest) request;
                     if(!vaildateAddress(req.host())) {  //如果主机名/IP地址格式有误
+                        log.info("Illegal proxy host {}", req.host());
                         ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.ADDRESS_NOT_SUPPORTED, SocksAddressType.IPv4));
                         ctx.close();
                         return;
@@ -349,7 +349,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                     port = BaseUtils.parseUnsignedShortToInteger(buf.readShort());
                 } else if (head == 0x03) {
                     int len = BaseUtils.parseByteToInteger(buf.readByte());
-                    host = buf.readCharSequence(len, Charset.forName("ASCII")).toString();
+                    host = buf.readCharSequence(len, StandardCharsets.US_ASCII).toString();
                     port = BaseUtils.parseUnsignedShortToInteger(buf.readShort());
                     InetSocketAddress haddr = new InetSocketAddress(host, port);
                     InetAddress add = haddr.getAddress();

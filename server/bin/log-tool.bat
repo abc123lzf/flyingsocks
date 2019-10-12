@@ -25,6 +25,6 @@ if "%allparam:~0,1%"==" " set "allparam=%allparam:~1%"&goto intercept_left
 if "%allparam:~-1%"==" " set "allparam=%allparam:~0,-1%"&goto intercept_right
 
 :eof
-java -jar %jarpath% com.lzf.flyingsocks.server.tools.LogTool %allparam%
+java -cp %jarpath% com.lzf.flyingsocks.server.tools.LogTool %allparam%
 
 pause
