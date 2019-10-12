@@ -142,6 +142,10 @@ public final class BaseUtils {
         return val & 0x0FF;
     }
 
+    public static String reverseString(String str) {
+        return new StringBuilder(str).reverse().toString();
+    }
+
     public static String[] splitPreserveAllTokens(String str, char separatorChar) {
         return splitWorker(str, separatorChar, true);
     }

@@ -3,7 +3,6 @@ package com.lzf.flyingsocks.test;
 import org.junit.Test;
 
 import java.net.Inet6Address;
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 /**

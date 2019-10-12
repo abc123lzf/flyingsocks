@@ -39,21 +39,20 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     public static final int PROXY_GLOBAL = 2;
     public static final int PROXY_NON_CN = 3;
 
-
     /**
      * 系统代理模式
      */
     private volatile int proxyMode;
 
     /**
-     * 需要代理的域名/IP列表,仅PAC模式使用
+     * 需要代理的域名/IP列表,仅PAC模式使用,按照其域名的逆向字符串存储,方便按照前缀查询
      */
-    private volatile Set<String> proxySet = Collections.emptySet();
+    private volatile NavigableSet<String> proxySet = Collections.emptyNavigableSet();
 
     /**
      * 中国IP地址Map,键为32位的IPV4地址,值为32位的掩码
      */
-    private volatile Map<Integer, Integer> cnIPv4Map = Collections.emptyMap();
+    private volatile NavigableMap<Integer, Integer> whiteListMap = Collections.emptyNavigableMap();
 
 
     ProxyAutoConfig(ConfigManager<?> configManager) {
@@ -127,18 +126,20 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
      * @throws IOException 加载错误
      */
     private void loadGFWListFile(File f) throws IOException {
-        Set<String> set = new HashSet<>(8192);
+        NavigableSet<String> set = new TreeSet<>();
         try(FileInputStream fis = new FileInputStream(f);
             Scanner sc = new Scanner(fis)) {
             while (sc.hasNext()) {
                 String host = sc.next();
-                if (BaseUtils.isHostName(host)) {
+                if(BaseUtils.isIPAddress(host)) {
                     set.add(host);
+                } else if (BaseUtils.isHostName(host)) {
+                    set.add(BaseUtils.reverseString(host));
                 }
             }
         }
 
-        proxySet = Collections.unmodifiableSet(set);
+        this.proxySet = Collections.unmodifiableNavigableSet(set);
         log.info("GFWList size: {}", proxySet.size());
     }
 
@@ -149,7 +150,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
      */
     private void loadIPv4CNAddressFile(File f) throws IOException {
         Pattern tar = Pattern.compile("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/\\d{1,2}");
-        Map<Integer, Integer> map = new HashMap<>(16384);
+        NavigableMap<Integer, Integer> map = new TreeMap<>();
         try(FileInputStream fis = new FileInputStream(f);
             Scanner sc = new Scanner(fis)) {
             while (sc.hasNext(tar)) {
@@ -161,7 +162,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
             }
         }
 
-        this.cnIPv4Map = Collections.unmodifiableMap(map);
+        this.whiteListMap = Collections.unmodifiableNavigableMap(map);
         log.info("CNIPv4 List size: {}", map.size());
     }
 
@@ -219,20 +220,12 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
 
         if(proxyMode == PROXY_GFW_LIST) {
             if(BaseUtils.isIPAddress(host)) {
-                return false;
+                return proxySet.contains(host);
             }
-            String[] hs = BaseUtils.splitPreserveAllTokens(host, '.');
-            int len = hs.length;
-            if (len <= 1)
-                return false;
-            String realHost = hs[len - 2] + '.' + hs[len - 1];
-            if(proxySet.contains(realHost)) {
-                return true;
-            } else if(realHost.length() < 7 && len >= 3) {  //解决部分域名为xxx.co.jp情况
-                return proxySet.contains(hs[len - 3] + '.' + realHost);
-            } else {
-                return false;
-            }
+
+            String rh = BaseUtils.reverseString(host);
+            String fl = proxySet.floor(rh);
+            return fl != null && rh.startsWith(fl);
         }
 
         if(proxyMode == PROXY_NON_CN) {
@@ -254,17 +247,15 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
                 return true; //暂时IPV6统一代理
             }
 
-            int net = ip & 0xFFFFFF00;
-            Integer mask;
-            for (int i = 9; i <= 22; i++) {
-                net &= (-(1 << i));
-                if((mask = cnIPv4Map.get(net)) != null) {  //如果是中国IP
-                    if(BaseUtils.isIPv4AddressInRange(ip, net, mask))
-                        return false;
-                }
+            Map.Entry<Integer, Integer> entry = whiteListMap.floorEntry(ip);
+            if(entry == null) {
+                return true;
             }
 
-            return true;
+            int mask = entry.getValue();
+            int net = entry.getKey();
+
+            return !BaseUtils.isIPv4AddressInRange(ip, net, mask);
         }
 
 

@@ -3,7 +3,7 @@ package com.lzf.flyingsocks.encrypt;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-@SuppressWarnings("unchecked")
+@SuppressWarnings("all")
 public abstract class EncryptSupport {
 
     private static final Map<String, Class<? extends EncryptProvider>> providers = new ConcurrentHashMap<>(8);

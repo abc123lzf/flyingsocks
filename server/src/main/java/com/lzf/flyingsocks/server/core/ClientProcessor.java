@@ -60,6 +60,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
 
     @Override
+    @SuppressWarnings("deprecation")
     protected void initInternal() {
         ServerConfig.Node node = parent.getServerConfig();
         EncryptProvider provider;
@@ -181,7 +182,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                     log.error("Server occur a error when bind port {}", parent.getPort(), t);
                     throw new ComponentException(t);
                 }
-            }).sync();
+            }).await();
 
             certBootstrap.bind(parent.getCertPort()).addListener(future -> {
                 if (!future.isSuccess()) {
@@ -189,7 +190,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                     log.error("CertServer occur a error when bind port {}", parent.getPort(), t);
                     throw new ComponentException(t);
                 }
-            }).sync();
+            }).await();
 
         } catch (InterruptedException e) {
             // Should not be happend.
@@ -244,8 +245,10 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
         protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
             CertRequestMessage req = new CertRequestMessage(msg);
             boolean auth = doAuth(req);
-            if(!auth)
+            if(!auth) {
                 ctx.close();
+                return;
+            }
 
             byte[] src = req.getCertMD5();
             boolean update = false;
@@ -268,7 +271,6 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
 
     private final class InitialHandler extends SimpleChannelInboundHandler<ByteBuf> {
-
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, ByteBuf buf) throws SerializationException {
             byte[] key = new byte[DelimiterMessage.DEFAULT_SIZE];
@@ -283,6 +285,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
             log.trace("Receive DelimiterMessage from client.");
 
+            assert parent != null;
             ClientSession state = parent.getClientSession(ctx.channel());
             state.setDelimiterKey(key);
 
@@ -302,7 +305,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
     }
 
 
-    private final class DelimiterOutboundHandler extends ChannelOutboundHandlerAdapter {
+    private static final class DelimiterOutboundHandler extends ChannelOutboundHandlerAdapter {
         private final ByteBuf delimiter;
 
         private DelimiterOutboundHandler(ByteBuf delimiter) {

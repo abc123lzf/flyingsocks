@@ -20,7 +20,8 @@
 
 ##### 客户端
 - 添加白名单代理模式，可自动识别目标服务器是否是境外服务器
-- 自动缓存SSL证书，无需手动添加证书
+- 优化PAC算法
+- 自动缓存SSL证书，无需手动拷贝证书文件
 - GUI界面改善，采用SWT框架，适应不同的操作系统环境
 - 基于Socks5的UDP代理(有待进一步测试)
 - 代码结构优化，BUG修复
@@ -29,7 +30,7 @@
 #### 基本要求
 1. 必须安装JRE/JDK 1.8
 2. 如果没有SSL证书，需要安装OpenSSL
-3. 至少512MB系统运行内存
+3. 至少512MB系统运行内存，推荐1GB运行内存
 
 #### Linux 操作系统
 1. 解压项目文件
@@ -52,7 +53,8 @@
         ]
         
     <br>
-        config.json格式为JSON数组字符串，每个数组元素可单独绑定一个端口并单独指定加密方式和认证方式。其中，name为节点名称（可任意取名），port为端口，max-client为这个节点最大的客户端连接数，encrypt为加密方式（目前仅支持OpenSSL和不加密(生产环境不要用)），auth-type为认证方式。<br>
+        config.json格式为JSON数组字符串，每个数组元素可单独绑定一个端口并单独指定加密方式和认证方式。其中，name为节点名称（可任意取名），port为端口，
+        max-client为这个节点最大的客户端连接数，encrypt为加密方式，目前仅支持OpenSSL和不加密(正式环境不要用，会影响代理效果)，auth-type为认证方式。<br>
         认证方式目前仅支持simple和user两种方式<br>
         如果选择为simple方式，那么仅需在上述文件中追加password字段即可。<br>
         如果选择为user方式，那么需要追加group字段，group字段的含义是用户组名称，用户组则需要额外的user.json配置文件。<br>
@@ -75,7 +77,8 @@
         
     <br>
         user.json为一个JSON数组字符串，可同时指定多个用户组。<br>
-        每个用户组包含两个字段：group字段和user字段。group字段表示该用户组的名称，在config.json配置文件中如果指定了一个节点的认证方式为USER方式，那么就需要指定用户组名了。user字段为JSON数组，每个数组元素表示一个用户，每个用户包含用户名及其密码。
+        每个用户组包含两个字段：group字段和user字段。group字段表示该用户组的名称，在config.json配置文件中如果指定了一个节点的认证方
+        式为USER方式，那么就需要指定用户组名了。user字段为JSON数组，每个数组元素表示一个用户，每个用户包含用户名及其密码。
         后续版本可能会推出用户管理API、用户流量控制等。目前用户认证和简单认证效果是一样的。
 
 3. 在/var/log目录下建立flyingsocks-server文件夹：<br>
@@ -88,18 +91,14 @@
 	````
 	参数`-path`用来指定`log4j.properties`文件的位置，`-folder`参数为你想修改的日志存储路径，`-level`为日志等级，一般为`INFO`或`WARN`即可。
 
-4. 解压项目文件：<br>
-	`unzip flyingsocks-server-1.0.zip`<br>
-	`cd flyingsocks-server-1.0`<br>
-	进入conf目录，修改log4j.properties文件的`log4j.appender.ROLLING_FILE.File`和`log4j.appender.DAILY_ROLLING_FILE.File`配置项，将前者改为/var/log/flyingsocks-server/rolling.log，后者改为/var/log/flyingsocks-server/daily.log。
-	
-	在conf下建立encrypt文件夹，执行openssl-tool.sh生成SSL证书（如果没有安装OpenSSL请自行安装），在执行过程中会输入一些证书信息。然后将产生的private.key和ca.crt拷贝到encrypt目录（不要修改文件名）。
+4. 在conf下建立encrypt文件夹，执行openssl-tool.sh生成SSL证书（如果没有安装OpenSSL请自行安装），在执行过程中会输入一些证书信息。然后将产生的private.key和
+   ca.crt拷贝到encrypt目录（不要修改文件名）。
 
 5. 进入项目bin目录：<br>
 	`chmod 770 startup.sh` <br>
 	`./startup.sh -daemon`<br>
 	这样项目就启动了。可以去日志目录下看看最后一行是不是flyingsocks server v1.0 start complete。
-	如果启动正常但是客户端无法连接的话看看防火墙有没有设置好
+	如果启动正常但是客户端无法连接的话看看服务器防火墙有没有开放端口
 
 
 #### Windows 操作系统
@@ -121,7 +120,8 @@ C:/ProgramData/flyingsocks-server负责存储config.json和user.json配置文件
 3. 解压客户端项目：<br>
 	`unzip flyingsocks-client-1.0.zip`<br>
 	`cd flyingsocks-client-1.0.zip`<br>
-	修改conf目录下的log4j.properties的`log4j.appender.ROLLING_FILE.File`和`log4j.appender.DAILY_ROLLING_FILE.File`配置项，前者改为/var/log/shadowsocks-cli/rolling.log，后者改为/var/log/shadowsocks-cli/daily.log。<br>
+	修改conf目录下的log4j.properties的`log4j.appender.ROLLING_FILE.File`和`log4j.appender.DAILY_ROLLING_FILE.File`配置项，
+	前者改为/var/log/shadowsocks-cli/rolling.log，后者改为/var/log/shadowsocks-cli/daily.log。<br>
 4. 进入bin文件夹:
 	`chmod 770 startup.sh` <br>
 	`./startup.sh -daemon`<br>
@@ -159,7 +159,7 @@ flyingsocks提供了四种代理模式，可通过右键托盘图标，在“代
 4. “全局模式”，所有代理请求都由代理服务器完成，包括国内网站，不存在DNS污染问题。
 
 #### 全局代理
-如果需要将所有代理连接转发到该
+如果需要将所有代理连接转发到客户端，需要自行安装Proxifier，安装教程自行百度。
 
 ## 使用的框架
 - Netty 4.1.36 Final
