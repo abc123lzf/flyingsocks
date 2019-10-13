@@ -113,7 +113,7 @@ Mac OS选择flyingsocks-client-v2.0-windows-mac.zip
 Windows安装方式和Linux大致类似，只不过建立的文件夹路径不同（废话）<br>
 首先在C盘的ProgramData目录（一般是隐藏的）下建立文件夹flyingsocks-server，进入该文件夹然后新建log目录。<br>
 C:/ProgramData/flyingsocks-server负责存储config.json和user.json配置文件，log目录负责存储日志文件。<br>
-设置好后直接运行flyingsocks.exe
+设置好后进入bin目录，运行startup.bat
 
 
 ## 客户端安装
@@ -140,7 +140,7 @@ C:/ProgramData/flyingsocks-server负责存储config.json和user.json配置文件
 #### Windows 操作系统
 1. 在C:/ProgramData下建立shadowsocks-cli文件夹，进入该文件夹后创建log子文件夹。
 2. 解压项目文件（任意目录）
-3. 进入bin目录，双击运行startup.bat启动项目。
+3. 运行flyingsocks.exe
 
 
 ## 客户端使用说明
