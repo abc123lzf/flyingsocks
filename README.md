@@ -3,7 +3,10 @@
 该项目是基于Java Netty框架开发的Socks5代理客户端/服务器，功能类似于Shadowsocks。<br/>
 在客户端与服务端的数据传输上，我们选择了SSL/TLS单向认证的加密方式。服务端需要持有CA证书、签名请求以及PKCS8格式的密钥，客户端则需要持有服务端的CA证书。<br>
 项目基于Maven构建，分为两个模块：server模块和client模块。<br>
-注意：flyingsocks客户端必须和flyingsocks服务器配套使用，不兼容Shadowsocks/ShadowsocksR服务器
+
+## 最新版本
+最新版本已经发布，参考https://github.com/abc123lzf/flyingsocks
+
 ## 服务端安装/部署
 
 #### 自动安装
