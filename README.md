@@ -10,12 +10,21 @@
 ## 免责声明
 该软件仅供个人学习使用，严禁使用该软件从事任何违法行为，所造成的后果本人不负责任。
 
+## 下载地址
+https://github.com/abc123lzf/flyingsocks/tree/v2.0/download <br>
+客户端分为四个版本，跟据操作系统选择： <br>
+Linux 64位选择flyingsocks-client-v2.0-linux-x64.zip <br>
+Windows 32位选择flyingsocks-client-v2.0-windows-x86.zip (64位Windows不能运行) <br>
+Windows 64位选择flyingsocks-client-v2.0-windows-x64.zip <br>
+Mac OS选择flyingsocks-client-v2.0-windows-mac.zip
+
+此外还提供了Windows版的OpenSSL安装包
+
 ## v2.0更新内容
 ##### 服务端
 - 目标服务器构建/转发模块多线程化，根据服务器具体配置调整线程数量，提高服务器吞吐量
 - 新增一个端口专门用于接收/验证SSL证书，保证自签证书也能够用于服务器和客户端的SSL通信
 - 新增配置文件命令行工具，可通过该工具添加/删除/查看服务器的具体配置
-- UDP代理(有待进一步测试)
 - 优化与客户端的通信协议，减少带宽占用(注意：v2.0客户端与v1.0服务器不兼容)
 
 ##### 客户端
@@ -23,7 +32,6 @@
 - 优化PAC算法
 - 自动缓存SSL证书，无需手动拷贝证书文件
 - GUI界面改善，采用SWT框架，适应不同的操作系统环境
-- 基于Socks5的UDP代理(有待进一步测试)
 - 代码结构优化，BUG修复
 
 ## 服务端安装/部署
@@ -105,7 +113,7 @@
 Windows安装方式和Linux大致类似，只不过建立的文件夹路径不同（废话）<br>
 首先在C盘的ProgramData目录（一般是隐藏的）下建立文件夹flyingsocks-server，进入该文件夹然后新建log目录。<br>
 C:/ProgramData/flyingsocks-server负责存储config.json和user.json配置文件，log目录负责存储日志文件。<br>
-设置好后按照Linux的方式配置好运行startup.bat就行了。<br>
+设置好后直接运行flyingsocks.exe
 
 
 ## 客户端安装
@@ -158,8 +166,8 @@ flyingsocks提供了四种代理模式，可通过右键托盘图标，在“代
 3. “仅代理境外地址”，即所有境外服务器都通过代理服务器建立连接。DNS解析在本地完成，所以可能会存在DNS污染问题。
 4. “全局模式”，所有代理请求都由代理服务器完成，包括国内网站，不存在DNS污染问题。
 
-#### 全局代理
-如果需要将所有代理连接转发到客户端，需要自行安装Proxifier，安装教程自行百度。
+#### 电脑全局代理
+如果需要将所有代理连接转发到客户端，需要自行安装Proxifier，安装教程自行百度。建议只代理TCP，UDP还有些问题预计下一个版本完美支持UDP。
 
 ## 使用的框架
 - Netty 4.1.36 Final
