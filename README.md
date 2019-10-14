@@ -2,7 +2,7 @@
 ## 介绍
 该项目是基于Java Netty开发的Socks5代理客户端/服务器，功能类似于Shadowsocks，个人认为性能比Shadowsocks稍好。<br/>
 
-在客户端与服务端的数据传输上，我们选择了SSL/TLS单向认证的加密方式。服务端需要持有CA证书、签名请求以及PKCS8格式的密钥，客户端则需要持有服务端的CA证书。<br>
+在客户端与服务端的数据传输上，我们选择了SSL/TLS单向认证的加密方式。服务端需要持有证书和私钥文件（使用CA机构颁发的证书、私钥或者自签证书皆可）。<br>
 项目基于Maven构建，分为三个模块：server/client/common模块。<br>
 
 注意该项目客户端与Shadowsocks所采用的通信协议不兼容，需要自己部署该项目的服务端部分到境外服务器上。
@@ -37,8 +37,8 @@ Mac OS选择flyingsocks-client-v2.0-windows-mac.zip
 ## 服务端安装/部署
 #### 基本要求
 1. 必须安装JRE/JDK 1.8
-2. 如果没有SSL证书，需要安装OpenSSL
-3. 至少512MB系统运行内存，推荐1GB运行内存
+2. 如果没有SSL证书，需要安装OpenSSL（`yum install openssl`或者`apt-get install openssl`）
+3. 至少512MB系统运行内存，推荐1GB运行内存，CPU没什么要求单核也是可以的（针对多核做过优化，如果使用用户多的话需要考虑多核）
 
 #### Linux 操作系统
 1. 解压项目文件
