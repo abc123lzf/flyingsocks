@@ -1,6 +1,6 @@
 #! /bin/bash
 ######################################################
-#         flyingsocks v1.0.0   快速安装脚本
+#         flyingsocks v2.0   快速安装脚本
 #######################################################
 echo "flyingsocks服务器快速安装"
 
@@ -40,13 +40,13 @@ echo "[{ \"name\": \"default\"," "\"port\":$FS_PORT,"  "\"cert-port\":$FS_CERT_P
         "\"auth-type\": \"simple\"," "\"password\": \"$FS_PWD\"" "}]" > config.json
 
 cd /tmp
-wget https://raw.githubusercontent.com/abc123lzf/flyingsocks/v2.0/flyingsocks-server-2.0.zip
-unzip flyingsocks-server-2.0.zip -d /usr
-cd /usr/flyingsocks-server-2.0/conf/encrypt
+wget https://raw.githubusercontent.com/abc123lzf/flyingsocks/v2.0/download/flyingsocks-server-v2.0.zip
+unzip flyingsocks-server-v2.0.zip -d /usr
+cd /usr/flyingsocks-server-v2.0/conf/encrypt
 
 openssl req -new -nodes -x509 -keyout private.key -out ca.crt
 
-cd /usr/flyingsocks-server-1.0/bin
+cd /usr/flyingsocks-server-v2.0/bin
 chmod 770 startup.sh
 ./startup.sh -daemon
 
