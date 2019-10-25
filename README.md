@@ -39,6 +39,7 @@ Mac OS选择flyingsocks-client-v2.0-windows-mac.zip
 1. 必须安装JRE/JDK 1.8
 2. 如果没有SSL证书，需要安装OpenSSL（`yum install openssl`或者`apt-get install openssl`）
 3. 至少512MB系统运行内存，推荐1GB运行内存，CPU没什么要求单核也是可以的（针对多核做过优化，如果使用用户多的话需要考虑多核）
+4. 强烈建议安装Google BBR，并将TCP Keepalive时间间隔调整为1分钟以内
 
 #### Linux 操作系统
 1. 解压项目文件
