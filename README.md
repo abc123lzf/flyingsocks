@@ -1,3 +1,4 @@
+如果你觉得这个项目对你有帮助，请帮忙点个Star支持以下，谢谢！
 ![](flyingsocks.png)
 ## 介绍
 该项目是基于Java Netty开发的Socks5代理客户端/服务器，功能类似于Shadowsocks，个人认为性能比Shadowsocks稍好。<br/>
