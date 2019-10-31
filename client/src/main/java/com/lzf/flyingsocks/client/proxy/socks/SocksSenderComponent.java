@@ -135,7 +135,7 @@ public final class SocksSenderComponent extends AbstractComponent<SocksProxyComp
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             if(cause instanceof IOException && log.isInfoEnabled()) {
-                log.info("Direct TCP Connection force to close, from remote server {}:{}", request.getHost(), request.getPort());
+                log.trace("Direct TCP Connection force to close, from remote server {}:{}", request.getHost(), request.getPort());
             } else if(log.isWarnEnabled()) {
                 log.warn("Exception caught in TCP ProxyHandler", cause);
             }

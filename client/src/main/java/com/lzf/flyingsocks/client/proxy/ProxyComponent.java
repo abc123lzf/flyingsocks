@@ -148,7 +148,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
      * @param host 主机名
      * @return 是否需要代理
      */
-    protected boolean needProxy(String host) {
+    public boolean needProxy(String host) {
         return proxyAutoChecker.needProxy(host);
     }
 

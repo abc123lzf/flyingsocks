@@ -173,6 +173,11 @@ public class SocksProxyComponent extends ProxyComponent {
         }
 
         private void clearProxyRequest(SocksProxyRequest request) {
+            Channel sc = request.serverChannel();
+            if(sc != null && sc.isActive()) {
+                sc.close();
+            }
+
             BlockingQueue<ByteBuf> queue = request.messageQueue();
             ByteBuf buf;
             try {
