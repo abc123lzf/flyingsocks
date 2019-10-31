@@ -1,6 +1,8 @@
 package com.lzf.flyingsocks.client.gui.swing;
 
-import com.lzf.flyingsocks.*;
+import com.lzf.flyingsocks.AbstractModule;
+import com.lzf.flyingsocks.ComponentException;
+import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
 import com.lzf.flyingsocks.client.proxy.ProxyAutoConfig;
@@ -15,6 +17,7 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static com.lzf.flyingsocks.client.proxy.ProxyAutoChecker.*;
 import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
 
 @Deprecated
@@ -59,25 +62,25 @@ final class TrayModule extends AbstractModule<SwingViewComponent> {
             proxyItem.add(proxyItemClose);
 
             proxyItemClose.addActionListener(e -> {
-                if(select == ProxyAutoConfig.PROXY_NO)
+                if(select == PROXY_NO)
                     return;
-                select = ProxyAutoConfig.PROXY_NO;
+                select = PROXY_NO;
                 operator.setProxyMode(select);
             });
 
             proxyItemPac.addActionListener(e -> {
-                if(select == ProxyAutoConfig.PROXY_GFW_LIST)
+                if(select == PROXY_GFW_LIST)
                     return;
 
-                select = ProxyAutoConfig.PROXY_GFW_LIST;
+                select = PROXY_GFW_LIST;
                 operator.setProxyMode(select);
             });
 
             proxyItemGlobal.addActionListener(e -> {
-                if(select == ProxyAutoConfig.PROXY_GLOBAL)
+                if(select == PROXY_GLOBAL)
                     return;
 
-                select = ProxyAutoConfig.PROXY_GLOBAL;
+                select = PROXY_GLOBAL;
                 operator.setProxyMode(select);
             });
 
@@ -92,17 +95,17 @@ final class TrayModule extends AbstractModule<SwingViewComponent> {
 
         private void initProxyAutoConfig() {
             switch (this.select = operator.proxyMode()) {
-                case ProxyAutoConfig.PROXY_NO:
+                case PROXY_NO:
                     proxyItemClose.setLabel("√ 关闭代理");
                     proxyItemPac.setLabel("PAC模式");
                     proxyItemGlobal.setLabel("全局模式");
                     break;
-                case ProxyAutoConfig.PROXY_GFW_LIST:
+                case PROXY_GFW_LIST:
                     proxyItemClose.setLabel("关闭代理");
                     proxyItemPac.setLabel("√ PAC模式");
                     proxyItemGlobal.setLabel("全局模式");
                     break;
-                case ProxyAutoConfig.PROXY_GLOBAL:
+                case PROXY_GLOBAL:
                     proxyItemClose.setLabel("关闭代理");
                     proxyItemPac.setLabel("PAC模式");
                     proxyItemGlobal.setLabel("√ 全局模式");

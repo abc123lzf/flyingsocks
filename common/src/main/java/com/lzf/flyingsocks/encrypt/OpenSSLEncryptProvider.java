@@ -3,15 +3,10 @@ package com.lzf.flyingsocks.encrypt;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelInboundHandler;
 import io.netty.channel.ChannelOutboundHandler;
-import io.netty.handler.ssl.ClientAuth;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.SslHandler;
+import io.netty.handler.ssl.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.net.ssl.SSLException;
-import javax.net.ssl.TrustManagerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
@@ -71,7 +66,7 @@ public class OpenSSLEncryptProvider implements EncryptProvider {
                     return SslContextBuilder.forClient().trustManager(x509crt).build();
                 }
             } else {
-                log.info("No cert file provide");
+                log.warn("No cert file provide, if your server's cert file signed by CA, you can ignore this warning.");
                 return SslContextBuilder.forClient().build();
             }
         } else {

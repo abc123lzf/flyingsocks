@@ -147,7 +147,7 @@ public final class ConfigFileTool {
 
         if(auth == 0) {
             print("Enter password [more than 6 character]:");
-            String pass = sc.nextLine().trim();
+            String pass = sc.next();
             if(pass.length() < 6) {
                 System.err.println("Password length should be more than 6 character");
                 return;
@@ -157,7 +157,7 @@ public final class ConfigFileTool {
 
         } else {
             print("Enter user group:");
-            String group = sc.nextLine().trim();
+            String group = sc.next();
             obj.put("group", group);
         }
 

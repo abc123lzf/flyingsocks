@@ -21,6 +21,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.codec.FixedLengthFrameDecoder;
 
+import javax.net.ssl.SSLException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -301,6 +302,14 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             cp.addLast(new DelimiterOutboundHandler(keyBuf));
             cp.addLast(new DelimiterBasedFrameDecoder(102400, keyBuf));
             cp.addLast(new AuthHandler(state));
+        }
+
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+            if(cause instanceof SSLException || cause.getCause() instanceof SSLException) {
+                log.info("Close remote host cause it's not SSL connection");
+                ctx.close();
+            }
         }
     }
 

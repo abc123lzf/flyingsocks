@@ -12,10 +12,7 @@ import java.io.IOException;
 import java.util.Objects;
 
 import static com.lzf.flyingsocks.client.gui.swt.Utils.*;
-import static com.lzf.flyingsocks.client.proxy.ProxyAutoConfig.PROXY_NO;
-import static com.lzf.flyingsocks.client.proxy.ProxyAutoConfig.PROXY_GFW_LIST;
-import static com.lzf.flyingsocks.client.proxy.ProxyAutoConfig.PROXY_GLOBAL;
-import static com.lzf.flyingsocks.client.proxy.ProxyAutoConfig.PROXY_NON_CN;
+import static com.lzf.flyingsocks.client.proxy.ProxyAutoChecker.*;
 
 /**
  * SWT系统托盘实现
