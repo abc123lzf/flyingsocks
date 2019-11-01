@@ -3,33 +3,30 @@
     <output-path>$PROJECT_DIR$/out/artifacts/flyingsocks-client</output-path>
     <root id="root">
       <element id="directory" name="lib">
+        <element id="archive" name="flyingsocks-cli-2.0.jar">
+          <element id="directory" name="META-INF">
+            <element id="file-copy" path="$PROJECT_DIR$/client/src/main/resources/META-INF/MANIFEST.MF" />
+          </element>
+          <element id="module-output" name="flyingsocks-client" />
+          <element id="module-output" name="flyingsocks-common" />
+        </element>
         <element id="library" level="project" name="Maven: com.alibaba:fastjson:1.2.57" />
+        <element id="library" level="project" name="Maven: io.netty:netty-all:4.1.42.Final" />
         <element id="library" level="project" name="Maven: log4j:log4j:1.2.17" />
-        <element id="library" level="project" name="Maven: net.sf.trove4j:core:3.1.0" />
+        <element id="library" level="project" name="Maven: org.eclipse.swt:org.eclipse.swt.win32.win32.x86_64:4.3" />
         <element id="library" level="project" name="Maven: org.slf4j:slf4j-api:1.7.26" />
         <element id="library" level="project" name="Maven: org.slf4j:slf4j-log4j12:1.7.26" />
-        <element id="file-copy" path="$PROJECT_DIR$/beautyeye_lnf.jar" />
-        <element id="archive" name="flyingsocks-cli-v1.0.jar">
-          <element id="module-output" name="client" />
-          <element id="module-output" name="flyingsocks" />
-        </element>
-        <element id="library" level="project" name="Maven: io.netty:netty-all:4.1.36.Final" />
       </element>
       <element id="directory" name="conf">
         <element id="file-copy" path="$PROJECT_DIR$/client/src/main/resources/config.properties" />
         <element id="file-copy" path="$PROJECT_DIR$/client/src/main/resources/log4j.properties" />
-        <element id="file-copy" path="$PROJECT_DIR$/client/src/main/resources/pac.txt" />
       </element>
       <element id="file-copy" path="$PROJECT_DIR$/LICENSE" />
       <element id="file-copy" path="$PROJECT_DIR$/openssl-tool.bat" />
       <element id="file-copy" path="$PROJECT_DIR$/openssl-tool.sh" />
-      <element id="directory" name="resources">
-        <element id="file-copy" path="$PROJECT_DIR$/client/src/main/resources/icon-tray.png" />
-        <element id="file-copy" path="$PROJECT_DIR$/client/src/main/resources/icon.png" />
-      </element>
       <element id="directory" name="bin">
-        <element id="file-copy" path="$PROJECT_DIR$/client/src/main/resources/bin/startup.bat" />
-        <element id="file-copy" path="$PROJECT_DIR$/client/src/main/resources/bin/startup.sh" />
+        <element id="file-copy" path="$PROJECT_DIR$/client/bin/startup.bat" />
+        <element id="file-copy" path="$PROJECT_DIR$/client/bin/startup.sh" />
       </element>
     </root>
   </artifact>

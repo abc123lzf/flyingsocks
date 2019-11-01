@@ -42,7 +42,7 @@ public class DelimiterMessage implements Message {
     }
 
     public DelimiterMessage(ByteBuf serialBuf) throws SerializationException {
-        deserialize(serialBuf.copy());
+        deserialize(serialBuf);
     }
 
     @Override
@@ -59,7 +59,7 @@ public class DelimiterMessage implements Message {
 
     @Override
     public void deserialize(ByteBuf buf) throws SerializationException {
-
+        buf = buf.copy();
         int size = buf.readableBytes();
         if(size < LENGTH) {
             buf.release();
@@ -71,7 +71,7 @@ public class DelimiterMessage implements Message {
         buf.readBytes(magic);
         if(!Arrays.equals(magic, MAGIC)) {
             buf.release();  //防止非flyingsocks客户端访问导致此处内存泄漏
-            return;
+            throw new SerializationException("Illegal magic number: " + Arrays.toString(magic));
         }
 
         try {

@@ -294,7 +294,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             cp.remove(this).remove(FixedLengthFrameDecoder.class);
 
             DelimiterMessage resp = new DelimiterMessage(key);
-            ctx.writeAndFlush(resp);
+            ctx.write(resp);
 
             ByteBuf keyBuf = Unpooled.buffer(DelimiterMessage.DEFAULT_SIZE);
             keyBuf.writeBytes(key);
@@ -302,12 +302,17 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             cp.addLast(new DelimiterOutboundHandler(keyBuf));
             cp.addLast(new DelimiterBasedFrameDecoder(102400, keyBuf));
             cp.addLast(new AuthHandler(state));
+
+            ctx.flush();
         }
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             if(cause instanceof SSLException || cause.getCause() instanceof SSLException) {
                 log.info("Close remote host cause it's not SSL connection");
+                ctx.close();
+            } else if(cause instanceof SerializationException) {
+                log.info("Close remote host cause it's not flyingsocks client connection");
                 ctx.close();
             }
         }
