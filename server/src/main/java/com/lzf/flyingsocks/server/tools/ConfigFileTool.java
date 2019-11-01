@@ -81,7 +81,7 @@ public final class ConfigFileTool {
 
         Scanner sc = new Scanner(System.in);
         print("Enter this server config's name: ");
-        String name = sc.nextLine().trim();
+        String name = sc.next();
         if(name.isEmpty()) {
             System.err.println("Name should not null");
             return;
@@ -147,7 +147,7 @@ public final class ConfigFileTool {
 
         if(auth == 0) {
             print("Enter password [more than 6 character]:");
-            String pass = sc.nextLine().trim();
+            String pass = sc.next();
             if(pass.length() < 6) {
                 System.err.println("Password length should be more than 6 character");
                 return;
@@ -157,7 +157,7 @@ public final class ConfigFileTool {
 
         } else {
             print("Enter user group:");
-            String group = sc.nextLine().trim();
+            String group = sc.next();
             obj.put("group", group);
         }
 
@@ -175,7 +175,7 @@ public final class ConfigFileTool {
 
         print("Enter the config name:");
         Scanner sc = new Scanner(System.in);
-        String name = sc.nextLine().trim();
+        String name = sc.next();
 
         for (int i = 0; i < arr.size(); i++) {
             if(arr.getJSONObject(i).getString("name").equals(name)) {

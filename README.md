@@ -37,10 +37,10 @@ Mac OS选择flyingsocks-client-v2.0-windows-mac.zip
 
 ## 服务端安装/部署
 #### 基本要求
-1. 必须安装JRE/JDK 1.8
+1. 必须安装JRE/JDK 1.8 (低配VPS建议安装32位JDK)
 2. 如果没有SSL证书，需要安装OpenSSL（`yum install openssl`或者`apt-get install openssl`）
-3. 至少512MB系统运行内存，推荐1GB运行内存，CPU没什么要求单核也是可以的（针对多核做过优化，如果使用用户多的话需要考虑多核）
-4. 强烈建议安装Google BBR，并将TCP Keepalive时间间隔调整为1分钟以内
+3. 至少512MB系统运行内存，推荐1GB运行内存（在32位JDK中，一般运行期间会占用80~200MB的内存），CPU没什么要求单核也是可以的（针对多核做过优化，如果使用用户多的话需要考虑多核）
+4. 强烈建议安装Google BBR
 
 #### Linux 操作系统
 1. 解压项目文件
@@ -104,8 +104,12 @@ Mac OS选择flyingsocks-client-v2.0-windows-mac.zip
 4. 在conf下建立encrypt文件夹，执行openssl-tool.sh生成SSL证书（如果没有安装OpenSSL请自行安装），在执行过程中会输入一些证书信息。然后将产生的private.key和
    ca.crt拷贝到encrypt目录（不要修改文件名）。
 
-5. 进入项目bin目录：<br>
-	`chmod 770 startup.sh` <br>
+5. 修改TCP Keepalive时间为50秒（因为客户端和服务器是长连接，避免因为长时间无数据访问导致NAT超时从而引发重连影响体验，除非你的电脑持有公网IP）<br>
+`sysctl -w net.ipv4.tcp_keepalive_time = 50` <br>
+`sysctl -p` <br>
+
+6. 进入项目bin目录：<br>
+	`chmod +x startup.sh` <br>
 	`./startup.sh -daemon`<br>
 	这样项目就启动了。可以去日志目录下看看最后一行是不是flyingsocks server v1.0 start complete。
 	如果启动正常但是客户端无法连接的话看看服务器防火墙有没有开放端口
