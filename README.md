@@ -41,6 +41,7 @@ Mac OS选择flyingsocks-client-v2.0-windows-mac.zip
 2. 如果没有SSL证书，需要安装OpenSSL（`yum install openssl`或者`apt-get install openssl`）
 3. 至少512MB系统运行内存，推荐1GB运行内存（在32位JDK中，一般运行期间会占用80~200MB的内存），CPU没什么要求单核也是可以的（针对多核做过优化，如果使用用户多的话需要考虑多核）
 4. 强烈建议安装Google BBR
+5. 如果运行在单核CPU的VPS上，建议修改startup.sh脚本：启动命令中加上`-XX:+UseSerialGC`使用Serial垃圾收集器以达到最高垃圾收集效率。
 
 #### Linux 操作系统
 1. 解压项目文件
@@ -111,8 +112,8 @@ Mac OS选择flyingsocks-client-v2.0-windows-mac.zip
 6. 进入项目bin目录：<br>
 	`chmod +x startup.sh` <br>
 	`./startup.sh -daemon`<br>
-	这样项目就启动了。可以去日志目录下看看最后一行是不是flyingsocks server v1.0 start complete。
-	如果启动正常但是客户端无法连接的话看看服务器防火墙有没有开放端口
+	这样项目就启动了。可以去日志目录下看看最后一行是不是flyingsocks server v2.0 start complete，或者使用命令`netstat -tunlp`查看相关端口有没有处于正在监听的状态。
+	如果启动正常但是客户端无法连接的话看看服务器防火墙有没有开放相关的端口。
 
 
 #### Windows 操作系统
