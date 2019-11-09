@@ -208,6 +208,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                 }
                 case CMD: {  //如果是Socks5命令请求
                     SocksCmdRequest req = (SocksCmdRequest) request;
+                    log.trace("Socks command");
                     if(!vaildateAddress(req.host())) {  //如果主机名/IP地址格式有误
                         log.info("Illegal proxy host {}", req.host());
                         ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.ADDRESS_NOT_SUPPORTED, SocksAddressType.IPv4));
@@ -223,7 +224,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
 
                         case UDP: {
                             String localHost = ((SocketChannel)ctx.channel()).localAddress().getHostString();
-                            DatagramChannel udpCh = processUDPProxyRequest(req.host(), req.port());
+                            DatagramChannel udpCh = processUDPProxyRequest(((SocketChannel)ctx.channel()).remoteAddress().getHostName(), req.port());
                             if(udpCh != null) {
                                 ctx.pipeline().remove(this);
                                 ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.SUCCESS, SocksAddressType.IPv4, localHost, udpCh.localAddress().getPort()));
@@ -335,6 +336,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket packet) {
             InetSocketAddress sender = packet.sender();
+            log.debug("Receive UDP Package");
             if(sender.equals(receiveAddress)) {  //如果该UDP包是本地应用程序发出的
                 ByteBuf buf = packet.content();
 
@@ -385,7 +387,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                 head.writeShort(sender.getPort());
                 buf.addComponents(true, head, packet.content());
 
-                DatagramPacket dp = new DatagramPacket(buf, receiveAddress);
+                DatagramPacket dp = new DatagramPacket(buf, receiveAddress, ((DatagramChannel)ctx.channel()).localAddress());
                 ctx.writeAndFlush(dp);
             }
         }
@@ -407,7 +409,7 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                 InetSocketAddress remote = new InetSocketAddress(req.getHost(), req.getPort());
                 ByteBuf buf = req.takeClientMessage();
                 assert buf != null;
-                DatagramPacket packet = new DatagramPacket(buf, remote);
+                DatagramPacket packet = new DatagramPacket(buf, remote, ((DatagramChannel)ctx.channel()).localAddress());
                 ctx.write(packet, ctx.voidPromise());
             } else {
                 ctx.write(msg, ctx.voidPromise());

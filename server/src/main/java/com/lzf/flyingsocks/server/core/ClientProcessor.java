@@ -236,8 +236,9 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            if(cause instanceof IOException)
+            if(cause instanceof IOException) {
                 return;
+            }
             log.warn("Exception occur at CertRequestHandler", cause);
             ctx.close();
         }
@@ -312,7 +313,12 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                 log.info("Close remote host cause it's not SSL connection");
                 ctx.close();
             } else if(cause instanceof SerializationException) {
-                log.info("Close remote host cause it's not flyingsocks client connection");
+                if(log.isInfoEnabled()) {
+                    log.info("Close remote host [{}] cause it's not flyingsocks client connection", ctx.channel().remoteAddress());
+                }
+                ctx.close();
+            } else {
+                log.warn("Exception occur at ClientProcessor", cause);
                 ctx.close();
             }
         }
