@@ -137,6 +137,7 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         Menu about = new Menu(shell, SWT.DROP_DOWN);
         serv.setMenu(about);
 
+        createCascadeMenuItem(about, "打开配置文件目录", e -> operator.openConfigDirectory());
         createCascadeMenuItem(about, "打开日志目录", e -> operator.openLogDirectory());
         createCascadeMenuItem(about, "清空日志", e -> operator.cleanLogFiles());
         createMenuSeparator(about);

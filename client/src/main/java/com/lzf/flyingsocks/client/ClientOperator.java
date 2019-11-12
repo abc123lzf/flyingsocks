@@ -25,6 +25,11 @@ public interface ClientOperator {
     void openLogDirectory();
 
     /**
+     * 打开配置文件目录
+     */
+    void openConfigDirectory();
+
+    /**
      * 打开浏览器
      * @param url URL链接
      */
