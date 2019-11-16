@@ -16,11 +16,11 @@ import java.util.Objects;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.*;
 
 /**
+ * @author lizifan 695199262@qq.com
+ * @since 2019.9.10
  * Socks5代理设置界面
  */
 final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
-
-    private final Display display;
 
     private final ClientOperator operator;
 
@@ -28,7 +28,6 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
 
     SocksSettingModule(SWTViewComponent component, Display display) {
         super(Objects.requireNonNull(component));
-        this.display = display;
         this.operator = component.getParentComponent();
 
         Image icon;
@@ -66,7 +65,7 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
             String password = pass.getText();
             int p;
             if(BaseUtils.isPortString(port.getText())) {
-                p = Integer.valueOf(port.getText());
+                p = Integer.parseInt(port.getText());
             } else {
                 showMessageBox(shell, "提示", "端口不合法", SWT.ICON_ERROR | SWT.OK);
                 return;
@@ -103,10 +102,14 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
             pass.setEditable(false);
         }
 
-        if(cfg.getUsername() != null)
+        if(cfg.getUsername() != null) {
             user.setText(cfg.getUsername());
-        if(cfg.getPassword() != null)
+        }
+
+        if(cfg.getPassword() != null) {
             pass.setText(cfg.getPassword());
+        }
+
         port.setText(String.valueOf(cfg.getPort()));
     }
 

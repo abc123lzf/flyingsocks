@@ -15,6 +15,7 @@ import static com.lzf.flyingsocks.client.gui.swt.Utils.*;
 import static com.lzf.flyingsocks.client.proxy.ProxyAutoChecker.*;
 
 /**
+ * @author lizifan 695199262@qq.com
  * SWT系统托盘实现
  */
 final class TrayModule extends AbstractModule<SWTViewComponent> {

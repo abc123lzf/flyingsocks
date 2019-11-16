@@ -1,5 +1,5 @@
 Manifest-Version: 1.0
-Class-Path: netty-all-4.1.42.Final.jar beautyeye_lnf.jar log4j-1.2.17.ja
+Class-Path: netty-all-4.1.42.Final.jar log4j-1.2.17.ja
  r core-3.1.0.jar fastjson-1.2.57.jar slf4j-api-1.7.26.jar slf4j-log4j12
  -1.7.26.jar org.eclipse.swt.win32.win32.x86_64-4.3.jar
 Main-Class: com.lzf.flyingsocks.client.ClientBoot
