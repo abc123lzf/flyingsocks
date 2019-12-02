@@ -118,12 +118,13 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
         @Override
         public boolean equals(Object obj) {
-            if(this == obj)
+            if(this == obj) {
                 return true;
-            if(obj instanceof ActiveConnection) {
+            } else if(obj instanceof ActiveConnection) {
                 ActiveConnection c = (ActiveConnection) obj;
                 return this.host.equals(c.host) && this.port == c.port && this.clientSerialId == c.clientSerialId;
             }
+
             return false;
         }
     }

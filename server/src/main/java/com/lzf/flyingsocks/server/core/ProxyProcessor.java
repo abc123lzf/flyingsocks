@@ -9,6 +9,7 @@ import io.netty.util.concurrent.FastThreadLocal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +54,7 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
     //代理任务订阅者列表
     private final List<ProxyTaskSubscriber> proxyTaskSubscribers = new CopyOnWriteArrayList<>();
 
-    private FastThreadLocal<Map<Channel, ClientSession>> localClientMap = new FastThreadLocal<Map<Channel, ClientSession>>() {
+    private final FastThreadLocal<Map<Channel, ClientSession>> localClientMap = new FastThreadLocal<Map<Channel, ClientSession>>() {
         @Override
         protected Map<Channel, ClientSession> initialValue() {
             return new WeakHashMap<>();
@@ -232,10 +233,13 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            if(cause instanceof IOException)
+            if(cause instanceof SSLException || cause.getCause() instanceof SSLException) {
+                log.info("Client connection is not SSL Connection");
+            } else if(cause instanceof IOException) {
                 log.info("Remote host close the connection");
-            else if(log.isWarnEnabled())
+            } else if(log.isWarnEnabled()) {
                 log.warn("An exception occur", cause);
+            }
             ctx.close();
         }
 

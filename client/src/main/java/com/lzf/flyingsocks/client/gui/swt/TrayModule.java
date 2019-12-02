@@ -12,12 +12,10 @@ import java.io.IOException;
 import java.util.Objects;
 
 import static com.lzf.flyingsocks.client.gui.swt.Utils.*;
-import static com.lzf.flyingsocks.client.proxy.ProxyAutoConfig.PROXY_NO;
-import static com.lzf.flyingsocks.client.proxy.ProxyAutoConfig.PROXY_GFW_LIST;
-import static com.lzf.flyingsocks.client.proxy.ProxyAutoConfig.PROXY_GLOBAL;
-import static com.lzf.flyingsocks.client.proxy.ProxyAutoConfig.PROXY_NON_CN;
+import static com.lzf.flyingsocks.client.proxy.ProxyAutoChecker.*;
 
 /**
+ * @author lizifan 695199262@qq.com
  * SWT系统托盘实现
  */
 final class TrayModule extends AbstractModule<SWTViewComponent> {
@@ -140,6 +138,7 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         Menu about = new Menu(shell, SWT.DROP_DOWN);
         serv.setMenu(about);
 
+        createCascadeMenuItem(about, "打开配置文件目录", e -> operator.openConfigDirectory());
         createCascadeMenuItem(about, "打开日志目录", e -> operator.openLogDirectory());
         createCascadeMenuItem(about, "清空日志", e -> operator.cleanLogFiles());
         createMenuSeparator(about);

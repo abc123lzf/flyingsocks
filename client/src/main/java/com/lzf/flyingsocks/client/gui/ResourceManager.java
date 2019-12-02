@@ -7,9 +7,9 @@ import java.io.InputStream;
 import java.net.URL;
 
 /**
- * @author lizifan lzf@webull.com
- * @create 2019.8.13 11:26
- * @description GUI资源管理器
+ * @author lizifan 695199262@qq.com
+ * @since  2019.8.13 11:26
+ * GUI资源管理器
  */
 public final class ResourceManager {
 

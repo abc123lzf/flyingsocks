@@ -9,8 +9,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * @create 2019.8.13 9:40
- * @description SWT GUI组件
+ * @since 2019.8.13 9:40
+ * SWT GUI组件
  */
 public class SWTViewComponent extends AbstractComponent<Client> {
 

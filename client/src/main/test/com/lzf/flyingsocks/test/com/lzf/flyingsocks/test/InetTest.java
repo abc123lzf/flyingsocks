@@ -23,6 +23,10 @@ public class InetTest {
             long ed = System.currentTimeMillis();
             System.out.println(ed - st);
         }
+    }
+
+    @Test
+    public void test2() {
 
     }
 

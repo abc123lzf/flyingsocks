@@ -77,6 +77,19 @@ public abstract class Client extends TopLevelComponent
     }
 
     @Override
+    public void openConfigDirectory() {
+        GlobalConfig gc = getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
+        if(gc != null) {
+            File folder = new File(gc.configPath());
+            try {
+                Desktop.getDesktop().open(folder);
+            } catch (IOException e) {
+                log.warn("Open config file directory occur a exception", e);
+            }
+        }
+    }
+
+    @Override
     public void openBrowser(String url) {
         try {
             if(isWindows()) {

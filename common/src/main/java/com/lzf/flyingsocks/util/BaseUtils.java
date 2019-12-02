@@ -81,7 +81,7 @@ public final class BaseUtils {
      */
     public static int parseIPv4StringToInteger(String ipv4) {
         String[] str = splitPreserveAllTokens(ipv4, '.');
-        int num = Integer.valueOf(str[0]) << 24;
+        int num = Integer.parseInt(str[0]) << 24;
         num |= Integer.parseInt(str[1]) << 16;
         num |= Integer.parseInt(str[2]) << 8;
         return num | Integer.parseInt(str[3]);

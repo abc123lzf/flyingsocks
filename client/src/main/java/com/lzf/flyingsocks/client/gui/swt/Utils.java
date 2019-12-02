@@ -8,8 +8,8 @@ import java.io.InputStream;
 
 /**
  * @author lizifan
- * @create 2019.10.2 0:22
- * @description SWT GUI工具类
+ * @since 2019.10.2 0:22
+ * SWT GUI工具类
  */
 abstract class Utils {
 
@@ -68,7 +68,7 @@ abstract class Utils {
      * @return 窗口对象
      */
     static Shell createShell(Display display, String title, Image icon, int width, int height) {
-        Shell sh = new Shell(display, SWT.SHELL_TRIM & (~SWT.RESIZE));
+        Shell sh = new Shell(display, (SWT.SHELL_TRIM & (~SWT.RESIZE)) | SWT.MIN);
         sh.setText(title);
         sh.setSize(width, height);
         sh.setVisible(false);

@@ -2,9 +2,8 @@ package com.lzf.flyingsocks.client.gui.swing;
 
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.client.Client;
-import org.jb2011.lnf.beautyeye.BeautyEyeLNFHelper;
 
-import java.awt.SystemTray;
+import java.awt.*;
 import java.util.Objects;
 
 /**
@@ -34,12 +33,6 @@ public class SwingViewComponent extends AbstractComponent<Client> {
 
     @Override
     protected void initInternal() {
-        try {
-            BeautyEyeLNFHelper.launchBeautyEyeLNF();
-        } catch (Exception e) {
-            log.warn("BeautyEyeLNFHelper exception", e);
-        }
-
         if(!SystemTray.isSupported()) {
             log.error("Swing GUI: System not support the tray, you can shutdown GUI mode at config.json");
             System.exit(1);

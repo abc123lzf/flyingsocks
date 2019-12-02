@@ -21,6 +21,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.codec.FixedLengthFrameDecoder;
 
+import javax.net.ssl.SSLException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -235,8 +236,9 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            if(cause instanceof IOException)
+            if(cause instanceof IOException) {
                 return;
+            }
             log.warn("Exception occur at CertRequestHandler", cause);
             ctx.close();
         }
@@ -293,7 +295,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             cp.remove(this).remove(FixedLengthFrameDecoder.class);
 
             DelimiterMessage resp = new DelimiterMessage(key);
-            ctx.writeAndFlush(resp);
+            ctx.write(resp);
 
             ByteBuf keyBuf = Unpooled.buffer(DelimiterMessage.DEFAULT_SIZE);
             keyBuf.writeBytes(key);
@@ -301,6 +303,24 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             cp.addLast(new DelimiterOutboundHandler(keyBuf));
             cp.addLast(new DelimiterBasedFrameDecoder(102400, keyBuf));
             cp.addLast(new AuthHandler(state));
+
+            ctx.flush();
+        }
+
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+            if(cause instanceof SSLException || cause.getCause() instanceof SSLException) {
+                log.info("Close remote host cause it's not SSL connection");
+                ctx.close();
+            } else if(cause instanceof SerializationException) {
+                if(log.isInfoEnabled()) {
+                    log.info("Close remote host [{}] cause it's not flyingsocks client connection", ctx.channel().remoteAddress());
+                }
+                ctx.close();
+            } else {
+                log.warn("Exception occur at ClientProcessor", cause);
+                ctx.close();
+            }
         }
     }
 

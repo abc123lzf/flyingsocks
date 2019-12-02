@@ -19,7 +19,7 @@ public class FSMessageChannelOutboundHandler extends ChannelOutboundHandlerAdapt
     private FSMessageChannelOutboundHandler() {}
 
     @Override
-    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
         if(msg instanceof Message) {
             Message message = (Message) msg;
             try {

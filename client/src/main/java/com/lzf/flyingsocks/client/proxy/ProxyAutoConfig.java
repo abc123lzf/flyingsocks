@@ -20,6 +20,8 @@ import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.regex.Pattern;
 
+import static com.lzf.flyingsocks.client.proxy.ProxyAutoChecker.*;
+
 /**
  * 代理模式相关组件
  */
@@ -34,16 +36,6 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     private static final String GFWLIST_FILE = "pac.txt";
     private static final String CNIPV4_FILE = "cnipv4.txt";
 
-    public static final int PROXY_NO = 0;
-    public static final int PROXY_GFW_LIST = 1;
-    public static final int PROXY_GLOBAL = 2;
-    public static final int PROXY_NON_CN = 3;
-
-    /**
-     * 系统代理模式
-     */
-    private volatile int proxyMode;
-
     /**
      * 需要代理的域名/IP列表,仅PAC模式使用,按照其域名的逆向字符串存储,方便按照前缀查询
      */
@@ -54,6 +46,8 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
      */
     private volatile NavigableMap<Integer, Integer> whiteListMap = Collections.emptyNavigableMap();
 
+
+    private ProxyAutoChecker proxyAutoChecker;
 
     ProxyAutoConfig(ConfigManager<?> configManager) {
         super(configManager, DEFAULT_NAME);
@@ -87,11 +81,11 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
             System.exit(1);
         }
 
-
+        int proxyMode;
         File file = new File(cfg.configPath(), PAC_CONFIG_FILE);
         if(!file.exists()) {
             try {
-                this.proxyMode = PROXY_GFW_LIST;
+                proxyMode = PROXY_GFW_LIST;
                 makeTemplatePACSettingFile(file);
             } catch (IOException e) {
                 throw new ConfigInitializationException("Can not create new File at " + file.getAbsolutePath());
@@ -105,19 +99,23 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
                  Scanner sc = new Scanner(is)) {
                 String s = sc.next();
                 switch (s) {
-                    case "no": this.proxyMode = PROXY_NO; break;
-                    case "pac": this.proxyMode = PROXY_GFW_LIST; break;
-                    case "global": this.proxyMode = PROXY_GLOBAL; break;
-                    case "noncn": this.proxyMode = PROXY_NON_CN; break;
+                    case "no": proxyMode = PROXY_NO; break;
+                    case "pac": proxyMode = PROXY_GFW_LIST; break;
+                    case "global": proxyMode = PROXY_GLOBAL; break;
+                    case "noncn": proxyMode = PROXY_NON_CN; break;
                     default: {
                         log.warn("Config file pac setting is not correct, only 'no' / 'pac' / 'global' / 'noncn'");
-                        this.proxyMode = PROXY_GFW_LIST;
+                        proxyMode = PROXY_GFW_LIST;
                     }
                 }
             } catch (IOException e) {
                 throw new ConfigInitializationException();
             }
         }
+
+        ProxyAutoCheckerImpl pac = new ProxyAutoCheckerImpl(proxySet, whiteListMap);
+        pac.proxyMode = proxyMode;
+        this.proxyAutoChecker = pac;
     }
 
     /**
@@ -166,8 +164,6 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
         log.info("CNIPv4 List size: {}", map.size());
     }
 
-
-
     @Override
     public boolean canSave() {
         return true;
@@ -179,7 +175,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
 
         File f = new File(cfg.configPath(), PAC_CONFIG_FILE);
         String content;
-        switch (this.proxyMode) {
+        switch (this.proxyAutoChecker.proxyMode()) {
             case PROXY_NO: content = "no"; break;
             case PROXY_GFW_LIST: content = "pac"; break;
             case PROXY_GLOBAL: content = "global"; break;
@@ -194,73 +190,25 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     }
 
     public int getProxyMode() {
-        return proxyMode;
+        return proxyAutoChecker.proxyMode();
     }
 
 
     public void setProxyMode(int proxyMode) {
-        if(this.proxyMode == proxyMode)
+        if(this.proxyAutoChecker.proxyMode() == proxyMode)
             return;
 
         if(proxyMode < 0 || proxyMode > 3)
             throw new IllegalArgumentException();
 
-        this.proxyMode = proxyMode;
+        this.proxyAutoChecker.changeProxyMode(proxyMode);
         configManager.updateConfig(this);
     }
 
-    boolean needProxy(String host) {
-        if(proxyMode == PROXY_NO) {
-            return false;
-        }
-
-        if(proxyMode == PROXY_GLOBAL) {
-            return true;
-        }
-
-        if(proxyMode == PROXY_GFW_LIST) {
-            if(BaseUtils.isIPAddress(host)) {
-                return proxySet.contains(host);
-            }
-
-            String rh = BaseUtils.reverseString(host);
-            String fl = proxySet.floor(rh);
-            return fl != null && rh.startsWith(fl);
-        }
-
-        if(proxyMode == PROXY_NON_CN) {
-            int ip;
-            if(BaseUtils.isHostName(host)) {
-                try {
-                    byte[] b = InetAddress.getByName(host).getAddress();
-                    if(b.length > 4)  //IPV6暂时全局代理
-                        return true;
-                    ip = BaseUtils.parseByteArrayToIPv4Integer(b);
-                } catch (UnknownHostException e) {
-                    log.warn("Unknown host name {}", host);
-                    return false;
-                }
-
-            } else if(BaseUtils.isIPv4Address(host)) {
-                ip = BaseUtils.parseIPv4StringToInteger(host);
-            } else {
-                return true; //暂时IPV6统一代理
-            }
-
-            Map.Entry<Integer, Integer> entry = whiteListMap.floorEntry(ip);
-            if(entry == null) {
-                return true;
-            }
-
-            int mask = entry.getValue();
-            int net = entry.getKey();
-
-            return !BaseUtils.isIPv4AddressInRange(ip, net, mask);
-        }
-
-
-        throw new IllegalStateException("ProxyMode is not correct");
+    public ProxyAutoChecker getProxyAutoChecker() {
+        return proxyAutoChecker;
     }
+
 
     private void makeTemplatePACSettingFile(File file) throws IOException {
         String content = "pac";
@@ -304,6 +252,83 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
         } catch (IOException e) {
             log.error("Can not find default CN IPv4 file", e);
             System.exit(1);
+        }
+    }
+
+    private static final class ProxyAutoCheckerImpl implements ProxyAutoChecker {
+        private final NavigableSet<String> gfwList;
+        private final NavigableMap<Integer, Integer> whiteListMap;
+        private volatile int proxyMode;
+
+        ProxyAutoCheckerImpl(NavigableSet<String> gfwList, NavigableMap<Integer, Integer> whiteListMap) {
+            this.gfwList = gfwList;
+            this.whiteListMap = whiteListMap;
+        }
+
+        @Override
+        public boolean needProxy(String host) {
+            if(proxyMode == PROXY_NO) {
+                return false;
+            }
+
+            if(proxyMode == PROXY_GLOBAL) {
+                return true;
+            }
+
+            if(proxyMode == PROXY_GFW_LIST) {
+                if(BaseUtils.isIPAddress(host)) {
+                    return gfwList.contains(host);
+                }
+
+                String rh = BaseUtils.reverseString(host);
+                String fl = gfwList.floor(rh);
+                return fl != null && rh.startsWith(fl);
+            }
+
+            if(proxyMode == PROXY_NON_CN) {
+                int ip;
+                if(BaseUtils.isHostName(host)) {
+                    try {
+                        byte[] b = InetAddress.getByName(host).getAddress();
+                        if(b.length > 4)  //IPV6暂时全局代理
+                            return true;
+                        ip = BaseUtils.parseByteArrayToIPv4Integer(b);
+                    } catch (UnknownHostException e) {
+                        log.warn("Unknown host name {}", host);
+                        return false;
+                    }
+
+                } else if(BaseUtils.isIPv4Address(host)) {
+                    ip = BaseUtils.parseIPv4StringToInteger(host);
+                } else {
+                    return true; //暂时IPV6统一代理
+                }
+
+                Map.Entry<Integer, Integer> entry = whiteListMap.floorEntry(ip);
+                if(entry == null) {
+                    return true;
+                }
+
+                int mask = entry.getValue();
+                int net = entry.getKey();
+
+                return !BaseUtils.isIPv4AddressInRange(ip, net, mask);
+            }
+
+            throw new IllegalStateException("ProxyMode is not correct");
+        }
+
+        @Override
+        public int proxyMode() {
+            return proxyMode;
+        }
+
+        @Override
+        public void changeProxyMode(int mode) {
+            if(mode < 0 || mode > 3) {
+                throw new IllegalArgumentException("ProxyMode is not correct");
+            }
+            this.proxyMode = mode;
         }
     }
 }

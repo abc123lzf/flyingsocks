@@ -81,11 +81,6 @@ public class SocksProxyComponent extends ProxyComponent {
         return nettyWorkerLoopGroup;
     }
 
-    @Override
-    protected boolean needProxy(String host) {
-        return super.needProxy(host);
-    }
-
     /**
      * 将代理请求放入组件
      * 这里重写了父类的pushProxyRequest方法，是为了将代理请求转发给ClientMessageTransferTask
@@ -178,6 +173,11 @@ public class SocksProxyComponent extends ProxyComponent {
         }
 
         private void clearProxyRequest(SocksProxyRequest request) {
+            Channel sc = request.serverChannel();
+            if(sc != null && sc.isActive()) {
+                sc.close();
+            }
+
             BlockingQueue<ByteBuf> queue = request.messageQueue();
             ByteBuf buf;
             try {

@@ -41,7 +41,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
     /**
      * PAC配置
      */
-    private ProxyAutoConfig proxyAutoConfig;
+    private volatile ProxyAutoChecker proxyAutoChecker;
 
     /**
      * 异步任务执行器
@@ -60,7 +60,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
         //加载PAC配置
         ProxyAutoConfig pac = new ProxyAutoConfig(cm);
         cm.registerConfig(pac);
-        this.proxyAutoConfig = pac;
+        this.proxyAutoChecker = pac.getProxyAutoChecker();
 
         //加载flyingsocks服务器配置
         ProxyServerConfig cfg = new ProxyServerConfig(cm);
@@ -148,8 +148,8 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
      * @param host 主机名
      * @return 是否需要代理
      */
-    protected boolean needProxy(String host) {
-        return proxyAutoConfig.needProxy(host);
+    public boolean needProxy(String host) {
+        return proxyAutoChecker.needProxy(host);
     }
 
     /**

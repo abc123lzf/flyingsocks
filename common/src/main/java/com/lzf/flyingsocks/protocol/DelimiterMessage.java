@@ -17,7 +17,7 @@ import java.util.Arrays;
 public class DelimiterMessage implements Message {
 
     /**
-     * 魔数
+     * 客户端和服务端共同约定的魔数,用于鉴别非flyingsocks客户端的访问
      */
     public static final byte[] MAGIC = new byte[] {(byte) 0xE4, (byte) 0xBC, (byte) 0x8A,
             (byte) 0xE8, (byte)0x94, (byte)0x93};
@@ -42,7 +42,7 @@ public class DelimiterMessage implements Message {
     }
 
     public DelimiterMessage(ByteBuf serialBuf) throws SerializationException {
-        deserialize(serialBuf.copy());
+        deserialize(serialBuf);
     }
 
     @Override
@@ -59,16 +59,20 @@ public class DelimiterMessage implements Message {
 
     @Override
     public void deserialize(ByteBuf buf) throws SerializationException {
-
+        buf = buf.copy();
         int size = buf.readableBytes();
-        if(size < LENGTH)
+        if(size < LENGTH) {
+            buf.release();
             throw new SerializationException("Delimiter Message length must be " + LENGTH + " bytes: including " +
                     MAGIC.length + " bytes magic and " + DEFAULT_SIZE + " bytes delimiter content");
+        }
 
         byte[] magic = new byte[MAGIC.length];
         buf.readBytes(magic);
-        if(!Arrays.equals(magic, MAGIC))
-            return;
+        if(!Arrays.equals(magic, MAGIC)) {
+            buf.release();  //防止非flyingsocks客户端访问导致此处内存泄漏
+            throw new SerializationException("Illegal magic number: " + Arrays.toString(magic));
+        }
 
         try {
             byte[] b = new byte[DEFAULT_SIZE];
@@ -80,6 +84,10 @@ public class DelimiterMessage implements Message {
     }
 
     public ByteBuf getDelimiter() {
+        if(delimiter == null || delimiter.length == 0) {
+            return null;
+        }
+
         return Unpooled.buffer(DEFAULT_SIZE).writeBytes(delimiter);
     }
 

@@ -20,8 +20,9 @@ import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.*;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.*;
 
 /**
- * @create 2019.8.17 23:05
- * @description 服务器设置界面
+ * @author lizifan 695199262@qq.com
+ * @since  2019.8.17 23:05
+ * 服务器设置界面
  */
 final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
