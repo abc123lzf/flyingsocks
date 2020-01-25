@@ -38,7 +38,6 @@ public abstract class ServerBoot {
                     log.info("flyingsocks server {} ready to shutdown", VERSION);
                     shutdown();
                     log.info("flyingsocks server {} shut down complete", VERSION);
-                    System.exit(0);
                 }));
 
             } catch (ComponentException e) {
