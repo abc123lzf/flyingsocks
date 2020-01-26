@@ -3,16 +3,27 @@ package com.lzf.flyingsocks.client.proxy.socks;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.client.Client;
 import com.lzf.flyingsocks.client.proxy.ProxyComponent;
-
 import com.lzf.flyingsocks.client.proxy.ProxyRequest;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.util.ReferenceCountUtil;
 
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Objects;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
 
 public class SocksProxyComponent extends ProxyComponent {
 

@@ -1,19 +1,42 @@
 package com.lzf.flyingsocks.client.proxy;
 
-import com.lzf.flyingsocks.*;
+import com.lzf.flyingsocks.AbstractComponent;
+import com.lzf.flyingsocks.ComponentException;
+import com.lzf.flyingsocks.Config;
+import com.lzf.flyingsocks.ConfigEvent;
+import com.lzf.flyingsocks.ConfigEventListener;
+import com.lzf.flyingsocks.ConfigManager;
+import com.lzf.flyingsocks.LifecycleState;
 import com.lzf.flyingsocks.client.GlobalConfig;
 import com.lzf.flyingsocks.encrypt.EncryptProvider;
 import com.lzf.flyingsocks.encrypt.EncryptSupport;
 import com.lzf.flyingsocks.encrypt.OpenSSLEncryptProvider;
-import com.lzf.flyingsocks.protocol.*;
-
+import com.lzf.flyingsocks.protocol.AuthMessage;
+import com.lzf.flyingsocks.protocol.CertRequestMessage;
+import com.lzf.flyingsocks.protocol.CertResponseMessage;
+import com.lzf.flyingsocks.protocol.DelimiterMessage;
+import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
+import com.lzf.flyingsocks.protocol.ProxyResponseMessage;
+import com.lzf.flyingsocks.protocol.SerializationException;
 import com.lzf.flyingsocks.util.FSMessageChannelOutboundHandler;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.*;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelOutboundHandlerAdapter;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.ChannelPromise;
+import io.netty.channel.ConnectTimeoutException;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -22,11 +45,29 @@ import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 
@@ -87,7 +128,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     private final BlockingQueue<SerialProxyRequest> proxyRequestQueue = new LinkedBlockingQueue<>();
 
     //活跃的代理请求Map
-    private final Map<Integer, SerialProxyRequest> activeProxyRequestMap = new ConcurrentHashMap<>(512);
+    private final ConcurrentMap<Integer, SerialProxyRequest> activeProxyRequestMap = new ConcurrentHashMap<>(512);
 
     //代理请求ID生成器
     private final AtomicInteger serialBuilder = new AtomicInteger(0);

@@ -9,7 +9,6 @@ import io.netty.channel.Channel;
 import io.netty.channel.socket.SocketChannel;
 
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 客户端会话对象

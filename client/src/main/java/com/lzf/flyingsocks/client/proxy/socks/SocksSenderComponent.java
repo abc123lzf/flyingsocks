@@ -3,15 +3,22 @@ package com.lzf.flyingsocks.client.proxy.socks;
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.client.proxy.ProxyRequest;
 import com.lzf.flyingsocks.client.proxy.ProxyRequestSubscriber;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.*;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.ConnectTimeoutException;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
-import java.util.*;
+import java.util.Set;
 
 public final class SocksSenderComponent extends AbstractComponent<SocksProxyComponent> {
 

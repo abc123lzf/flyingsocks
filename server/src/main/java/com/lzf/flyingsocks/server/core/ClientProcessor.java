@@ -7,14 +7,26 @@ import com.lzf.flyingsocks.encrypt.EncryptProvider;
 import com.lzf.flyingsocks.encrypt.EncryptSupport;
 import com.lzf.flyingsocks.encrypt.JksSSLEncryptProvider;
 import com.lzf.flyingsocks.encrypt.OpenSSLEncryptProvider;
-import com.lzf.flyingsocks.protocol.*;
+import com.lzf.flyingsocks.protocol.AuthMessage;
+import com.lzf.flyingsocks.protocol.CertRequestMessage;
+import com.lzf.flyingsocks.protocol.CertResponseMessage;
+import com.lzf.flyingsocks.protocol.DelimiterMessage;
+import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
+import com.lzf.flyingsocks.protocol.SerializationException;
 import com.lzf.flyingsocks.server.ServerConfig;
 import com.lzf.flyingsocks.server.db.UserDatabase;
 import com.lzf.flyingsocks.util.FSMessageChannelOutboundHandler;
+
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.channel.*;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelOutboundHandlerAdapter;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.ChannelPromise;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
@@ -26,7 +38,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * 用于处理FS客户端连接的组件

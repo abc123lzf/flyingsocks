@@ -2,6 +2,7 @@ package com.lzf.flyingsocks.client.gui.swt;
 
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.client.Client;
+
 import org.eclipse.swt.widgets.Display;
 
 import java.util.Objects;
