@@ -2,7 +2,7 @@ package com.lzf.flyingsocks.protocol;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
-import io.netty.buffer.Unpooled;
+import io.netty.buffer.PooledByteBufAllocator;
 
 import java.util.Arrays;
 
@@ -42,11 +42,11 @@ public class CertRequestMessage extends AuthMessage implements Message {
     @Override
     public ByteBuf serialize() throws SerializationException {
         ByteBuf buf = super.serialize();
-        ByteBuf md5Buf = Unpooled.buffer(16 + 4);
+        ByteBuf md5Buf = PooledByteBufAllocator.DEFAULT.buffer(16 + 4);
         md5Buf.writeBytes(certMD5);
         md5Buf.writeBytes(END_MARK);
 
-        CompositeByteBuf cbf = Unpooled.compositeBuffer();
+        CompositeByteBuf cbf = PooledByteBufAllocator.DEFAULT.compositeBuffer();
         cbf.addComponent(true, buf);
         cbf.addComponent(true, md5Buf);
         return cbf;

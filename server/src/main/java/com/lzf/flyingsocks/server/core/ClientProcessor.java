@@ -14,7 +14,6 @@ import com.lzf.flyingsocks.util.FSMessageChannelOutboundHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -164,7 +163,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                     protected void initChannel(SocketChannel ch) {
                         ChannelPipeline cp = ch.pipeline();
                         int l = CertRequestMessage.END_MARK.length;
-                        ByteBuf buf = Unpooled.buffer(l);
+                        ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer(l);
                         buf.writeBytes(CertRequestMessage.END_MARK);
                         cp.addLast(new DelimiterBasedFrameDecoder(512 + l, buf));
                         cp.addLast(new CertRequestHandler());
@@ -297,7 +296,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             DelimiterMessage resp = new DelimiterMessage(key);
             ctx.write(resp);
 
-            ByteBuf keyBuf = Unpooled.buffer(DelimiterMessage.DEFAULT_SIZE);
+            ByteBuf keyBuf = PooledByteBufAllocator.DEFAULT.buffer(DelimiterMessage.DEFAULT_SIZE);
             keyBuf.writeBytes(key);
 
             cp.addLast(new DelimiterOutboundHandler(keyBuf));
@@ -390,7 +389,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             byte[] b = parent.getClientSession(ctx.channel()).getDelimiterKey();
 
             cp.addLast(new DelimiterBasedFrameDecoder(1024 * 1000 * 50,
-                    Unpooled.buffer(DelimiterMessage.DEFAULT_SIZE).writeBytes(b)));
+                    PooledByteBufAllocator.DEFAULT.buffer(DelimiterMessage.DEFAULT_SIZE).writeBytes(b)));
 
             cp.addLast(new ProxyHandler(clientSession));
         }

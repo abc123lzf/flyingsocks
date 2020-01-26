@@ -698,7 +698,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
             if(msg instanceof ByteBuf) {
                 ChannelPromise vcp = ctx.voidPromise();
-                ByteBuf delimiter = Unpooled.buffer(this.delimiter.length).writeBytes(this.delimiter);
+                ByteBuf delimiter = PooledByteBufAllocator.DEFAULT.buffer(this.delimiter.length).writeBytes(this.delimiter);
                 ctx.write(msg, vcp);
                 ctx.write(delimiter, vcp);
             } else {
@@ -858,7 +858,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                             activeProxyRequestMap.remove(req.serialId);
                         } else {
                             boolean isWrite = false;
-                            CompositeByteBuf buf = Unpooled.compositeBuffer();
+                            CompositeByteBuf buf = PooledByteBufAllocator.DEFAULT.compositeBuffer();
                             ByteBuf b;
                             while ((b = req.takeClientMessage()) != null) {
                                 buf.addComponent(true, b);

@@ -2,7 +2,7 @@ package com.lzf.flyingsocks.protocol;
 
 import com.lzf.flyingsocks.util.BaseUtils;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.util.ReferenceCountUtil;
 
 import java.nio.charset.Charset;
@@ -99,7 +99,7 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
         byte[] h = host.getBytes(HOST_ENCODING);
 
         int size = 4 + 1 + h.length + 1 + 2 + 4 + message.readableBytes();
-        ByteBuf buf = Unpooled.buffer(size);
+        ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer(size);
 
         buf.writeInt(serialId);
 
@@ -152,7 +152,7 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
             if (msglen > buf.readableBytes())
                 throw new SerializationException("Illegal ProxyRequestMessage, msglen is not equals real message length");
 
-            ByteBuf msg = Unpooled.buffer(msglen);
+            ByteBuf msg = PooledByteBufAllocator.DEFAULT.buffer(msglen);
             buf.readBytes(msg);
 
             this.serialId = sid;

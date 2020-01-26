@@ -8,7 +8,7 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
-import io.netty.buffer.Unpooled;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.DatagramChannel;
@@ -380,8 +380,8 @@ public final class SocksReceiverComponent extends AbstractComponent<SocksProxyCo
                     log.trace("UDP Packet send to SenderComponent, content: {}", request.toString());
             } else {
                 int ip = BaseUtils.parseByteArrayToIPv4Integer(sender.getAddress().getAddress());
-                CompositeByteBuf buf = Unpooled.compositeBuffer();
-                ByteBuf head = Unpooled.buffer(4 + 4 + 2);
+                CompositeByteBuf buf = PooledByteBufAllocator.DEFAULT.compositeBuffer();
+                ByteBuf head = PooledByteBufAllocator.DEFAULT.buffer(4 + 4 + 2);
                 head.writeInt(0x01);
                 head.writeInt(ip);
                 head.writeShort(sender.getPort());

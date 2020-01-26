@@ -1,7 +1,7 @@
 package com.lzf.flyingsocks.protocol;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.util.ReferenceCountUtil;
 
 /**
@@ -67,9 +67,11 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
         byte h = state.head;
 
         if(state == State.SUCCESS) {
-            if(message == null)
+            if(message == null) {
                 throw new SerializationException("When ProxyResponseMessage's state is SUCCESS, message must not be null");
-            ByteBuf buf = Unpooled.buffer(4 + 1 + 4 + message.readableBytes());
+            }
+
+            ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer(4 + 1 + 4 + message.readableBytes());
             buf.writeInt(serialId);
             buf.writeByte(h);
             buf.writeInt(message.readableBytes());
@@ -79,9 +81,9 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
         } else {
             ByteBuf buf;
             if(message == null) {
-                buf = Unpooled.buffer(4 + 1 + 4);
+                buf = PooledByteBufAllocator.DEFAULT.buffer(4 + 1 + 4);
             } else {
-                buf = Unpooled.buffer(4 + 1 + 4 + message.readableBytes());
+                buf = PooledByteBufAllocator.DEFAULT.buffer(4 + 1 + 4 + message.readableBytes());
             }
 
             buf.writeInt(serialId);
@@ -108,12 +110,12 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
 
             ByteBuf msg;
             if(state == State.SUCCESS) {
-                msg = Unpooled.buffer(buf.readInt());
+                msg = PooledByteBufAllocator.DEFAULT.buffer(buf.readInt());
                 buf.readBytes(msg);
             } else if(state == State.FAILURE) {
                 int len = buf.readInt();
                 if(len > 0) {
-                    msg = Unpooled.buffer(len);
+                    msg = PooledByteBufAllocator.DEFAULT.buffer(len);
                     buf.readBytes(msg);
                 } else
                     msg = null;

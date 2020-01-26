@@ -4,7 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
+import io.netty.buffer.PooledByteBufAllocator;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -116,7 +116,7 @@ public class AuthMessage implements Message {
         if(str.length() > Short.MAX_VALUE)
             throw new SerializationException("auth message is too long, it's should be no longer than 32767 bytes");
 
-        ByteBuf buf = Unpooled.buffer(1 + 2 + b.length);
+        ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer(1 + 2 + b.length);
         buf.writeByte(authMethod.getHead());
         buf.writeShort((short)b.length);
         buf.writeBytes(b);

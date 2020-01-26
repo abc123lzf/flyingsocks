@@ -17,15 +17,19 @@ public abstract class ServerBoot {
     private static final Server server = new StandardServer();
 
     public static void main(String[] args) {
-        if(server.getState() != LifecycleState.NEW)
+        if(server.getState() != LifecycleState.NEW) {
             throw new Error();
+        }
+
         boot();
     }
 
     private static void boot() {
         synchronized (ServerBoot.class) {
-            if(server.getState() != LifecycleState.NEW)
+            if(server.getState() != LifecycleState.NEW) {
                 return;
+            }
+
             long st = System.currentTimeMillis();
             log.info("flyingsocks server {} start...", VERSION);
             try {

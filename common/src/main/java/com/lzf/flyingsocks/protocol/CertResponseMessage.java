@@ -1,7 +1,7 @@
 package com.lzf.flyingsocks.protocol;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
+import io.netty.buffer.PooledByteBufAllocator;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -50,9 +50,9 @@ public class CertResponseMessage implements Message {
     public ByteBuf serialize() {
         ByteBuf buf;
         if(update)
-            buf = Unpooled.buffer(4 + file.length + END_MARK.length);
+            buf = PooledByteBufAllocator.DEFAULT.buffer(4 + file.length + END_MARK.length);
         else
-            buf = Unpooled.buffer(4 + END_MARK.length);
+            buf = PooledByteBufAllocator.DEFAULT.buffer(4 + END_MARK.length);
 
         if(update) {
             buf.writeInt((1 << 31) | length);

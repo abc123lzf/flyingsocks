@@ -1,7 +1,7 @@
 package com.lzf.flyingsocks.protocol;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
+import io.netty.buffer.PooledByteBufAllocator;
 
 import java.util.Arrays;
 
@@ -47,7 +47,7 @@ public class DelimiterMessage implements Message {
 
     @Override
     public ByteBuf serialize() throws SerializationException {
-        ByteBuf buf = Unpooled.buffer(LENGTH);
+        ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer(LENGTH);
         buf.writeBytes(MAGIC);
         buf.writeBytes(delimiter);
         try {
@@ -88,7 +88,7 @@ public class DelimiterMessage implements Message {
             return null;
         }
 
-        return Unpooled.buffer(DEFAULT_SIZE).writeBytes(delimiter);
+        return PooledByteBufAllocator.DEFAULT.buffer(DEFAULT_SIZE).writeBytes(delimiter);
     }
 
     public void setDelimiter(byte[] delimiter) {
