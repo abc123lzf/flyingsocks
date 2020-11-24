@@ -79,9 +79,9 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
         int cpus = Runtime.getRuntime().availableProcessors();
         int task;
-        if(cpus <= 2) {
+        if (cpus <= 2) {
             task = 2;
-        } else if(cpus <= 6) {
+        } else if (cpus <= 6) {
             task = 3;
         } else {
             task = 4;
@@ -134,9 +134,9 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
         @Override
         public boolean equals(Object obj) {
-            if(this == obj) {
+            if (this == obj) {
                 return true;
-            } else if(obj instanceof ActiveConnection) {
+            } else if (obj instanceof ActiveConnection) {
                 ActiveConnection c = (ActiveConnection) obj;
                 return this.host.equals(c.host) && this.port == c.port && this.clientSerialId == c.clientSerialId;
             }
@@ -159,19 +159,19 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                 final Thread thread = Thread.currentThread();
                 while (!thread.isInterrupted()) {
                     final ProxyTask task = taskQueue.poll(5, TimeUnit.MILLISECONDS);
-                    if(task == null) {
+                    if (task == null) {
                         checkoutConnection();
                         continue;
                     }
 
-                    if(log.isTraceEnabled())
+                    if (log.isTraceEnabled())
                         log.trace("Receive ProxyTask at DispatcherTask thread");
 
                     try {
                         final ProxyRequestMessage prm = task.getRequestMessage();
                         final ClientSession cs = task.session();
 
-                        if(!cs.isActive())
+                        if (!cs.isActive())
                             continue;
 
                         final ReturnableSet<ActiveConnection> set = activeConnectionMap.computeIfAbsent(cs,
@@ -182,11 +182,11 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
                         ActiveConnection conn = new ActiveConnection(host, port, prm.serialId());
                         ActiveConnection sconn;
-                        if((sconn = set.getIfContains(conn)) != null) {
+                        if ((sconn = set.getIfContains(conn)) != null) {
                             conn = sconn;
                         }
-                        if(sconn != null) {
-                            if(prm.getProtocol() == ProxyRequestMessage.Protocol.CLOSE) {
+                        if (sconn != null) {
+                            if (prm.getProtocol() == ProxyRequestMessage.Protocol.CLOSE) {
                                 conn.future.channel().close();
                                 set.remove(conn);
                                 continue;
@@ -194,16 +194,16 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
                             ChannelFuture f = conn.future;
                             Channel c = f.channel();
-                            if(f.isDone() && f.isSuccess()) { //如果连接成功
+                            if (f.isDone() && f.isSuccess()) { //如果连接成功
                                 if (c.isActive()) { //如果连接仍处于活跃状态
                                     ByteBuf buf;
-                                    while((buf = conn.msgQueue.poll()) != null) {  //优先处理消息队列中的消息,保证其顺序
+                                    while ((buf = conn.msgQueue.poll()) != null) {  //优先处理消息队列中的消息,保证其顺序
                                         c.write(buf);
                                     }
                                     c.writeAndFlush(prm.getMessage());
                                     conn.lastActiveTime = System.currentTimeMillis();
                                 }
-                            } else if(!f.isDone()) { //如果正处于连接状态
+                            } else if (!f.isDone()) { //如果正处于连接状态
                                 conn.msgQueue.add(prm.getMessage());
                             } else { //如果连接建立失败
                                 set.remove(conn);
@@ -221,7 +221,8 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                                             log.trace("Connect to {}:{} success", host, port);
                                         }
                                     });
-                                } break;
+                                }
+                                break;
 
                                 case UDP: {
                                     Bootstrap b = udpBootstrap.clone();
@@ -234,7 +235,8 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                                             log.trace("Bind UDP Port success, ready to send packet to {}:{}", host, port);
                                         }
                                     });
-                                } break;
+                                }
+                                break;
                             }
 
                             set.add(conn);
@@ -242,7 +244,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
                         checkoutConnection();
                     } catch (Exception e) {
-                        if(log.isWarnEnabled())
+                        if (log.isWarnEnabled())
                             log.warn("Exception occur, at RequestReceiver thread", e);
                     }
                 }
@@ -282,11 +284,11 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                 final ClientSession cs = e.getKey();
                 final ReturnableSet<ActiveConnection> val = e.getValue();
 
-                if(!cs.isActive()) {
+                if (!cs.isActive()) {
                     it.remove();
                     //清除连接中断的客户端中所有ActiveConnection的msgQueue队列中的ByteBuf对象
                     val.forEach(ac -> {
-                        if(!ac.msgQueue.isEmpty())
+                        if (!ac.msgQueue.isEmpty())
                             ac.msgQueue.forEach(ByteBuf::release);
                     });
                 } else {
@@ -294,35 +296,35 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                     Iterator<ActiveConnection> sit = val.iterator();
                     sit.forEachRemaining(ac -> {
                         if (ac.future.isDone()) {
-                             //如果已经建立过连接但是该连接已经不活跃了，那么清除这个ActiveConnection
-                             if(!ac.future.channel().isActive()) {
-                                 if(!ac.msgQueue.isEmpty())
+                            //如果已经建立过连接但是该连接已经不活跃了，那么清除这个ActiveConnection
+                            if (!ac.future.channel().isActive()) {
+                                if (!ac.msgQueue.isEmpty())
                                     ac.msgQueue.forEach(ByteBuf::release);
-                                 sit.remove();
-                             } else {
-                                 Channel ch = ac.future.channel();
-                                 if(ac.msgQueue.isEmpty() && now - ac.lastActiveTime > DEFAULT_TIMEOUT) {
-                                     ch.close();
-                                     sit.remove();
-                                 } else {
-                                     if (ch instanceof SocketChannel) {
-                                         ByteBuf buf;
-                                         while ((buf = ac.msgQueue.poll()) != null)
-                                             ch.write(buf);
-                                         ch.flush();
-                                         ac.lastActiveTime = now;
-                                     } else if (ch instanceof DatagramChannel) {
-                                         InetSocketAddress addr = new InetSocketAddress(ac.host, ac.port);
-                                         ByteBuf buf;
-                                         while ((buf = ac.msgQueue.poll()) != null)
-                                             ch.write(new DatagramPacket(buf, addr));
-                                         ch.flush();
-                                         ac.lastActiveTime = now;
-                                     } else {
-                                         log.error("Unsupport Channel type: {}", ch.getClass().getName());
-                                     }
-                                 }
-                             }
+                                sit.remove();
+                            } else {
+                                Channel ch = ac.future.channel();
+                                if (ac.msgQueue.isEmpty() && now - ac.lastActiveTime > DEFAULT_TIMEOUT) {
+                                    ch.close();
+                                    sit.remove();
+                                } else {
+                                    if (ch instanceof SocketChannel) {
+                                        ByteBuf buf;
+                                        while ((buf = ac.msgQueue.poll()) != null)
+                                            ch.write(buf);
+                                        ch.flush();
+                                        ac.lastActiveTime = now;
+                                    } else if (ch instanceof DatagramChannel) {
+                                        InetSocketAddress addr = new InetSocketAddress(ac.host, ac.port);
+                                        ByteBuf buf;
+                                        while ((buf = ac.msgQueue.poll()) != null)
+                                            ch.write(new DatagramPacket(buf, addr));
+                                        ch.flush();
+                                        ac.lastActiveTime = now;
+                                    } else {
+                                        log.error("Unsupport Channel type: {}", ch.getClass().getName());
+                                    }
+                                }
+                            }
                         }
                     });
                 }
@@ -347,7 +349,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            if(cause instanceof IOException) {
+            if (cause instanceof IOException) {
                 log.info("Target remote host {}:{} close, cause IOException", host, port);
             } else {
                 log.warn("DispathcerHandelr occur a exception", cause);

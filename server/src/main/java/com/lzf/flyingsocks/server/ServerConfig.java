@@ -35,29 +35,31 @@ public class ServerConfig extends AbstractConfig implements Config {
 
     @Override
     protected void initInternal() throws ConfigInitializationException {
-        try(InputStream is = configManager.loadResource("classpath://config.properties")) {
+        try (InputStream is = configManager.loadResource("classpath://config.properties")) {
             Properties p = new Properties();
             p.load(is);
 
             String location;
-            if(configManager.isWindows()) {
+            if (configManager.isWindows()) {
                 location = p.getProperty("config.location.windows");
-            } else if(configManager.isMacOS()) {
+            } else if (configManager.isMacOS()) {
                 location = p.getProperty("config.location.mac");
             } else {
                 location = p.getProperty("config.location.linux");
             }
 
             File folder = new File(location);
-            if(!folder.exists())
+            if (!folder.exists()) {
                 folder.mkdirs();
+            }
 
-            if(!location.endsWith("/"))
+            if (!location.endsWith("/")) {
                 location += "/";
+            }
 
             this.location = location;
 
-            if(configManager.isWindows() || !location.startsWith("/")) {
+            if (configManager.isWindows() || !location.startsWith("/")) {
                 this.locationURL = "file:///" + this.location;
             } else {
                 this.locationURL = "file://" + this.location;
@@ -66,23 +68,23 @@ public class ServerConfig extends AbstractConfig implements Config {
             location += "config.json";
             File file = new File(location);
 
-            if(!file.exists()) {
+            if (!file.exists()) {
                 makeTemplateConfigFile(file);
             }
 
-            try(InputStream cis = file.toURI().toURL().openStream()) {
+            try (InputStream cis = file.toURI().toURL().openStream()) {
                 byte[] b = new byte[102400];
                 int len = cis.read(b);
                 String json = new String(b, 0, len, StandardCharsets.UTF_8);
                 JSONArray arr = JSON.parseArray(json);
-                for(int i = 0; i < arr.size(); i++) {
+                for (int i = 0; i < arr.size(); i++) {
                     JSONObject obj = arr.getJSONObject(i);
                     String name = obj.getString("name");
                     int port = obj.getIntValue("port");
                     int certPort = obj.getIntValue("cert-port");
                     int client = obj.getIntValue("max-client");
 
-                    if(!BaseUtils.isPort(port)) {
+                    if (!BaseUtils.isPort(port)) {
                         log.error("Illegal Port {}, should be large than 0 and smaller than 65536", port);
                         System.exit(1);
                     }
@@ -90,7 +92,7 @@ public class ServerConfig extends AbstractConfig implements Config {
                     EncryptType encryptType = EncryptType.valueOf(obj.getString("encrypt"));
                     AuthType authType = AuthType.valueOf(obj.getString("auth-type").toUpperCase());
 
-                    if(encryptType == EncryptType.OpenSSL && !BaseUtils.isPort(certPort)) {
+                    if (encryptType == EncryptType.OpenSSL && !BaseUtils.isPort(certPort)) {
                         log.error("Illegal CertPort {}, should be large than 0 and smaller than 65536", certPort);
                         System.exit(1);
                     }
@@ -101,7 +103,8 @@ public class ServerConfig extends AbstractConfig implements Config {
                         case SIMPLE: {
                             String pwd = obj.getString("password");
                             n.putArgument("password", pwd);
-                        } break;
+                        }
+                        break;
                         case USER: {
                             String group = obj.getString("group");
                             n.putArgument("group", group);
@@ -209,9 +212,11 @@ public class ServerConfig extends AbstractConfig implements Config {
 
             switch (authType) {
                 case SIMPLE:
-                    sb.append(" password:").append(args.get("password")); break;
+                    sb.append(" password:").append(args.get("password"));
+                    break;
                 case USER:
-                    sb.append(" group:").append(args.get("group")); break;
+                    sb.append(" group:").append(args.get("group"));
+                    break;
             }
 
             sb.append(" Encrypt:").append(encryptType.name());

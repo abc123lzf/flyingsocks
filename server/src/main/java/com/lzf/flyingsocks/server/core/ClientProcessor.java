@@ -97,7 +97,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             }
         }
 
-        if(provider != null) {
+        if (provider != null) {
             if (provider instanceof OpenSSLEncryptProvider) {
                 ConfigManager<?> manager = parent.getParentComponent().getConfigManager();
                 OpenSSLConfig cfg = new OpenSSLConfig(manager);
@@ -105,7 +105,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
                 Map<String, Object> params = new HashMap<>(8);
 
-                try(InputStream certIs = cfg.openRootCertStream()) {
+                try (InputStream certIs = cfg.openRootCertStream()) {
                     byte[] b = new byte[10240];
                     int r = certIs.read(b);
                     byte[] nb = new byte[r];
@@ -151,22 +151,22 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
         ServerBootstrap boot = new ServerBootstrap();
         boot.group(parent.getConnectionReceiveWorker(), parent.getRequestProcessWorker())
-            .channel(NioServerSocketChannel.class)
-            .childHandler(new ChannelInitializer<SocketChannel>() {
-                @Override
-                protected void initChannel(SocketChannel ch) throws Exception {
-                    ChannelPipeline cp = ch.pipeline();
-                    if(provider != null) {
-                        if(!provider.isInboundHandlerSameAsOutboundHandler())
-                            cp.addLast(provider.encodeHandler(params));
-                        cp.addLast(provider.decodeHandler(params));
+                .channel(NioServerSocketChannel.class)
+                .childHandler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    protected void initChannel(SocketChannel ch) throws Exception {
+                        ChannelPipeline cp = ch.pipeline();
+                        if (provider != null) {
+                            if (!provider.isInboundHandlerSameAsOutboundHandler())
+                                cp.addLast(provider.encodeHandler(params));
+                            cp.addLast(provider.decodeHandler(params));
+                        }
+                        cp.addLast(parent.clientSessionHandler());
+                        cp.addLast(FSMessageChannelOutboundHandler.INSTANCE);
+                        cp.addLast(new FixedLengthFrameDecoder(DelimiterMessage.LENGTH));
+                        cp.addLast(new InitialHandler());
                     }
-                    cp.addLast(parent.clientSessionHandler());
-                    cp.addLast(FSMessageChannelOutboundHandler.INSTANCE);
-                    cp.addLast(new FixedLengthFrameDecoder(DelimiterMessage.LENGTH));
-                    cp.addLast(new InitialHandler());
-                }
-            });
+                });
 
         this.serverBootstrap = boot;
 
@@ -220,23 +220,24 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
     /**
      * 对客户端认证报文进行比对
+     *
      * @param msg 客户端认证报文
      * @return 是否通过认证
      */
     private boolean doAuth(AuthMessage msg) {
         ServerConfig.Node n = parent.getServerConfig();
-        if(n.authType.authMethod != msg.getAuthMethod()) { //如果认证方式不匹配
+        if (n.authType.authMethod != msg.getAuthMethod()) { //如果认证方式不匹配
             return false;
         }
 
-        if(n.authType == ServerConfig.AuthType.SIMPLE) {
+        if (n.authType == ServerConfig.AuthType.SIMPLE) {
             List<String> keys = msg.getAuthMethod().getContainsKey();
-            for(String key : keys) {
-                if(!n.getArgument(key).equals(msg.getContent(key)))
+            for (String key : keys) {
+                if (!n.getArgument(key).equals(msg.getContent(key)))
                     return false;
             }
             return true;
-        } else if(n.authType == ServerConfig.AuthType.USER) {
+        } else if (n.authType == ServerConfig.AuthType.USER) {
             String group = n.getArgument("group");
             UserDatabase db = parent.getParentComponent().getUserDatabase();
 
@@ -251,7 +252,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            if(cause instanceof IOException) {
+            if (cause instanceof IOException) {
                 return;
             }
             log.warn("Exception occur at CertRequestHandler", cause);
@@ -262,21 +263,21 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
         protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
             CertRequestMessage req = new CertRequestMessage(msg);
             boolean auth = doAuth(req);
-            if(!auth) {
+            if (!auth) {
                 ctx.close();
                 return;
             }
 
             byte[] src = req.getCertMD5();
             boolean update = false;
-            for(int i = 0; i < 16; i++) {
-                if(certMD5[i] != src[i]) {
+            for (int i = 0; i < 16; i++) {
+                if (certMD5[i] != src[i]) {
                     update = true;
                     break;
                 }
             }
 
-            if(update) {
+            if (update) {
                 CertResponseMessage resp = new CertResponseMessage(true, cert);
                 ctx.writeAndFlush(resp.serialize());
             } else {
@@ -292,7 +293,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
         protected void channelRead0(ChannelHandlerContext ctx, ByteBuf buf) throws SerializationException {
             byte[] key = new byte[DelimiterMessage.DEFAULT_SIZE];
             DelimiterMessage msg = new DelimiterMessage(buf);
-            if(msg.getDelimiter() == null) {
+            if (msg.getDelimiter() == null) {
                 log.info("Remote client close, cause Delimiter message magic number is not correct");
                 ctx.close();
                 return;
@@ -324,11 +325,11 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            if(cause instanceof SSLException || cause.getCause() instanceof SSLException) {
+            if (cause instanceof SSLException || cause.getCause() instanceof SSLException) {
                 log.info("Close remote host cause it's not SSL connection");
                 ctx.close();
-            } else if(cause instanceof SerializationException) {
-                if(log.isInfoEnabled()) {
+            } else if (cause instanceof SerializationException) {
+                if (log.isInfoEnabled()) {
                     log.info("Close remote host [{}] cause it's not flyingsocks client connection", ctx.channel().remoteAddress());
                 }
                 ctx.close();
@@ -344,14 +345,14 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
         private final ByteBuf delimiter;
 
         private DelimiterOutboundHandler(ByteBuf delimiter) {
-            if(delimiter.readableBytes() != DelimiterMessage.DEFAULT_SIZE)
+            if (delimiter.readableBytes() != DelimiterMessage.DEFAULT_SIZE)
                 throw new IllegalArgumentException("Illegal delimiter ByteBuf, request delimiter length is " + DelimiterMessage.DEFAULT_SIZE);
             this.delimiter = delimiter.copy();
         }
 
         @Override
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
-            if(msg instanceof ByteBuf) {
+            if (msg instanceof ByteBuf) {
                 ChannelPromise vcp = ctx.voidPromise();
                 ctx.write(msg, vcp);
                 ctx.write(delimiter.copy(), vcp);
@@ -379,21 +380,21 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             try {
                 msg = new AuthMessage(buf);
             } catch (SerializationException e) {
-                if(log.isInfoEnabled())
+                if (log.isInfoEnabled())
                     log.info("Deserialize occur a exception", e);
                 ctx.close();
                 return;
             }
 
             boolean auth = doAuth(msg);
-            if(!auth) {
-                if(log.isTraceEnabled())
-                    log.trace("Auth failure, from client {}", ((SocketChannel)ctx.channel()).remoteAddress().getHostName());
+            if (!auth) {
+                if (log.isTraceEnabled())
+                    log.trace("Auth failure, from client {}", ((SocketChannel) ctx.channel()).remoteAddress().getHostName());
                 ctx.close();
                 return;
             } else {
-                if(log.isTraceEnabled()) {
-                    log.trace("Auth success, from client {}", ((SocketChannel)ctx.channel()).remoteAddress().getHostName());
+                if (log.isTraceEnabled()) {
+                    log.trace("Auth success, from client {}", ((SocketChannel) ctx.channel()).remoteAddress().getHostName());
                 }
             }
 
@@ -430,7 +431,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
                 return;
             }
 
-            if(log.isTraceEnabled())
+            if (log.isTraceEnabled())
                 log.trace("Receiver client ProxyRequest from {}", clientSession.remoteAddress().getAddress().getHostAddress());
 
             ProxyTask task = new ProxyTask(msg, clientSession);

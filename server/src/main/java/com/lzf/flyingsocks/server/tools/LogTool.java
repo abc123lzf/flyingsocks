@@ -18,7 +18,7 @@ public final class LogTool {
     private static final String MACOS_PATH = " /usr/local/var/log/flyingsocks";
 
     public static void main(String[] args) throws IOException {
-        if(args.length != 2 && args.length != 4 && args.length != 6) {
+        if (args.length != 2 && args.length != 4 && args.length != 6) {
             help();
             return;
         }
@@ -29,20 +29,20 @@ public final class LogTool {
         String src;      //log4j配置文件路径
         String level = null;
 
-        if(map.containsKey("-path")) {
+        if (map.containsKey("-path")) {
             src = map.get("-path");
         } else {
             help();
             return;
         }
 
-        if(map.containsKey("-folder")) {
+        if (map.containsKey("-folder")) {
             folder = map.get("-folder");
         }
 
-        if(map.containsKey("-level")) {
+        if (map.containsKey("-level")) {
             level = map.getOrDefault("level", "INFO").toUpperCase(Locale.US);
-            if(!isLogLevel(level)) {
+            if (!isLogLevel(level)) {
                 help();
                 return;
             }
@@ -80,7 +80,7 @@ public final class LogTool {
 
         for (String s : output) {
             String op = s.trim();
-            if(isLogLevel(op)) {
+            if (isLogLevel(op)) {
                 sb.append(',').append(level);
             } else {
                 sb.append(',').append(op);
@@ -96,7 +96,7 @@ public final class LogTool {
 
     private static String makeDefaultFolder(String path) throws IOException {
         File folder;
-        if(path == null) {
+        if (path == null) {
             if (Platform.isWindows()) {
                 folder = new File(WINDOWS_PATH);
             } else if (Platform.isMacOSX()) {
@@ -108,7 +108,7 @@ public final class LogTool {
             folder = new File(path);
         }
 
-        if(!folder.mkdirs()) {
+        if (!folder.mkdirs()) {
             throw new IOException("Can not make dir at " + folder.getAbsolutePath());
         }
 
@@ -132,5 +132,6 @@ public final class LogTool {
     }
 
 
-    private LogTool() { }
+    private LogTool() {
+    }
 }

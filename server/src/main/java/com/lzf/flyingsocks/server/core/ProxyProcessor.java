@@ -136,6 +136,7 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
 
     /**
      * 根据Channel获取客户端会话对象
+     *
      * @param channel Channel通道
      * @return 客户端会话
      */
@@ -146,23 +147,23 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
     @Override
     public void registerSubscriber(ProxyTaskSubscriber subscriber) {
         proxyTaskSubscribers.add(subscriber);
-        if(log.isInfoEnabled())
+        if (log.isInfoEnabled())
             log.info("ProxyTaskSubscriber {} has been register in manager.", subscriber.toString());
     }
 
     @Override
     public void removeSubscriber(ProxyTaskSubscriber subscriber) {
-        if(proxyTaskSubscribers.remove(subscriber)) {
+        if (proxyTaskSubscribers.remove(subscriber)) {
             if (log.isInfoEnabled())
                 log.info("ProxyTaskSubscriber {} has been remove from manager.", subscriber.toString());
-        } else if(log.isWarnEnabled()) {
+        } else if (log.isWarnEnabled()) {
             log.warn("Remove failure, cause ProxyTaskSubscriber doesn't found in list.");
         }
     }
 
     @Override
     public void publish(ProxyTask task) {
-        if(proxyTaskSubscribers.size() == 0) {
+        if (proxyTaskSubscribers.size() == 0) {
             log.error("No ProxyTaskSubscriber register.");
             task.getRequestMessage().getMessage().release();
             return;
@@ -179,7 +180,7 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
     }
 
     private void removeClientSession(Channel channel) {
-        if(log.isInfoEnabled()) {
+        if (log.isInfoEnabled()) {
             log.info("Remote client has disconnect, connection information: {}", activeClientMap.get(channel));
         }
         activeClientMap.remove(channel);
@@ -187,6 +188,7 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
 
     /**
      * 获取默认的会话管理器
+     *
      * @return 会话管理器
      */
     public ChannelInboundHandler clientSessionHandler() {
@@ -195,6 +197,7 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
 
     /**
      * 获取当前ProxyHandler的配置信息
+     *
      * @return 配置信息
      */
     ServerConfig.Node getServerConfig() {
@@ -220,7 +223,7 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
-            if(activeClientMap.size() > maxClient) {
+            if (activeClientMap.size() > maxClient) {
                 log.info("Node \"{}\" Client number out of maxClient limit, value:{}", serverConfig.name, maxClient);
                 ctx.close();
             }
@@ -233,11 +236,11 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            if(cause instanceof SSLException || cause.getCause() instanceof SSLException) {
+            if (cause instanceof SSLException || cause.getCause() instanceof SSLException) {
                 log.info("Client connection is not SSL Connection");
-            } else if(cause instanceof IOException) {
+            } else if (cause instanceof IOException) {
                 log.info("Remote host close the connection");
-            } else if(log.isWarnEnabled()) {
+            } else if (log.isWarnEnabled()) {
                 log.warn("An exception occur", cause);
             }
             ctx.close();

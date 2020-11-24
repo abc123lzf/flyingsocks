@@ -61,18 +61,18 @@ public class SocksConfig extends AbstractConfig {
     protected void initInternal() throws ConfigInitializationException {
         GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
         File file = new File(cfg.configPath(), SOCKS_CONFIG_FILE);
-        if(!file.exists()) {
+        if (!file.exists()) {
             try {
                 makeSocksSettingFile(file);
             } catch (IOException e) {
                 throw new ConfigInitializationException("Create new file at " + file.getAbsolutePath() + " occur a exception", e);
             }
-        } else if(file.isDirectory()) {
+        } else if (file.isDirectory()) {
             throw new ConfigInitializationException("location at " + file.getAbsolutePath() + " is a Directory");
         }
 
-        try(FileInputStream is = new FileInputStream(file)) {
-            byte[] b = new byte[(int)file.length()];
+        try (FileInputStream is = new FileInputStream(file)) {
+            byte[] b = new byte[(int) file.length()];
             int cnt = is.read(b);
             String json = new String(b, 0, cnt, StandardCharsets.UTF_8);
             JSONObject obj = JSON.parseObject(json);
@@ -80,14 +80,16 @@ public class SocksConfig extends AbstractConfig {
             this.auth = obj.getBooleanValue("auth");
             this.address = obj.getString("address");
 
-            if(address == null)
+            if (address == null) {
                 address = "0.0.0.0";
+            }
 
-            if(auth) {
+            if (auth) {
                 this.username = obj.getString("username");
                 this.password = obj.getString("password");
-                if(username == null)
+                if (username == null) {
                     throw new ConfigInitializationException("When socks auth is true, the username should not be null");
+                }
             }
         } catch (IOException | JSONException | NumberFormatException e) {
             throw new ConfigInitializationException("Exception occur when reading socks-setting file at" + file.getAbsolutePath(), e);
@@ -103,7 +105,7 @@ public class SocksConfig extends AbstractConfig {
         String content = socks.toJSONString();
         ByteBuffer buf = ByteBuffer.allocate(content.length());
         buf.put(content.getBytes(StandardCharsets.US_ASCII));
-        try(FileChannel ch = FileChannel.open(file.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+        try (FileChannel ch = FileChannel.open(file.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
             buf.rewind();
             ch.write(buf);
         }
@@ -123,12 +125,12 @@ public class SocksConfig extends AbstractConfig {
         socks.put("address", address);
         socks.put("port", port);
         socks.put("auth", auth);
-        if(auth) {
+        if (auth) {
             socks.put("username", username);
             socks.put("password", password);
         }
 
-        try(FileWriter writer = new FileWriter(f)) {
+        try (FileWriter writer = new FileWriter(f)) {
             writer.write(socks.toString(SerializerFeature.PrettyFormat));
         }
     }
@@ -154,11 +156,11 @@ public class SocksConfig extends AbstractConfig {
     }
 
     public void update(int port, boolean auth, String username, String password) {
-        if(port > 0)
+        if (port > 0)
             this.port = port;
 
-        if(this.auth != auth) {
-            if(auth) {
+        if (this.auth != auth) {
+            if (auth) {
                 this.username = username;
                 this.password = password;
                 this.auth = auth;

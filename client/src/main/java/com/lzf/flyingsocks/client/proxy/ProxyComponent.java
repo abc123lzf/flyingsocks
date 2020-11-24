@@ -75,7 +75,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
         this.proxyServerConfig = cfg;
         initProxyServerComponent();
 
-        if(!loadBalance && activeProxyServers.size() > 1) {
+        if (!loadBalance && activeProxyServers.size() > 1) {
             throw new ComponentException(new IllegalStateException("When load balance is turn off, " +
                     "the using proxy server number must not be grater than 1"));
         }
@@ -112,15 +112,16 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
 
     @Override
     public void publish(ProxyRequest request) {
-        if(requestSubscribers.isEmpty() && log.isWarnEnabled())
+        if (requestSubscribers.isEmpty() && log.isWarnEnabled()) {
             log.warn("No RequestSubscriber found in manager");
+        }
         //根据PAC文件的配置自动选择代理模式
         boolean np = needProxy(request.getHost());
         request.setProxy(np);
         int index = 0;
         List<Integer> list = new ArrayList<>(3);
-        for(ProxyRequestSubscriber sub : requestSubscribers) {
-            if(sub.requestType().isAssignableFrom(request.getClass()) &&
+        for (ProxyRequestSubscriber sub : requestSubscribers) {
+            if (sub.requestType().isAssignableFrom(request.getClass()) &&
                     (sub.receiveNeedProxy() && np || sub.receiveNeedlessProxy() && !np) &&  //false&&true || true&&false
                     sub.requestProtcol().contains(request.protocol())) {
                 list.add(index);
@@ -128,7 +129,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
             index++;
         }
 
-        if(list.isEmpty()) {
+        if (list.isEmpty()) {
             ReferenceCountUtil.release(request.takeClientMessage());
             log.warn("ProxyRequest was not consume, target server: {}", request.host);
         } else {
@@ -152,6 +153,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
 
     /**
      * 根据PAC配置判断是否需要进行代理
+     *
      * @param host 主机名
      * @return 是否需要代理
      */
@@ -161,11 +163,12 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
 
     /**
      * 添加已经成功连接flyingsocks服务器
+     *
      * @param component ProxyServerComponent实例
      */
     void addActiveProxyServer(ProxyServerComponent component) {
         Objects.requireNonNull(component);
-        if(component.getParentComponent() != this) {
+        if (component.getParentComponent() != this) {
             throw new IllegalArgumentException("This ProxyComponent don't have this ProxyServerComponent instance");
         }
 
@@ -174,12 +177,13 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
 
     /**
      * 移除flyingsocks服务器实例
+     *
      * @param component ProxyServerComponent实例
      */
     void removeProxyServer(ProxyServerComponent component) {
         Objects.requireNonNull(component);
         boolean success = activeProxyServers.remove(component);
-        if(success) {
+        if (success) {
             removeComponentByName(component.getName());
         }
     }
@@ -188,8 +192,8 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
         assert getState() == LifecycleState.INITIALIZING;
         Node[] nodes = proxyServerConfig.getProxyServerConfig();
 
-        for(Node node : nodes) {
-            if(node.isUse()) {
+        for (Node node : nodes) {
+            if (node.isUse()) {
                 ProxyServerComponent c = new ProxyServerComponent(this, node);
                 addComponent(c);
             }
@@ -199,19 +203,20 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
     private final class ServerProxyConfigListener implements ConfigEventListener {
         @Override
         public void configEvent(ConfigEvent configEvent) {
-            if(!(configEvent.getSource() instanceof ProxyServerConfig))
+            if (!(configEvent.getSource() instanceof ProxyServerConfig)) {
                 return;
+            }
 
             ProxyServerConfig cfg = (ProxyServerConfig) configEvent.getSource();
 
-            if(configEvent.getEvent().equals(Config.UPDATE_EVENT)) {
+            if (configEvent.getEvent().equals(Config.UPDATE_EVENT)) {
                 Node[] nodes = cfg.getProxyServerConfig();
-                for(Node node : nodes) {
+                for (Node node : nodes) {
                     String name = ProxyServerComponent.generalName(node.getHost(), node.getPort());
                     ProxyServerComponent psc = getComponentByName(name, ProxyServerComponent.class);
 
-                    if(node.isUse()) { //如果用户需要建立一个代理服务器连接
-                        if(psc != null) {
+                    if (node.isUse()) { //如果用户需要建立一个代理服务器连接
+                        if (psc != null) {
                             psc.stop();
                             removeComponentByName(name);
                         }
@@ -224,7 +229,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
                                 newPsc.start();
                             }
                         });
-                    } else if(psc != null) { //如果用户需要关闭这个代理服务器连接
+                    } else if (psc != null) { //如果用户需要关闭这个代理服务器连接
                         psc.setUse(false);
                         executors.submit(psc::stop);
                         removeComponentByName(name);

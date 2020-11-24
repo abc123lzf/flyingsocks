@@ -31,12 +31,13 @@ public class ClientSession extends AbstractSession implements Session {
 
 
     public void setDelimiterKey(byte[] key) {
-        if(delimiterKey == null) {
-            if(key.length == DelimiterMessage.DEFAULT_SIZE)
+        if (delimiterKey == null) {
+            if (key.length == DelimiterMessage.DEFAULT_SIZE) {
                 delimiterKey = Arrays.copyOf(key, DelimiterMessage.DEFAULT_SIZE);
-            else
+            } else {
                 throw new IllegalArgumentException(String.format("delimiter key only can set %d bytes",
                         DelimiterMessage.DEFAULT_SIZE));
+            }
         } else {
             throw new IllegalStateException("can not set double time delimiter key at same client.");
         }
@@ -76,7 +77,7 @@ public class ClientSession extends AbstractSession implements Session {
     }
 
     private void checkChannelState() throws IllegalStateException {
-        if(!isActive())
+        if (!isActive())
             throw new IllegalStateException("Channel has been closed");
     }
 

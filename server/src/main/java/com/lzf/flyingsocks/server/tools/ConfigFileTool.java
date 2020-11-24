@@ -38,36 +38,43 @@ public final class ConfigFileTool {
             throw new Error(e);
         }
 
-        if(Platform.isWindows()) {
+        if (Platform.isWindows()) {
             CFG_PATH = new File(p.getProperty("config.location.windows"));
-        } else if(Platform.isMacOSX()) {
+        } else if (Platform.isMacOSX()) {
             CFG_PATH = new File(p.getProperty("config.location.mac"));
-        } else if(Platform.isLinux()) {
+        } else if (Platform.isLinux()) {
             CFG_PATH = new File(p.getProperty("config.location.linux"));
         } else {
             throw new Error("Unknown Operation system");
         }
 
-        if(!CFG_PATH.exists() && CFG_PATH.mkdirs()) {
+        if (!CFG_PATH.exists() && CFG_PATH.mkdirs()) {
             throw new Error("Can not make directory at " + CFG_PATH.getAbsolutePath());
-        } else if(CFG_PATH.isFile()) {
+        } else if (CFG_PATH.isFile()) {
             throw new Error(CFG_PATH.getAbsolutePath() + " was a file, It's should be directory.");
         }
     }
 
 
     public static void main(String[] args) {
-        if(args.length == 0) {
+        if (args.length == 0) {
             help();
             return;
         }
 
         switch (args[0]) {
-            case "-create": create(); break;
-            case "-list": list(); break;
-            case "-remove": remove(); break;
+            case "-create":
+                create();
+                break;
+            case "-list":
+                list();
+                break;
+            case "-remove":
+                remove();
+                break;
             default:
-                help(); return;
+                help();
+                return;
         }
 
         println("Done.");
@@ -75,20 +82,20 @@ public final class ConfigFileTool {
 
     private static void create() {
         JSONArray src = loadConfigFile();
-        if(src == null) {
+        if (src == null) {
             src = new JSONArray();
         }
 
         Scanner sc = new Scanner(System.in);
         print("Enter this server config's name: ");
         String name = sc.next();
-        if(name.isEmpty()) {
+        if (name.isEmpty()) {
             System.err.println("Name should not null");
             return;
         }
 
         for (int i = 0; i < src.size(); i++) {
-            if(src.getJSONObject(i).getString("name").equals(name)) {
+            if (src.getJSONObject(i).getString("name").equals(name)) {
                 System.err.println("Name \"" + name + "\" is already exists on config.json");
                 return;
             }
@@ -96,14 +103,14 @@ public final class ConfigFileTool {
 
         print("Enter port [1 ~ 65535]: ");
         int port = sc.nextInt();
-        if(!BaseUtils.isPort(port)) {
+        if (!BaseUtils.isPort(port)) {
             System.err.println("Illegal port.");
             return;
         }
 
         print("Enter max clients [more than 1]: ");
         int maxClient = sc.nextInt();
-        if(maxClient < 1) {
+        if (maxClient < 1) {
             System.err.println("Illegal max client number.");
             return;
         }
@@ -111,25 +118,25 @@ public final class ConfigFileTool {
         print("Enter encrypt [0 or 1] 0 is not using encrypt, 1 is SSL: ");
         int encrypt = sc.nextInt();
 
-        if(encrypt != 0 && encrypt != 1) {
+        if (encrypt != 0 && encrypt != 1) {
             System.err.println("Illegal encrypt type.");
             return;
         }
 
         int cport = 0;
-        if(encrypt == 1) {
+        if (encrypt == 1) {
             print("SSL Cert port [1 ~ 65535]: ");
             cport = sc.nextInt();
-            if(cport == port) {
+            if (cport == port) {
                 System.err.println("This port should not same as proxy port.");
-            } else if(!BaseUtils.isPort(cport)) {
+            } else if (!BaseUtils.isPort(cport)) {
                 System.err.println("Illegal port.");
             }
         }
 
         print("Enter auth type [0 or 1] 0 is simple authentication, 1 is user authentication: ");
         int auth = sc.nextInt();
-        if(auth != 0 && auth != 1) {
+        if (auth != 0 && auth != 1) {
             System.err.println("Illegal auth type.");
             return;
         }
@@ -138,17 +145,17 @@ public final class ConfigFileTool {
         JSONObject obj = new JSONObject();
         obj.put("name", name);
         obj.put("port", port);
-        if(encrypt == 1) {
+        if (encrypt == 1) {
             obj.put("cert-port", cport);
         }
         obj.put("max-client", maxClient);
         obj.put("encrypt", encrypt == 1 ? "OpenSSL" : "None");
         obj.put("auth-type", auth == 1 ? "simple" : "user");
 
-        if(auth == 0) {
+        if (auth == 0) {
             print("Enter password [more than 6 character]:");
             String pass = sc.next();
-            if(pass.length() < 6) {
+            if (pass.length() < 6) {
                 System.err.println("Password length should be more than 6 character");
                 return;
             }
@@ -168,7 +175,7 @@ public final class ConfigFileTool {
 
     private static void remove() {
         JSONArray arr = loadConfigFile();
-        if(arr == null || arr.isEmpty()) {
+        if (arr == null || arr.isEmpty()) {
             System.err.println("No config found.");
             return;
         }
@@ -178,7 +185,7 @@ public final class ConfigFileTool {
         String name = sc.next();
 
         for (int i = 0; i < arr.size(); i++) {
-            if(arr.getJSONObject(i).getString("name").equals(name)) {
+            if (arr.getJSONObject(i).getString("name").equals(name)) {
                 arr.remove(i);
                 writeConfigFile(arr);
                 println("Remove success.");
@@ -191,7 +198,7 @@ public final class ConfigFileTool {
 
     private static void list() {
         JSONArray arr = loadConfigFile();
-        if(arr == null || arr.isEmpty()) {
+        if (arr == null || arr.isEmpty()) {
             println("No config found.");
             return;
         }
@@ -202,7 +209,7 @@ public final class ConfigFileTool {
 
     private static JSONArray loadConfigFile() {
         File f = new File(CFG_PATH, CFG_FILE_NAME);
-        if(!f.exists()) {
+        if (!f.exists()) {
             return null;
         }
 
@@ -219,7 +226,7 @@ public final class ConfigFileTool {
 
     private static void writeConfigFile(JSONArray arr) {
         File f = new File(CFG_PATH, CFG_FILE_NAME);
-        try(FileWriter fw = new FileWriter(f)) {
+        try (FileWriter fw = new FileWriter(f)) {
             fw.write(arr.toString(SerializerFeature.PrettyFormat));
         } catch (IOException e) {
             throw new Error(e);
@@ -241,5 +248,6 @@ public final class ConfigFileTool {
     }
 
 
-    private ConfigFileTool() { }
+    private ConfigFileTool() {
+    }
 }

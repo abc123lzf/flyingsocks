@@ -9,13 +9,11 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
 import java.util.NoSuchElementException;
-import java.util.Properties;
 import java.util.Scanner;
 
 /**
@@ -61,24 +59,25 @@ public class GlobalConfig extends AbstractConfig {
 
     /**
      * 加载基本配置文件，并初始化用户存档文件
+     *
      * @throws ConfigInitializationException 如果无法获取基本配置文件或者无法创建用户存档文件
      */
     @Override
     protected void initInternal() throws ConfigInitializationException {
         String location;
-        if(configManager.isWindows()) {
+        if (configManager.isWindows()) {
             location = configManager.getSystemProperties("config.location.windows");
-        } else if(configManager.isMacOS()) {
+        } else if (configManager.isMacOS()) {
             location = configManager.getSystemProperties("config.location.mac");
         } else {
             location = configManager.getSystemProperties("config.location.linux");
         }
 
         File folder = new File(location);
-        if(!folder.exists() && !folder.mkdirs())
+        if (!folder.exists() && !folder.mkdirs())
             throw new ConfigInitializationException("Can not create folder at " + folder.getAbsolutePath());
 
-        if(!location.endsWith("/"))
+        if (!location.endsWith("/"))
             location += "/";
 
         this.path = location;
@@ -86,14 +85,14 @@ public class GlobalConfig extends AbstractConfig {
         this.location = location;
 
         File connTimeoutFile = new File(this.path, CONNECT_TIMEOUT_FILE);
-        if(connTimeoutFile.exists()) {
-            if(connTimeoutFile.isDirectory()) {
+        if (connTimeoutFile.exists()) {
+            if (connTimeoutFile.isDirectory()) {
                 throw new ConfigInitializationException("File at " + connTimeoutFile.getAbsolutePath() + " is a Directory!");
             }
 
-            try(FileInputStream is = new FileInputStream(connTimeoutFile);
-                Scanner sc = new Scanner(is)) {
-                this.connectTimeout = Integer.valueOf(sc.next());
+            try (FileInputStream is = new FileInputStream(connTimeoutFile);
+                 Scanner sc = new Scanner(is)) {
+                this.connectTimeout = Integer.parseInt(sc.next());
             } catch (IOException e) {
                 throw new ConfigInitializationException("Can not open file at " + connTimeoutFile.getAbsolutePath(), e);
             } catch (NumberFormatException e) {
@@ -111,13 +110,13 @@ public class GlobalConfig extends AbstractConfig {
 
 
         File guiFile = new File(this.path, GUI_OPTION_FILE);
-        if(guiFile.exists()) {
-            if(guiFile.isDirectory()) {
+        if (guiFile.exists()) {
+            if (guiFile.isDirectory()) {
                 throw new ConfigInitializationException("File at " + guiFile.getAbsolutePath() + " is a Directory!");
             }
 
-            try(FileInputStream is = new FileInputStream(guiFile);
-                Scanner sc = new Scanner(is)) {
+            try (FileInputStream is = new FileInputStream(guiFile);
+                 Scanner sc = new Scanner(is)) {
                 this.openGUI = sc.nextBoolean();
             } catch (IOException e) {
                 throw new ConfigInitializationException("Can not open file at " + guiFile.getAbsolutePath(), e);
@@ -173,29 +172,31 @@ public class GlobalConfig extends AbstractConfig {
 
     /**
      * 创建一个默认的记录connectTimeout的文件
+     *
      * @param file 文件路径
      */
     private void makeTemplateConnectTimeFile(File file) throws IOException {
         String content = String.valueOf(DEFAULT_CONNECT_TIMEOUT);
         ByteBuffer buf = ByteBuffer.allocate(content.length());
-        buf.put(content.getBytes(Charset.forName("ASCII")));
+        buf.put(content.getBytes(StandardCharsets.US_ASCII));
         writeFile(file, buf);
     }
 
     /**
      * 创建默认GUI设置文件
+     *
      * @param file 文件路径
      * @throws IOException 当写入失败
      */
     private void makeTemplateGUIOptionFile(File file) throws IOException {
         String content = "true";
         ByteBuffer buf = ByteBuffer.allocate(content.length());
-        buf.put(content.getBytes(Charset.forName("ASCII")));
+        buf.put(content.getBytes(StandardCharsets.US_ASCII));
         writeFile(file, buf);
     }
 
     private void writeFile(File file, ByteBuffer buf) throws IOException {
-        try(FileChannel ch = FileChannel.open(file.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+        try (FileChannel ch = FileChannel.open(file.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
             buf.rewind();
             ch.write(buf);
         }

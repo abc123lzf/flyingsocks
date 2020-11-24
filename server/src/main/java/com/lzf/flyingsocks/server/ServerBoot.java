@@ -17,7 +17,7 @@ public abstract class ServerBoot {
     private static final Server server = new StandardServer();
 
     public static void main(String[] args) {
-        if(server.getState() != LifecycleState.NEW) {
+        if (server.getState() != LifecycleState.NEW) {
             throw new Error();
         }
 
@@ -26,7 +26,7 @@ public abstract class ServerBoot {
 
     private static void boot() {
         synchronized (ServerBoot.class) {
-            if(server.getState() != LifecycleState.NEW) {
+            if (server.getState() != LifecycleState.NEW) {
                 return;
             }
 
@@ -53,8 +53,9 @@ public abstract class ServerBoot {
 
     private static void shutdown() {
         synchronized (ServerBoot.class) {
-            if(server.getState() != LifecycleState.STARTED)
+            if (server.getState() != LifecycleState.STARTED) {
                 throw new IllegalStateException("Server state is STARTED");
+            }
 
             server.stop();
         }

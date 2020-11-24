@@ -57,13 +57,13 @@ public class TextUserDatabase extends AbstractConfig implements UserDatabase {
     @Override
     protected void initInternal() throws ConfigInitializationException {
         ServerConfig cfg = configManager.getConfig(ServerConfig.NAME, ServerConfig.class);
-        if(cfg != null) {
+        if (cfg != null) {
             doInitial(cfg);
         } else {
             configManager.registerConfigEventListener(new ConfigEventListener() {
                 @Override
                 public void configEvent(ConfigEvent event) {
-                    if(event.getEvent().equals(Config.REGISTER_EVENT) && event.getSource() instanceof ServerConfig) {
+                    if (event.getEvent().equals(Config.REGISTER_EVENT) && event.getSource() instanceof ServerConfig) {
                         try {
                             doInitial((ServerConfig) event.getSource());
                         } catch (ConfigInitializationException e) {
@@ -78,23 +78,23 @@ public class TextUserDatabase extends AbstractConfig implements UserDatabase {
 
 
     private void doInitial(ServerConfig cfg) throws ConfigInitializationException {
-        try(InputStream is = new URL("file:///" + cfg.getLocationURL() + "user.json").openStream()) {
+        try (InputStream is = new URL("file:///" + cfg.getLocationURL() + "user.json").openStream()) {
             byte[] b = new byte[512000];
             int len = is.read(b);
             String json = new String(b, 0, len, StandardCharsets.UTF_8);
 
             JSONArray arr = JSON.parseArray(json);
-            for(int i = 0; i < arr.size(); i++) {
+            for (int i = 0; i < arr.size(); i++) {
                 JSONObject obj = arr.getJSONObject(i);
                 UserGroupImpl group = new UserGroupImpl(obj.getString("group"));
 
                 JSONArray userArr = obj.getJSONArray("user");
-                for(int j = 0; j < userArr.size(); j++) {
+                for (int j = 0; j < userArr.size(); j++) {
                     JSONObject user = userArr.getJSONObject(j);
                     group.userMap.put(user.getString("user"), user.getString("pass"));
                 }
 
-                if(groupMap.containsKey(group.name))
+                if (groupMap.containsKey(group.name))
                     log.warn("Group name '{}' already exists", group.name);
                 groupMap.put(group.name, group);
             }
@@ -110,7 +110,7 @@ public class TextUserDatabase extends AbstractConfig implements UserDatabase {
     @Override
     public boolean doAuth(String group, String username, String password) {
         UserGroupImpl ug = groupMap.get(group);
-        if(ug == null)
+        if (ug == null)
             return false;
 
         return (password == null ? "" : password).equals(ug.userMap.get(username));
@@ -119,10 +119,10 @@ public class TextUserDatabase extends AbstractConfig implements UserDatabase {
     @Override
     public boolean register(String group, String username, String password) {
         UserGroupImpl ug = groupMap.get(group);
-        if(ug == null)
+        if (ug == null)
             return false;
 
-        if(ug.userMap.containsKey(username))
+        if (ug.userMap.containsKey(username))
             return false;
 
         ug.userMap.put(username, password);
@@ -132,7 +132,7 @@ public class TextUserDatabase extends AbstractConfig implements UserDatabase {
     @Override
     public boolean delete(String group, String username) {
         UserGroupImpl ug = groupMap.get(group);
-        if(ug == null)
+        if (ug == null)
             return false;
 
         return ug.userMap.remove(username) != null;
@@ -141,10 +141,10 @@ public class TextUserDatabase extends AbstractConfig implements UserDatabase {
     @Override
     public boolean changePassword(String group, String username, String newPassword) {
         UserGroupImpl ug = groupMap.get(group);
-        if(ug == null)
+        if (ug == null)
             return false;
 
-        if(!ug.userMap.containsKey(username))
+        if (!ug.userMap.containsKey(username))
             return false;
 
         ug.userMap.put(username, newPassword);

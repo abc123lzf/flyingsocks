@@ -43,7 +43,7 @@ public final class StandardClient extends Client {
 
         addComponent(new SocksProxyComponent(this));
 
-        if(cfg.isOpenGUI()) {
+        if (cfg.isOpenGUI()) {
             addComponent(new SWTViewComponent(this));
         }
 
@@ -80,8 +80,10 @@ public final class StandardClient extends Client {
     @Override
     public void updateSocksProxyAuthentication(int port, boolean auth, String username, String password) {
         SocksConfig cfg = getConfigManager().getConfig(SocksConfig.NAME, SocksConfig.class);
-        if(cfg == null)
+        if (cfg == null) {
             return;
+        }
+
         cfg.update(port, auth, username, password);
     }
 
@@ -92,9 +94,9 @@ public final class StandardClient extends Client {
 
     @Override
     public void registerProxyServerConfigListener(String event, Runnable runnable, boolean remove) {
-        if(!remove) {
+        if (!remove) {
             getConfigManager().registerConfigEventListener(e -> {
-                if(e.getSource() instanceof ProxyServerConfig && e.getEvent().equals(event)) {
+                if (e.getSource() instanceof ProxyServerConfig && e.getEvent().equals(event)) {
                     runnable.run();
                 }
             });
@@ -102,7 +104,7 @@ public final class StandardClient extends Client {
             getConfigManager().registerConfigEventListener(new ConfigEventListener() {
                 @Override
                 public void configEvent(ConfigEvent e) {
-                    if(e.getSource() instanceof ProxyServerConfig && e.getEvent().equals(event)) {
+                    if (e.getSource() instanceof ProxyServerConfig && e.getEvent().equals(event)) {
                         runnable.run();
                         e.getConfigManager().removeConfigEventListener(this);
                     }
@@ -113,9 +115,9 @@ public final class StandardClient extends Client {
 
     @Override
     public void registerSocksConfigListener(String event, Runnable runnable, boolean remove) {
-        if(!remove) {
+        if (!remove) {
             getConfigManager().registerConfigEventListener(e -> {
-                if(e.getSource() instanceof SocksConfig && e.getEvent().equals(event)) {
+                if (e.getSource() instanceof SocksConfig && e.getEvent().equals(event)) {
                     runnable.run();
                 }
             });
@@ -123,7 +125,7 @@ public final class StandardClient extends Client {
             getConfigManager().registerConfigEventListener(new ConfigEventListener() {
                 @Override
                 public void configEvent(ConfigEvent e) {
-                    if(e.getSource() instanceof SocksConfig && e.getEvent().equals(event)) {
+                    if (e.getSource() instanceof SocksConfig && e.getEvent().equals(event)) {
                         runnable.run();
                         e.getConfigManager().removeConfigEventListener(this);
                     }
@@ -140,37 +142,43 @@ public final class StandardClient extends Client {
     @Override
     public void addServerConfig(Node node) {
         ProxyServerConfig cfg = getProxyServerConfig();
-        if(cfg != null)
+        if (cfg != null) {
             cfg.addProxyServerNode(node);
+        }
     }
 
     @Override
     public void updateServerConfig(Node node) {
         ProxyServerConfig cfg = getProxyServerConfig();
-        if(cfg != null)
+        if (cfg != null) {
             cfg.updateProxyServerNode(node);
+        }
+
     }
 
     @Override
     public void removeServer(Node node) {
         ProxyServerConfig cfg = getProxyServerConfig();
-        if(cfg != null)
+        if (cfg != null) {
             cfg.removeProxyServerNode(node);
+        }
     }
 
     @Override
     public Node[] getServerNodes() {
         ProxyServerConfig cfg = getProxyServerConfig();
-        if(cfg == null)
+        if (cfg == null) {
             return null;
+        }
         return cfg.getProxyServerConfig();
     }
 
     @Override
     public int proxyMode() {
         ProxyAutoConfig cfg = getConfigManager().getConfig(ProxyAutoConfig.DEFAULT_NAME, ProxyAutoConfig.class);
-        if(cfg == null)
+        if (cfg == null) {
             return -1;
+        }
 
         return cfg.getProxyMode();
     }
@@ -178,24 +186,28 @@ public final class StandardClient extends Client {
     @Override
     public void setProxyMode(int mode) {
         ProxyAutoConfig cfg = getProxyAutoConfig();
-        if(cfg == null)
+        if (cfg == null) {
             return;
+        }
+
         cfg.setProxyMode(mode);
     }
 
     @Override
     public void setProxyServerUsing(Node node, boolean use) {
         ProxyServerConfig cfg = getProxyServerConfig();
-        if(cfg == null)
+        if (cfg == null) {
             return;
+        }
         cfg.setProxyServerUsing(node, use);
     }
 
     @Override
     public void setProxyServerUsing(Map<Node, Boolean> map) {
         ProxyServerConfig cfg = getProxyServerConfig();
-        if(cfg == null)
+        if (cfg == null) {
             return;
+        }
 
         cfg.setProxyServerUsing(map);
     }

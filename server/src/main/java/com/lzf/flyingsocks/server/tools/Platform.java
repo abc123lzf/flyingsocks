@@ -11,7 +11,7 @@ abstract class Platform {
     private static volatile Boolean android;
 
     static boolean isWindows() {
-        if(windows == null) {
+        if (windows == null) {
             return windows = getProperty("os.name", "").toLowerCase(Locale.US).contains("win");
         }
 
@@ -19,7 +19,7 @@ abstract class Platform {
     }
 
     static boolean isMacOSX() {
-        if(macOSX == null) {
+        if (macOSX == null) {
             String name = getProperty("os.name", "").toLowerCase(Locale.US).replaceAll("[^a-z0-9]+", "");
             return macOSX = name.startsWith("macosx") || name.startsWith("osx");
         }
@@ -28,7 +28,7 @@ abstract class Platform {
     }
 
     static boolean isAndroid() {
-        if(android == null) {
+        if (android == null) {
             return android = "Dalvik".equals(getProperty("java.vm.name", null));
         }
 
@@ -66,7 +66,6 @@ abstract class Platform {
 
         return value;
     }
-
 
 
     private Platform() {

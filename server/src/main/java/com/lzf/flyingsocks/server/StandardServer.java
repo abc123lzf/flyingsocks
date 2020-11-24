@@ -31,7 +31,7 @@ public class StandardServer extends TopLevelComponent implements Server {
         getConfigManager().registerConfig(serverConfig);
 
         ServerConfig.Node[] nodes = serverConfig.getServerNode();
-        for(ServerConfig.Node node : nodes) {
+        for (ServerConfig.Node node : nodes) {
             addComponent(new ProxyProcessor(this, node));
         }
 
