@@ -26,9 +26,10 @@ public final class ClasspathURLHandlerFactory implements URLStreamHandlerFactory
 
     @Override
     public URLStreamHandler createURLStreamHandler(String protocol) {
-        if(protocol.toLowerCase().equals(PROTOCOL))
+        if (protocol.toLowerCase().equals(PROTOCOL)) {
             return new ClasspathURLHandler(classLoader);
-        else
+        } else {
             return null;
+        }
     }
 }

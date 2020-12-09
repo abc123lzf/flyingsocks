@@ -12,7 +12,8 @@ public abstract class LifecycleBase implements Lifecycle {
 
     private final List<LifecycleEventListener> listeners = new CopyOnWriteArrayList<>();
 
-    protected LifecycleBase() { }
+    protected LifecycleBase() {
+    }
 
     protected LifecycleBase(LifecycleEventListener... listeners) {
         List<LifecycleEventListener> l = new ArrayList<>();
@@ -23,8 +24,10 @@ public abstract class LifecycleBase implements Lifecycle {
 
     @Override
     public synchronized final void init() throws LifecycleException {
-        if(state.after(LifecycleState.INITIALIZED))
+        if (state.after(LifecycleState.INITIALIZED)) {
             throw new LifecycleException();
+        }
+
         state = LifecycleState.INITIALIZING;
         fireLifecycleEvent(BEFORE_INIT_EVENT, this);
         initInternal();
@@ -32,12 +35,15 @@ public abstract class LifecycleBase implements Lifecycle {
         state = LifecycleState.INITIALIZED;
     }
 
-    protected void initInternal() { }
+    protected void initInternal() {
+    }
 
     @Override
     public synchronized final void start() throws LifecycleException {
-        if(state.after(LifecycleState.STARTING))
+        if (state.after(LifecycleState.STARTING)) {
             throw new LifecycleException();
+        }
+
         state = LifecycleState.STARTING;
         fireLifecycleEvent(BEFORE_START_EVENT, this);
         startInternal();
@@ -48,12 +54,15 @@ public abstract class LifecycleBase implements Lifecycle {
     /**
      * 组件启动过程细节，由子类重写
      */
-    protected void startInternal() { }
+    protected void startInternal() {
+    }
 
     @Override
     public synchronized final void stop() throws LifecycleException {
-        if(state.after(LifecycleState.STOPING))
+        if (state.after(LifecycleState.STOPING)) {
             throw new LifecycleException();
+        }
+
         state = LifecycleState.STOPING;
         fireLifecycleEvent(BEFORE_STOP_EVENT, this);
         stopInternal();
@@ -64,7 +73,8 @@ public abstract class LifecycleBase implements Lifecycle {
     /**
      * 组件停止过程细节，由子类重写
      */
-    protected void stopInternal() { }
+    protected void stopInternal() {
+    }
 
     @Override
     public synchronized final void restart() throws LifecycleException {
@@ -78,7 +88,7 @@ public abstract class LifecycleBase implements Lifecycle {
      * 组件重新启动过程细节，可由子类重写
      */
     protected void restartInternal() {
-        if(state == LifecycleState.STARTED) {
+        if (state == LifecycleState.STARTED) {
             stop();
         }
         init();
@@ -102,7 +112,7 @@ public abstract class LifecycleBase implements Lifecycle {
 
     private void fireLifecycleEvent(String event, Object data) {
         LifecycleEvent eventObj = new LifecycleEvent(this, event, data);
-        for(LifecycleEventListener listener : listeners) {
+        for (LifecycleEventListener listener : listeners) {
             listener.lifecycleEvent(eventObj);
         }
     }

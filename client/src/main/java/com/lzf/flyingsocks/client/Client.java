@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.Objects;
 import java.util.Properties;
 
 public abstract class Client extends TopLevelComponent
@@ -22,7 +23,11 @@ public abstract class Client extends TopLevelComponent
     /**
      * 当前版本号
      */
-    public static final String VERSION = "v2.0";
+    public static final String VERSION = "v3.0";
+
+
+    private Runnable guiTask;
+
 
     Client() {
         super(DEFAULT_COMPONENT_NAME);
@@ -48,16 +53,16 @@ public abstract class Client extends TopLevelComponent
     @Override
     public void cleanLogFiles() {
         GlobalConfig gc = getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
-        if(gc != null) {
+        if (gc != null) {
             File folder = new File(gc.configPath() + "/log");
-            if(!folder.exists() || !folder.isDirectory())
+            if (!folder.exists() || !folder.isDirectory())
                 return;
 
             File[] files = folder.listFiles();
-            if(files == null)
+            if (files == null)
                 return;
             for (File file : files) {
-                if(file.isFile() && !file.delete())
+                if (file.isFile() && !file.delete())
                     log.info("Can not delete file {}", file.getName());
             }
         }
@@ -66,7 +71,7 @@ public abstract class Client extends TopLevelComponent
     @Override
     public void openLogDirectory() {
         GlobalConfig gc = getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
-        if(gc != null) {
+        if (gc != null) {
             File folder = new File(gc.configPath() + "/log");
             try {
                 Desktop.getDesktop().open(folder);
@@ -79,7 +84,7 @@ public abstract class Client extends TopLevelComponent
     @Override
     public void openConfigDirectory() {
         GlobalConfig gc = getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
-        if(gc != null) {
+        if (gc != null) {
             File folder = new File(gc.configPath());
             try {
                 Desktop.getDesktop().open(folder);
@@ -89,14 +94,15 @@ public abstract class Client extends TopLevelComponent
         }
     }
 
+
     @Override
     public void openBrowser(String url) {
         try {
-            if(isWindows()) {
+            if (isWindows()) {
                 Runtime.getRuntime().exec("rundll32 url.dll,FileProtocolHandler " + url);
             } else {
                 Desktop dt = Desktop.getDesktop();
-                if(dt.isSupported(Desktop.Action.BROWSE)) {
+                if (dt.isSupported(Desktop.Action.BROWSE)) {
                     dt.browse(new URI(url));
                 }
             }
@@ -104,4 +110,22 @@ public abstract class Client extends TopLevelComponent
             log.warn("Open browser occur a exception", e);
         }
     }
+
+    /**
+     * 设置GUI界面任务
+     */
+    public void setGUITask(Runnable task) {
+        this.guiTask = Objects.requireNonNull(task);
+    }
+
+    /**
+     * 运行GUI任务
+     */
+    void runGUITask() {
+        Runnable task = this.guiTask;
+        if (task != null) {
+            task.run();
+        }
+    }
+
 }

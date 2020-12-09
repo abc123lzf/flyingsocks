@@ -77,7 +77,6 @@ import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.EncryptType;
 /**
  * flyingsocks服务器的连接管理组件，每个ProxyServerComponent对象代表一个服务器节点
  * 例如：若需要连接多个flyingsocks服务器实现负载均衡，则需要多个ProxyServerComponent对象
- *
  */
 public class ProxyServerComponent extends AbstractComponent<ProxyComponent> implements ProxyRequestSubscriber {
 
@@ -88,9 +87,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
     static {
         int cpus = Runtime.getRuntime().availableProcessors();
-        if(cpus >= 12) {  //最多4个线程
+        if (cpus >= 12) {  //最多4个线程
             DEFAULT_PROCESSOR_THREAD = 4;
-        } else if(cpus >= 4) {
+        } else if (cpus >= 4) {
             DEFAULT_PROCESSOR_THREAD = 2;
         } else {
             DEFAULT_PROCESSOR_THREAD = 1;
@@ -138,7 +137,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
     /**
      * @param proxyComponent 父组件引用
-     * @param config 该FS服务器的配置对象
+     * @param config         该FS服务器的配置对象
      */
     ProxyServerComponent(ProxyComponent proxyComponent, ProxyServerConfig.Node config) {
         super(generalName(config.getHost(), config.getPort()), Objects.requireNonNull(proxyComponent));
@@ -183,13 +182,13 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         EncryptProvider provider;
         //目前仅支持OpenSSL加密和不加密(测试性质)
-        if(config.getEncryptType() == EncryptType.NONE) {
+        if (config.getEncryptType() == EncryptType.NONE) {
             provider = null;
-        } else if(config.getEncryptType() == EncryptType.SSL) {
+        } else if (config.getEncryptType() == EncryptType.SSL) {
             updateConnectionState(ConnectionState.SSL_INITIAL);
             //首先计算证书文件的MD5
             final byte[] md5 = calcuateCertFileMD5(cfg.configPath());
-            if(md5 == null) {
+            if (md5 == null) {
                 throw new ComponentException();
             }
 
@@ -217,14 +216,18 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                                     updateConnectionState(ConnectionState.SSL_CONNECT);
                                     CertRequestMessage msg;
                                     switch (config.getAuthType()) {
-                                        case SIMPLE: msg = new CertRequestMessage(AuthMethod.SIMPLE, md5); break;
-                                        case USER: msg = new CertRequestMessage(AuthMethod.USER, md5); break;
+                                        case SIMPLE:
+                                            msg = new CertRequestMessage(AuthMethod.SIMPLE, md5);
+                                            break;
+                                        case USER:
+                                            msg = new CertRequestMessage(AuthMethod.USER, md5);
+                                            break;
                                         default:
                                             throw new IllegalArgumentException("Auth method: " + config.getAuthType() + " Not support.");
                                     }
 
                                     List<String> keys = msg.getAuthMethod().getContainsKey();
-                                    for(String key : keys) {
+                                    for (String key : keys) {
                                         msg.putContent(key, config.getAuthArgument(key));
                                     }
 
@@ -236,17 +239,18 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
                             cp.addLast(new SimpleChannelInboundHandler<ByteBuf>() {
                                 private boolean success = false;
+
                                 @Override
                                 protected void channelRead0(ChannelHandlerContext ctx, ByteBuf buf) throws Exception {
                                     CertResponseMessage msg = new CertResponseMessage(buf);
-                                    if(msg.needUpdate()) {
+                                    if (msg.needUpdate()) {
                                         InputStream is = msg.getFile();
                                         int len = msg.getLength();
                                         writeCertFile(cfg.configPath(), is, len);
-                                        if(log.isInfoEnabled())
+                                        if (log.isInfoEnabled())
                                             log.info("Update cert file from remote flyingsocks server {}:{}", host, certPort);
 
-                                    } else if(log.isTraceEnabled()) {
+                                    } else if (log.isTraceEnabled()) {
                                         log.trace("Remote server cert file is same as local, from {}:{}", host, certPort);
                                     }
 
@@ -256,7 +260,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
                                 @Override
                                 public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-                                    if(success) {
+                                    if (success) {
                                         updateConnectionState(ConnectionState.SSL_CONNECT_DONE);
                                     } else {
                                         updateConnectionState(ConnectionState.SSL_CONNECT_AUTH_FAILURE);
@@ -272,9 +276,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             updateConnectionState(ConnectionState.SSL_CONNECTING);
             //连接到服务器的证书端口
             sslBoot.connect(host, certPort).addListener(f -> {
-                if(!f.isSuccess()) {
+                if (!f.isSuccess()) {
                     Throwable t = f.cause();
-                    if(t instanceof ConnectTimeoutException) {
+                    if (t instanceof ConnectTimeoutException) {
                         updateConnectionState(ConnectionState.SSL_CONNECT_TIMEOUT);
                     } else {
                         updateConnectionState(ConnectionState.SSL_CONNECT_ERROR);
@@ -287,7 +291,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             LockSupport.parkNanos((cfg.getConnectTimeout() + 1000 * 20) * 1_000_000L);  //20秒加上连接超时时间
             sslGroup.shutdownGracefully();
 
-            if(!connectionState.isNormal()) {
+            if (!connectionState.isNormal()) {
                 log.warn("Can not connect to cert service {}:{}", host, config.getCertPort());
                 stop();
                 return;
@@ -330,8 +334,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     @Override
                     protected void initChannel(SocketChannel ch) throws Exception {
                         ChannelPipeline cp = ch.pipeline();
-                        if(provider != null) {
-                            if(!provider.isInboundHandlerSameAsOutboundHandler()) {
+                        if (provider != null) {
+                            if (!provider.isInboundHandlerSameAsOutboundHandler()) {
                                 cp.addLast(provider.encodeHandler(params));
                             }
                             cp.addLast(provider.decodeHandler(params));
@@ -348,11 +352,11 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
     @Override
     protected void startInternal() {
-        if(!connectionState.isNormal() || connectionState == ConnectionState.UNUSED) {
+        if (!connectionState.isNormal() || connectionState == ConnectionState.UNUSED) {
             return;
         }
 
-        if(isUse()) {
+        if (isUse()) {
             doConnect(true);
         }
 
@@ -361,7 +365,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         super.startInternal();
 
-        if(isActive()) {
+        if (isActive()) {
             parent.addActiveProxyServer(this);
         }
     }
@@ -369,6 +373,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
     /**
      * 更新连接状态
+     *
      * @param state 状态
      */
     private void updateConnectionState(ConnectionState state) {
@@ -408,14 +413,14 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
 
     private void doConnect(boolean sync) {
-        if(active)
+        if (active)
             throw new IllegalStateException("This component has been connect.");
 
         updateConnectionState(ConnectionState.PROXY_INITIAL);
         String host = config.getHost();
         int port = config.getPort();
 
-        if(log.isInfoEnabled())
+        if (log.isInfoEnabled())
             log.info("Connect to flyingsocks server {}:{}...", host, port);
 
         Bootstrap b = bootstrap.clone().group(this.loopGroup);
@@ -431,7 +436,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     log.info("Connect success to flyingsocks server {}:{}", host, port);
 
                     active = true;
-                    for(int i = 0; i < DEFAULT_PROCESSOR_THREAD; i++) {
+                    for (int i = 0; i < DEFAULT_PROCESSOR_THREAD; i++) {
                         clientMessageProcessor.submit(new ClientMessageTransferTask());
                     }
 
@@ -441,11 +446,11 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     f.removeListener(this);
                 } else {
                     Throwable t = future.cause();
-                    if(log.isWarnEnabled()) {
+                    if (log.isWarnEnabled()) {
                         log.warn("Can not connect to flyingsocks server, cause:", t);
                     }
 
-                    if(t instanceof ConnectTimeoutException) {
+                    if (t instanceof ConnectTimeoutException) {
                         updateConnectionState(ConnectionState.PROXY_CONNECT_TIMEOUT);
                     } else {
                         updateConnectionState(ConnectionState.PROXY_CONNECT_ERROR);
@@ -453,18 +458,18 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
                     f.removeListener(this);
 
-                    if(connectionState.canRetry()) {
+                    if (connectionState.canRetry()) {
                         afterChannelInactive(); //重新尝试连接
                     }
                 }
 
-                if(sync) {
+                if (sync) {
                     waitLatch.countDown();
                 }
             }
         });
 
-        if(sync) {
+        if (sync) {
             try {
                 waitLatch.await(10000, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
@@ -477,7 +482,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
     @Override
     protected void stopInternal() {
-        if(log.isInfoEnabled()) {
+        if (log.isInfoEnabled()) {
             log.info("Ready to stop ProxyServerComponent {}:{}...", config.getHost(), config.getPort());
         }
 
@@ -487,7 +492,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         parent.removeProxyServer(this);
         parent.getParentComponent().getConfigManager().removeConfig(OpenSSLConfig.generalName(config.getHost(), config.getPort()));
 
-        if(loopGroup != null) {
+        if (loopGroup != null) {
             loopGroup.shutdownGracefully().addListener(future -> {
                 if (future.isSuccess())
                     active = false;
@@ -499,13 +504,13 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             });
         }
 
-        if(clientMessageProcessor != null) {
+        if (clientMessageProcessor != null) {
             clientMessageProcessor.shutdownNow();
         }
 
         activeProxyRequestMap.clear();
         super.stopInternal();
-        if(log.isInfoEnabled()) {
+        if (log.isInfoEnabled()) {
             log.info("Stop ProxyServerComponent {}:{} complete.", config.getHost(), config.getPort());
         }
     }
@@ -533,7 +538,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
      * 连接失效后的处理逻辑
      */
     private synchronized void afterChannelInactive() {
-        if(log.isInfoEnabled())
+        if (log.isInfoEnabled())
             log.info("Disconnect with flyingsocks server {}:{}", config.getHost(), config.getPort());
 
         parent.removeSubscriber(this); //移除订阅，防止在此期间请求涌入队列
@@ -545,21 +550,21 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         activeProxyRequestMap.clear();
 
-        if(!connectionState.isNormal() && !connectionState.canRetry()) {
+        if (!connectionState.isNormal() && !connectionState.canRetry()) {
             return;
         }
 
         //处理掉线重连
         //如果父组件没有处于正在停止状态并且用户还希望继续使用该节点
-        if(!parent.getState().after(LifecycleState.STOPING) && use) {
+        if (!parent.getState().after(LifecycleState.STOPING) && use) {
             if (nextReconnectTime == -1L) {
                 nextReconnectTime = 2 * 1000;
             } else {
                 nextReconnectTime = nextReconnectTime >= 30000 ? 30000 : nextReconnectTime * 2;
             }
             long d = nextReconnectTime;
-            if(d > 2000L) {
-                if(log.isInfoEnabled())
+            if (d > 2000L) {
+                if (log.isInfoEnabled())
                     log.info("Waiting {}ms before reconnect server {}:{}", d, config.getHost(), config.getPort());
                 Thread.interrupted(); //上述clientMessageProcessor和loopGroup调用了
                 try {
@@ -567,12 +572,12 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 } catch (InterruptedException ignore) {
                 }
                 //wait会释放锁所以再一次检查
-                if(parent.getState().after(LifecycleState.STOPING) || !use) {
+                if (parent.getState().after(LifecycleState.STOPING) || !use) {
                     return;
                 }
             }
 
-            if(log.isInfoEnabled())
+            if (log.isInfoEnabled())
                 log.info("Retry to connect flyingsocks server {}:{}", config.getHost(), config.getPort());
             this.proxyServerSession = null;
             this.taskWaitLatch = new CountDownLatch(1);
@@ -584,37 +589,38 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
     /**
      * 计算证书文件MD5值
+     *
      * @param location 存放证书文件的路径
      * @return MD5值，若文件不存在则返回一个长度为16，值全部为0的byte数组
      */
     private byte[] calcuateCertFileMD5(String location) {
         File folder = new File(location, OpenSSLConfig.folderName(config.getHost(), config.getPort()));
 
-        if(!folder.exists()) {
-            if(!folder.mkdirs()) {
+        if (!folder.exists()) {
+            if (!folder.mkdirs()) {
                 log.error("Can not create folder at {}", folder.getAbsolutePath());
                 return null;
             }
             return new byte[16];
-        } else if(folder.isFile()) {
-            if(!folder.delete()) {
+        } else if (folder.isFile()) {
+            if (!folder.delete()) {
                 log.error("Location {} exists a file and can not delete.", folder.getName());
                 return null;
             }
         }
 
-        if(folder.isDirectory()) {
+        if (folder.isDirectory()) {
             File file = new File(folder, OpenSSLConfig.CERT_FILE_NAME);
-            if(!file.exists() || file.length() == 0L) {
+            if (!file.exists() || file.length() == 0L) {
                 return new byte[16];
             }
 
-            if(file.isDirectory() && !file.delete()) {
+            if (file.isDirectory() && !file.delete()) {
                 log.error("location {} exists a folder and can not delete.", file.getAbsolutePath());
                 return null;
             }
 
-            try(FileInputStream fis = new FileInputStream(file)) {
+            try (FileInputStream fis = new FileInputStream(file)) {
                 byte[] b = new byte[10240];
                 int len = fis.read(b);
                 byte[] rb = new byte[len];
@@ -637,11 +643,11 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         File file = new File(new File(location, OpenSSLConfig.folderName(config.getHost(), config.getPort())), OpenSSLConfig.CERT_FILE_NAME);
         byte[] b = new byte[len];
         int r = is.read(b);
-        if(r != len) {
+        if (r != len) {
             throw new IOException("File real size is different from server message");
         }
 
-        try(FileOutputStream fos = new FileOutputStream(file)) {
+        try (FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(b);
             fos.flush();
         }
@@ -671,7 +677,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object buf) {
-            if(buf instanceof ByteBuf) {
+            if (buf instanceof ByteBuf) {
                 log.trace("Receive flyingsocks delimiter message");
                 ByteBuf msg = (ByteBuf) buf;
                 try {
@@ -682,14 +688,14 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
                     byte[] rb = proxyServerSession.getDelimiter();
 
-                    if(rb == null) {
+                    if (rb == null) {
                         log.info("Delimiter message magic number is not correct");
                         ctx.close();
                         return;
                     }
 
-                    for(int i = 0; i < DelimiterMessage.DEFAULT_SIZE; i++) {
-                        if(b[i] != rb[i]) {
+                    for (int i = 0; i < DelimiterMessage.DEFAULT_SIZE; i++) {
+                        if (b[i] != rb[i]) {
                             log.debug("Channel close because of delimiter is difference");
                             ctx.close();
                             return;
@@ -715,7 +721,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             updateConnectionState(ConnectionState.PROXY_CONNECT_ERROR);
-            log.warn("ProxyServerComponent occur a error" , cause);
+            log.warn("ProxyServerComponent occur a error", cause);
             ctx.close();
         }
 
@@ -737,7 +743,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         @Override
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
-            if(msg instanceof ByteBuf) {
+            if (msg instanceof ByteBuf) {
                 ChannelPromise vcp = ctx.voidPromise();
                 ByteBuf delimiter = PooledByteBufAllocator.DEFAULT.buffer(this.delimiter.length).writeBytes(this.delimiter);
                 ctx.write(msg, vcp);
@@ -754,14 +760,18 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         public void handlerAdded(ChannelHandlerContext ctx) {
             AuthMessage msg;
             switch (config.getAuthType()) {
-                case SIMPLE: msg = new AuthMessage(AuthMethod.SIMPLE); break;
-                case USER: msg = new AuthMessage(AuthMethod.USER); break;
+                case SIMPLE:
+                    msg = new AuthMessage(AuthMethod.SIMPLE);
+                    break;
+                case USER:
+                    msg = new AuthMessage(AuthMethod.USER);
+                    break;
                 default:
                     throw new IllegalArgumentException("Auth method: " + config.getAuthType() + " Not support.");
             }
 
             List<String> keys = msg.getAuthMethod().getContainsKey();
-            for(String key : keys) {
+            for (String key : keys) {
                 msg.putContent(key, config.getAuthArgument(key));
             }
 
@@ -771,8 +781,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            if(!ctx.channel().isActive()) {
-                if(log.isWarnEnabled())
+            if (!ctx.channel().isActive()) {
+                if (log.isWarnEnabled())
                     log.warn(String.format("[%s:%d]AuthHandler occur a exception", config.getHost(), config.getPort()), cause);
                 updateConnectionState(ConnectionState.PROXY_CONNECT_ERROR);
                 afterChannelInactive();
@@ -781,7 +791,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
-            if(log.isTraceEnabled())
+            if (log.isTraceEnabled())
                 log.trace("Auth failure, from server {}:{}", config.getHost(), config.getPort());
             updateConnectionState(ConnectionState.PROXY_CONNECT_AUTH_FAILURE);  //多半是认证失败
             afterChannelInactive();
@@ -798,10 +808,10 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            if(cause instanceof IOException && log.isInfoEnabled()) {
+            if (cause instanceof IOException && log.isInfoEnabled()) {
                 updateConnectionState(ConnectionState.PROXY_DISCONNECT);
                 log.info("flyingsocks server {}:{} force closure of connections", config.getHost(), config.getPort());
-            } else if(log.isWarnEnabled()) {
+            } else if (log.isWarnEnabled()) {
                 updateConnectionState(ConnectionState.PROXY_CONNECT_ERROR);
                 log.warn(String.format("flyingsocks server connection %s:%d occur a exception",
                         config.getHost(), config.getPort()), cause);
@@ -810,7 +820,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
-            if(msg instanceof ByteBuf) {
+            if (msg instanceof ByteBuf) {
                 try {
                     ProxyResponseMessage resp;
                     try {
@@ -868,17 +878,17 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 return;
             }
 
-            if(log.isTraceEnabled())
+            if (log.isTraceEnabled())
                 log.trace("Server: {}:{} ClientMessageTransferTask start", config.getHost(), config.getPort());
 
             Thread t = Thread.currentThread();
             begin:
-            while(!t.isInterrupted()) {
+            while (!t.isInterrupted()) {
                 try {
                     SerialProxyRequest pr;
                     try {
                         while ((pr = proxyRequestQueue.poll(1, TimeUnit.MILLISECONDS)) != null) {
-                            if(pr.ensureMessageOnlyOne()) {
+                            if (pr.ensureMessageOnlyOne()) {
                                 ByteBuf buf = pr.takeClientMessage();
                                 sendToProxyServer(pr, buf);
                                 ReferenceCountUtil.release(buf);
@@ -917,14 +927,14 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 }
             }
 
-            for(SerialProxyRequest request : requests) {
+            for (SerialProxyRequest request : requests) {
                 request.clientChannel().close();
             }
 
         }
 
         private void sendToProxyServer(SerialProxyRequest request, ByteBuf buf) {
-            if(proxyServerSession == null) {
+            if (proxyServerSession == null) {
                 buf.release();
                 return;
             }
@@ -939,7 +949,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             try {
                 proxyServerSession.socketChannel().writeAndFlush(prm.serialize());
             } catch (SerializationException e) {
-                if(log.isWarnEnabled())
+                if (log.isWarnEnabled())
                     log.warn("Serialize ProxyRequestMessage occur a exception");
                 request.clientChannel().close();
             } finally {
@@ -954,11 +964,11 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     private final class ConfigRemovedListener implements ConfigEventListener {
         @Override
         public void configEvent(ConfigEvent event) {
-            if(event.getEvent().equals(Config.UPDATE_EVENT) && event.getSource() instanceof ProxyServerConfig) {
+            if (event.getEvent().equals(Config.UPDATE_EVENT) && event.getSource() instanceof ProxyServerConfig) {
                 ProxyServerConfig psc = (ProxyServerConfig) event.getSource();
-                if(!psc.containsProxyServerNode(config)) {
+                if (!psc.containsProxyServerNode(config)) {
                     synchronized (ProxyServerComponent.this) {
-                        if(!getState().after(LifecycleState.STOPING)) {
+                        if (!getState().after(LifecycleState.STOPING)) {
                             stop();
                             assert parent != null;
                             parent.removeComponentByName(getName());

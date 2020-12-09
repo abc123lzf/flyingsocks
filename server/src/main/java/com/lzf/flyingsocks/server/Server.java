@@ -11,7 +11,7 @@ public interface Server extends Component<VoidComponent>, Environment {
     /**
      * 服务器版本
      */
-    String VERSION = "v2.0";
+    String VERSION = "v3.0";
 
     /**
      * @return 服务器配置信息

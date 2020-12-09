@@ -55,18 +55,18 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         tray.setVisible(true);
         tray.setToolTipText(shell.getText());
 
-        createMenuItem(menu, "打开主界面(&m)", e -> belongComponent.openMainScreenUI());
+        createMenuItem(menu, "打开主界面", e -> belongComponent.openMainScreenUI());
 
         //PAC设置菜单
         initialPacMenu(shell, menu);
 
-        createMenuItem(menu, "编辑服务器配置...(&e)", e -> belongComponent.openServerSettingUI());
+        createMenuItem(menu, "编辑服务器配置...", e -> belongComponent.openServerSettingUI());
         createMenuSeparator(menu);
-        createMenuItem(menu, "本地Socks5代理设置...(&l)", e -> belongComponent.openSocksSettingUI());
+        createMenuItem(menu, "本地Socks5代理设置...", e -> belongComponent.openSocksSettingUI());
         createMenuSeparator(menu);
 
         initialAboutMenu(shell, menu);
-        createMenuItem(menu, "退出(&x)", e -> {
+        createMenuItem(menu, "退出", e -> {
             tray.dispose();
             shell.dispose();
             belongComponent.getParentComponent().stop();
@@ -84,7 +84,7 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
      */
     private void initialPacMenu(Shell shell, Menu main) {
         MenuItem pac = new MenuItem(main, SWT.CASCADE);
-        pac.setText("代理模式(&p)");
+        pac.setText("代理模式");
         Menu pacMenu = new Menu(shell, SWT.DROP_DOWN);
         pac.setMenu(pacMenu);
         MenuItem pac0 = new MenuItem(pacMenu, SWT.CASCADE ^ SWT.CHECK);
@@ -140,7 +140,7 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
 
     private void initialAboutMenu(Shell shell, Menu main) {
         MenuItem serv = new MenuItem(main, SWT.CASCADE);
-        serv.setText("帮助/关于(&a)");
+        serv.setText("帮助/关于");
         Menu about = new Menu(shell, SWT.DROP_DOWN);
         serv.setMenu(about);
 

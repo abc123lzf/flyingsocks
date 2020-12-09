@@ -6,20 +6,12 @@ import com.lzf.flyingsocks.client.Client;
 import org.eclipse.swt.widgets.Display;
 
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * @since 2019.8.13 9:40
  * SWT GUI组件
  */
 public class SWTViewComponent extends AbstractComponent<Client> {
-
-    /**
-     * SWT GUI线程, 必须保证是单线程
-     */
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
-
 
     private final Display display;
 
@@ -42,32 +34,22 @@ public class SWTViewComponent extends AbstractComponent<Client> {
     public SWTViewComponent(Client parent) {
         super("SWTViewComponent", Objects.requireNonNull(parent));
 
+        if (Utils.isMacOS()) {
+            getParentComponent().getConfigManager().setSystemProperties("apple.awt.UIElement", "true");
+        }
+
         try {
-            this.display = executor.submit(Display::getDefault).get();
-        } catch (Exception e) {
+            this.display = Display.getDefault();
+        } catch (Throwable e) {
+            if (Utils.isMacOS()) {
+                log.warn("Please use VM argument -XstartOnFirstThread on MacOS");
+            }
             throw new Error(e);
         }
     }
 
     @Override
     protected void initInternal() {
-        executor.submit(this::initialUI);
-    }
-
-    @Override
-    protected void startInternal() {
-        executor.submit(this::running);
-    }
-
-    @Override
-    protected void stopInternal() {
-        executor.shutdownNow();
-    }
-
-    /**
-     * 初始化UI
-     */
-    private void initialUI() {
         try {
             addModule(new TrayModule(this, display));
             addModule(this.serverSettingModule = new ServerSettingModule(this, display));
@@ -77,6 +59,11 @@ public class SWTViewComponent extends AbstractComponent<Client> {
             log.error("SWT Thread occur a error", t);
             System.exit(1);
         }
+    }
+
+    @Override
+    protected void startInternal() {
+        getParentComponent().setGUITask(this::running);
     }
 
     /**

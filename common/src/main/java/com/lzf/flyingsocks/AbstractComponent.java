@@ -11,10 +11,11 @@ import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
  * 组件抽象模板类，实现了Component接口和Lifecycle接口
+ *
+ * @param <T> 父组件类型
  * @see com.lzf.flyingsocks.Component
  * @see com.lzf.flyingsocks.Lifecycle
  * @see com.lzf.flyingsocks.LifecycleBase
- * @param <T> 父组件类型
  */
 public abstract class AbstractComponent<T extends Component<?>> extends LifecycleBase implements Component<T> {
 
@@ -52,7 +53,8 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
 
     /**
      * 构造组件
-     * @param name 组件名
+     *
+     * @param name   组件名
      * @param parent 父组件，如果没有父组件则泛型参数T需为VoidComponent并且值为null
      */
     protected AbstractComponent(String name, T parent) {
@@ -68,8 +70,8 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
 
     @Override
     public void setName(String name) {
-        if(parent instanceof AbstractComponent<?>) {
-            AbstractComponent<?> c = (AbstractComponent) parent;
+        if (parent instanceof AbstractComponent<?>) {
+            AbstractComponent<?> c = (AbstractComponent<?>) parent;
             c.changeChildComponentName(this.name, name);
         }
         this.name = name;
@@ -86,9 +88,9 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
     }
 
     @Override
-    public final Module getModuleByName(String moduleName, boolean searchAtParent) {
+    public final Module<?> getModuleByName(String moduleName, boolean searchAtParent) {
         Module<?> m = moduleMap.get(moduleName);
-        if(searchAtParent && m == null) {
+        if (searchAtParent && m == null) {
             try {
                 return getParentComponent().getModuleByName(moduleName, true);
             } catch (Exception e) {
@@ -99,9 +101,9 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
     }
 
     @Override
-    public void addModule(Module module) {
+    public void addModule(Module<?> module) {
         String name;
-        if(moduleMap.get(name = module.getName()) != null) {
+        if (moduleMap.get(name = module.getName()) != null) {
             throw new ComponentException(String.format("Component [%s] already has module [%s].", getName(), name));
         }
         moduleMap.put(name, module);
@@ -109,13 +111,14 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
 
     /**
      * 添加子组件
+     *
      * @param component 组件对象
      */
     protected synchronized void addComponent(Component<?> component) {
         String name = component.getName();
-        if(name == null)
+        if (name == null)
             throw new ComponentException(String.format("Component type [%s] name can not be null.", component.getClass().getName()));
-        if(componentMap.get(name) != null)
+        if (componentMap.get(name) != null)
             throw new ComponentException(String.format("Component [%s] already has child component [%s].", getName(), name));
 
         componentMap.put(name, component);
@@ -123,6 +126,7 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
 
     /**
      * 根据组件名称获取组件
+     *
      * @param name 组件名
      * @return 组件，若没有找到返回null
      */
@@ -133,18 +137,19 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
     @SuppressWarnings("unchecked")
     protected <V extends Component<?>> V getComponentByName(String name, Class<V> requireType) {
         Component<?> c = componentMap.get(name);
-        if(c == null)
+        if (c == null)
             return null;
 
-        if(!requireType.isInstance(c))
+        if (!requireType.isInstance(c))
             throw new ComponentException(new ClassCastException(String.format("Component [%s] is not type of %s.", getName(), requireType.getName())));
 
-        return (V)c;
+        return (V) c;
     }
 
 
     /**
      * 移除组件
+     *
      * @param name 组件名
      */
     protected void removeComponentByName(String name) {
@@ -155,7 +160,7 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
     @Override
     protected void initInternal() {
         synchronized (componentMap) {
-            for(Map.Entry<String, Component<?>> entry : componentMap.entrySet()) {
+            for (Map.Entry<String, Component<?>> entry : componentMap.entrySet()) {
                 try {
                     entry.getValue().init();
                 } catch (Exception e) {
@@ -168,7 +173,7 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
     @Override
     protected void startInternal() {
         synchronized (componentMap) {
-            for(Map.Entry<String, Component<?>> entry : componentMap.entrySet()) {
+            for (Map.Entry<String, Component<?>> entry : componentMap.entrySet()) {
                 try {
                     entry.getValue().start();
                 } catch (Exception e) {
@@ -181,7 +186,7 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
     @Override
     protected void stopInternal() {
         synchronized (componentMap) {
-            for(Map.Entry<String, Component<?>> entry : componentMap.entrySet()) {
+            for (Map.Entry<String, Component<?>> entry : componentMap.entrySet()) {
                 try {
                     entry.getValue().stop();
                 } catch (Exception e) {
@@ -194,7 +199,7 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
     @Override
     protected void restartInternal() {
         synchronized (componentMap) {
-            for(Map.Entry<String, Component<?>> entry : componentMap.entrySet()) {
+            for (Map.Entry<String, Component<?>> entry : componentMap.entrySet()) {
                 try {
                     entry.getValue().restart();
                 } catch (Exception e) {
@@ -208,14 +213,15 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
 
     /**
      * 当子模块需要修改名称时由子模块调用
+     *
      * @param oldName 子模块旧名称
      * @param newName 子模块新名称
      */
     void changeModuleComponentName(String oldName, String newName) {
         Module<?> c = moduleMap.get(oldName);
-        if(c == null)
+        if (c == null)
             throw new ComponentException("Can not find module: " + oldName + " at " + name);
-        if(moduleMap.containsKey(newName))
+        if (moduleMap.containsKey(newName))
             throw new ComponentException("Module name: " + newName + " is already in " + name);
         moduleMap.remove(oldName);
         moduleMap.put(newName, c);
@@ -223,14 +229,15 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
 
     /**
      * 当子组件需要修改名称时由子组件调用
+     *
      * @param oldName 子组件旧名称
      * @param newName 子组件新名称
      */
     private void changeChildComponentName(String oldName, String newName) {
         Component<?> c = componentMap.get(oldName);
-        if(c == null)
+        if (c == null)
             throw new ComponentException("Can not find component: " + oldName + " at " + name);
-        if(componentMap.containsKey(newName))
+        if (componentMap.containsKey(newName))
             throw new ComponentException("Component name: " + newName + " is already in " + name);
 
         componentMap.remove(oldName);

@@ -19,15 +19,17 @@ class ClasspathURLConnection extends URLConnection {
 
     @Override
     public void connect() throws IOException {
-        if(classLoader.getResource(location) == null)
+        if (classLoader.getResource(location) == null) {
             throw new IOException("Classpath resource [" + location + "] not found");
+        }
     }
 
     @Override
     public InputStream getInputStream() throws IOException {
         InputStream is = classLoader.getResourceAsStream(location);
-        if(is == null)
+        if (is == null) {
             throw new IOException("Classpath resource [" + location + "] not found");
+        }
         return is;
     }
 }

@@ -27,7 +27,8 @@ public final class JksSSLEncryptProvider implements EncryptProvider {
 
     private boolean client;
 
-    JksSSLEncryptProvider() { }
+    JksSSLEncryptProvider() {
+    }
 
     @Override
     public String getName() {
@@ -36,9 +37,9 @@ public final class JksSSLEncryptProvider implements EncryptProvider {
 
     @Override
     public synchronized void initialize(Map<String, ?> params) throws Exception {
-        if(initialize)
+        if (initialize)
             throw new IllegalStateException("JksEncryptProvider instance has been initialize");
-        client = (Boolean)params.get("client");
+        client = (Boolean) params.get("client");
         sslEngine = buildSSLEngine(params);
         initialize = true;
     }
@@ -63,16 +64,18 @@ public final class JksSSLEncryptProvider implements EncryptProvider {
     }
 
     private SSLEngine buildSSLEngine(Map<String, ?> params) throws Exception {
-        if(params == null)
+        if (params == null) {
             throw new NullPointerException("params should not be null.");
+        }
 
-        if(!params.containsKey("password") || !params.containsKey("url") || !params.containsKey("client"))
+        if (!params.containsKey("password") || !params.containsKey("url") || !params.containsKey("client")) {
             throw new IllegalArgumentException("Parameter key jksPass/jksUrl/isClient should not be null");
+        }
 
-        char[] pass = ((String)params.get("password")).toCharArray();
+        char[] pass = ((String) params.get("password")).toCharArray();
 
         URL url = new URL((String) params.get("url"));
-        try(InputStream is = url.openStream()) {
+        try (InputStream is = url.openStream()) {
             KeyStore ks = KeyStore.getInstance("JKS");
             ks.load(is, pass);
             KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");

@@ -1,5 +1,6 @@
 package com.lzf.flyingsocks.client.gui.swt;
 
+import io.netty.util.internal.PlatformDependent;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Button;
@@ -24,6 +25,11 @@ import java.io.InputStream;
 abstract class Utils {
 
     private static final float DPI_SCALE = Display.getDefault().getDPI().x / 144.0f;
+
+    static boolean isMacOS() {
+        return PlatformDependent.isOsx();
+    }
+
 
     /**
      * 调整SWT组件大小以适应操作系统DPI

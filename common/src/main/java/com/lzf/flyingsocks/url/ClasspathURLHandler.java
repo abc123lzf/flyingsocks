@@ -1,6 +1,5 @@
 package com.lzf.flyingsocks.url;
 
-
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;

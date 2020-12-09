@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<assembly>
+    <id>bin</id>
+    <formats>
+        <format>zip</format>
+    </formats>
+    <dependencySets>
+
+        <!--依赖包打包到lib下,false lib下不包含本工程包, true:包含-->
+        <dependencySet>
+            <useProjectArtifact>true</useProjectArtifact>
+            <outputDirectory>lib</outputDirectory>
+        </dependencySet>
+    </dependencySets>
+
+    <fileSets>
+        <fileSet>
+            <outputDirectory>/</outputDirectory>
+            <includes>
+                <include>README.md</include>
+            </includes>
+        </fileSet>
+
+        <!-- 打包启停脚本到bin下 -->
+        <fileSet>
+            <directory>src/main/resources/shell</directory>
+            <outputDirectory>/bin</outputDirectory>
+            <includes>
+                <include>*.sh</include>
+            </includes>
+        </fileSet>
+
+        <!-- 打包启停脚本到bin下 -->
+        <fileSet>
+            <directory>src/main/resources/batch</directory>
+            <outputDirectory>/bin</outputDirectory>
+            <includes>
+                <include>*.bat</include>
+            </includes>
+        </fileSet>
+
+        <!-- 打包配置文件到config下 -->
+        <fileSet>
+            <directory>src/main/resources</directory>
+            <outputDirectory>/config</outputDirectory>
+            <includes>
+                <include>*</include>
+            </includes>
+        </fileSet>
+    </fileSets>
+</assembly>

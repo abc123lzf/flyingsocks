@@ -5,16 +5,21 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.lzf</groupId>
-    <artifactId>flyingsocks</artifactId>
+    <artifactId>flyingsocks-parent</artifactId>
     <packaging>pom</packaging>
-    <version>2.0</version>
+    <version>3.0-SNAPSHOT</version>
 
     <description>
-        flyingsocks
-        Author: LZF
-        GitHub: https://github.com/abc123lzf/flyingsocks
-        My blog: https://blog.csdn.net/abc123lzf
+        flyingsocks-parent
     </description>
+
+    <developers>
+        <developer>
+            <name>LZF</name>
+            <email>zifan.li@qq.com</email>
+            <url>https://blog.csdn.net/abc123lzf</url>
+        </developer>
+    </developers>
 
     <licenses>
         <license>
@@ -26,20 +31,32 @@
         <module>server</module>
         <module>client</module>
         <module>common</module>
+        <module>management</module>
     </modules>
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.1</version>
-                <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>fastjson</artifactId>
+                <version>1.2.75</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <repositories>
+        <repository>
+            <id>maven-ali</id>
+            <url>http://maven.aliyun.com/nexus/content/groups/public//</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>
+                <checksumPolicy>fail</checksumPolicy>
+            </snapshots>
+        </repository>
+    </repositories>
 
 </project>

@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -49,8 +50,8 @@ public class ServerConfig extends AbstractConfig implements Config {
             }
 
             File folder = new File(location);
-            if (!folder.exists()) {
-                folder.mkdirs();
+            if (!folder.exists() && !folder.mkdirs()) {
+                throw new IOException("Could not create config folder at " + location);
             }
 
             if (!location.endsWith("/")) {

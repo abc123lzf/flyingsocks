@@ -16,8 +16,9 @@ public abstract class ClientBoot {
     public static void main(String[] args) {
         log.info("flyingsocks client {} start...", VERSION);
         long st = System.currentTimeMillis();
+        Client client = null;
         try {
-            Client client = new StandardClient();
+            client = new StandardClient();
             client.init();
             client.start();
             System.gc();
@@ -29,7 +30,10 @@ public abstract class ClientBoot {
 
         long ed = System.currentTimeMillis();
         log.info("flyingsocks client {} start complete, use {} millisecond", VERSION, ed - st);
+
+        client.runGUITask();
     }
+
 
     private ClientBoot() {
         throw new UnsupportedOperationException();

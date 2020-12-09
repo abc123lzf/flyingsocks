@@ -1,6 +1,0 @@
-Manifest-Version: 1.0
-Class-Path: ./netty-all-4.1.36.Final.jar ./log4j-1.2.17.jar ./core-3.1
- .0.jar ./fastjson-1.2.57.jar ./slf4j-api-1.7.26.jar ./slf4j-log4j12-1
- .7.26.jar
-Main-Class: com.lzf.flyingsocks.server.ServerBoot
-

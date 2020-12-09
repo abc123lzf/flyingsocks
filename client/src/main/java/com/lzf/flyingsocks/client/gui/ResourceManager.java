@@ -1,7 +1,9 @@
 package com.lzf.flyingsocks.client.gui;
 
+import io.netty.util.internal.PlatformDependent;
+
 import javax.imageio.ImageIO;
-import java.awt.*;
+import java.awt.Image;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -31,6 +33,10 @@ public final class ResourceManager {
     }
 
     public static InputStream openSystemTrayImageStream() throws IOException {
+        if (PlatformDependent.isOsx()) {
+            return new URL("classpath://icon-tray-mac.png").openStream();
+        }
+
         return new URL("classpath://icon-tray.png").openStream();
     }
 
