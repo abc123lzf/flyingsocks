@@ -49,10 +49,11 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
         TCP, UDP;
 
         public ProxyRequestMessage.Protocol toMessageType() {
-            if(this == TCP)
+            if (this == TCP) {
                 return ProxyRequestMessage.Protocol.TCP;
-            else
+            } else {
                 return ProxyRequestMessage.Protocol.UDP;
+            }
         }
     }
 
@@ -79,6 +80,7 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
 
     /**
      * 判断ctl字段某一位是否被标记为1
+     *
      * @param index 位数
      * @return 是否被标记为1
      */
@@ -101,12 +103,13 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
 
     /**
      * 将ctl字段某一位标为0或1
+     *
      * @param index 位数，从0开始
-     * @param mark true标为1 false标为0
+     * @param mark  true标为1 false标为0
      */
     protected void setCtl(int index, boolean mark) {
         int c = ctl;
-        if(mark) {
+        if (mark) {
             c |= (1 << index);
         } else {
             c &= (~(1 << index));
@@ -120,7 +123,7 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
     }
 
     protected void closeClientChannel() {
-        if(clientChannel.isActive())
+        if (clientChannel.isActive())
             clientChannel.close();
     }
 
@@ -130,6 +133,7 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
 
     /**
      * 获取客户端发送的请求信息
+     *
      * @return 字节容器
      */
     public abstract ByteBuf takeClientMessage();
@@ -145,7 +149,7 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
     public final boolean equals(Object obj) {
         ProxyRequest req;
         return this == obj || (obj instanceof ProxyRequest &&
-                this.clientChannel.id().equals((req = (ProxyRequest)obj).clientChannel.id()) &&
+                this.clientChannel.id().equals((req = (ProxyRequest) obj).clientChannel.id()) &&
                 this.host.equals(req.host) &&
                 this.port == req.port);
     }
@@ -162,10 +166,10 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
 
     @Override
     public int compareTo(ProxyRequest request) {
-        if(this.equals(request))
+        if (this.equals(request))
             return 0;
 
-        if(this.hashCode() > request.hashCode())
+        if (this.hashCode() > request.hashCode())
             return 1;
         else
             return -1;
@@ -178,8 +182,12 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
 
     protected static void assertChannel(Channel channel, Protocol protocol) {
         switch (protocol) {
-            case TCP: assert channel instanceof SocketChannel; break;
-            case UDP: assert channel instanceof DatagramChannel; break;
+            case TCP:
+                assert channel instanceof SocketChannel;
+                break;
+            case UDP:
+                assert channel instanceof DatagramChannel;
+                break;
             default:
                 throw new AssertionError("Illegal protocol");
         }

@@ -23,19 +23,19 @@
 
         <!-- 打包启停脚本到bin下 -->
         <fileSet>
-            <directory>src/main/resources/shell</directory>
+            <directory>src/main/shell</directory>
             <outputDirectory>/bin</outputDirectory>
             <includes>
-                <include>*.sh</include>
+                <include>*</include>
             </includes>
         </fileSet>
 
         <!-- 打包启停脚本到bin下 -->
         <fileSet>
-            <directory>src/main/resources/batch</directory>
+            <directory>src/main/batch</directory>
             <outputDirectory>/bin</outputDirectory>
             <includes>
-                <include>*.bat</include>
+                <include>*</include>
             </includes>
         </fileSet>
 
@@ -45,6 +45,7 @@
             <outputDirectory>/config</outputDirectory>
             <includes>
                 <include>*</include>
+                <include>*/*</include>
             </includes>
         </fileSet>
     </fileSets>

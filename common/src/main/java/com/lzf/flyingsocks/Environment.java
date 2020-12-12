@@ -39,8 +39,7 @@ public interface Environment {
     InputStream loadResource(String path) throws IOException;
 
     /**
-     * 获取可用的处理器数量
-     * @return
+     * @return 可用的处理器数量
      */
     default int availableProcessors() {
         return Runtime.getRuntime().availableProcessors();

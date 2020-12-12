@@ -24,8 +24,21 @@ import java.io.InputStream;
  */
 abstract class Utils {
 
-    private static final float DPI_SCALE = Display.getDefault().getDPI().x / 144.0f;
+    /**
+     * DPI校准值，决定UI大小，会自动根据系统DPI调整
+     * 如果因为DPI不准确导致UI过大或者过小时，启动时请配置VM参数flyingsocks.basedpi
+     */
+    private static final float DPI_SCALE;
 
+    static {
+        String baseDpiStr = System.getProperty("flyingsocks.basedpi", "144");
+        float base = Float.parseFloat(baseDpiStr);
+        DPI_SCALE = Display.getDefault().getDPI().x / base;
+    }
+
+    /**
+     * @return 是否是MacOS系统
+     */
     static boolean isMacOS() {
         return PlatformDependent.isOsx();
     }

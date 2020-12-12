@@ -22,13 +22,13 @@ public class ProxyServerSession extends AbstractSession {
     }
 
     void setDelimiter(byte[] delimiter) {
-        if(delimiter == null || delimiter.length != DelimiterMessage.DEFAULT_SIZE)
+        if (delimiter == null || delimiter.length != DelimiterMessage.DEFAULT_SIZE)
             throw new IllegalArgumentException("Delimiter length must be " + DelimiterMessage.DEFAULT_SIZE + " bytes");
         this.delimiter = Arrays.copyOf(delimiter, DelimiterMessage.DEFAULT_SIZE);
     }
 
     byte[] getDelimiter() {
-        if(delimiter == null)
+        if (delimiter == null)
             return null;
         return Arrays.copyOf(delimiter, delimiter.length);
     }

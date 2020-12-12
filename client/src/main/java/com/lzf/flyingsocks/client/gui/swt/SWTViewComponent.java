@@ -63,27 +63,21 @@ public class SWTViewComponent extends AbstractComponent<Client> {
 
     @Override
     protected void startInternal() {
-        getParentComponent().setGUITask(this::running);
-    }
-
-    /**
-     * 执行GUI任务
-     */
-    private void running() {
-        try {
-            Thread t = Thread.currentThread();
-            while (!t.isInterrupted()) {
-                if (!display.readAndDispatch()) {
-                    display.sleep();
+        getParentComponent().setGUITask(() -> {
+            try {
+                Thread t = Thread.currentThread();
+                while (!t.isInterrupted()) {
+                    if (!display.readAndDispatch()) {
+                        display.sleep();
+                    }
                 }
+                display.dispose();
+            } catch (RuntimeException | Error t) {
+                log.error("SWT Thread occur a error, please submit this issue to GitHub, thanks", t);
+                System.exit(1);
             }
-            display.dispose();
-        } catch (RuntimeException | Error t) {
-            log.error("SWT Thread occur a error, please submit this issue to GitHub, thanks", t);
-            System.exit(1);
-        }
+        });
     }
-
 
     void openSocksSettingUI() {
         socksSettingModule.setVisiable(true);

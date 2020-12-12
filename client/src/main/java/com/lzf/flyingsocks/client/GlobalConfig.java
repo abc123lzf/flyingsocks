@@ -24,8 +24,6 @@ public class GlobalConfig extends AbstractConfig {
 
     public static final String NAME = "config.global";
 
-    private static final String PATH = "classpath://config.properties";
-
     private static final int DEFAULT_CONNECT_TIMEOUT = 8000;
 
     private static final String CONNECT_TIMEOUT_FILE = "connect-timeout";
@@ -71,6 +69,10 @@ public class GlobalConfig extends AbstractConfig {
             location = configManager.getSystemProperties("config.location.mac");
         } else {
             location = configManager.getSystemProperties("config.location.linux");
+        }
+
+        if (location.contains("${USER_DIR}")) {
+            location = location.replace("${USER_DIR}", configManager.getSystemProperties("user.dir"));
         }
 
         File folder = new File(location);

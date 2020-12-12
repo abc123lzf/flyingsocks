@@ -5,6 +5,13 @@ import com.lzf.flyingsocks.LifecycleState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
+
 import static com.lzf.flyingsocks.server.Server.VERSION;
 
 /**
@@ -30,6 +37,7 @@ public abstract class ServerBoot {
                 return;
             }
 
+            printBanner();
             long st = System.currentTimeMillis();
             log.info("flyingsocks server {} start...", VERSION);
             try {
@@ -58,6 +66,18 @@ public abstract class ServerBoot {
             }
 
             server.stop();
+        }
+    }
+
+    private static void printBanner() {
+        try (InputStream is = server.getConfigManager().loadResource("classpath://banner");
+             BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.US_ASCII))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                log.info(line);
+            }
+        } catch (IOException ignore) {
+            // NOOP
         }
     }
 

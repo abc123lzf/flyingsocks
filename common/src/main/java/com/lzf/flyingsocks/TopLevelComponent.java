@@ -10,6 +10,7 @@ import java.net.URL;
 /**
  * 表示顶层组件，顶层组件不可拥有父组件
  * 顶层组件除了具有AbstractComponent所有特性外，还可以保存环境参数，加载环境资源，并具有配置管理器
+ *
  * @see com.lzf.flyingsocks.AbstractComponent
  * @see com.lzf.flyingsocks.Environment
  */
@@ -67,7 +68,7 @@ public abstract class TopLevelComponent extends AbstractComponent<VoidComponent>
             return url.openStream();
         } catch (MalformedURLException e) {
             File file = new File(path);
-            if(file.exists() && file.isFile()) {
+            if (file.exists() && file.isFile()) {
                 return new FileInputStream(file);
             } else {
                 if (log.isWarnEnabled())
@@ -75,7 +76,7 @@ public abstract class TopLevelComponent extends AbstractComponent<VoidComponent>
                 return null;
             }
         } catch (IOException e) {
-            if(log.isErrorEnabled())
+            if (log.isErrorEnabled())
                 log.error("load resource {} occur a IOException", path);
             throw e;
         }

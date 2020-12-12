@@ -13,7 +13,9 @@ import static com.lzf.flyingsocks.client.proxy.ProxyRequest.Protocol;
 public interface ProxyRequestSubscriber {
 
     Set<Protocol> ANY_PROTOCOL = Collections.unmodifiableSet(EnumSet.allOf(Protocol.class));
+
     Set<Protocol> ONLY_TCP = Collections.unmodifiableSet(Collections.singleton(Protocol.TCP));
+
     Set<Protocol> ONLY_UDP = Collections.unmodifiableSet(Collections.singleton(Protocol.UDP));
 
     /**

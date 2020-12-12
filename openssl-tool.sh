@@ -6,7 +6,7 @@ else
 fi
 
 if [ ! -n "$1" ]; then
-    CERT_PATH = ./cert
+    CERT_PATH=./cert
     if [ ! -d "./cert" ]; then
         mkdir cert
     fi
@@ -15,7 +15,7 @@ else
 fi
 
 
-cd $CERT_PATH
+cd $CERT_PATH || exit 1
 
 openssl req -new -nodes -x509 -keyout private.key -out ca.crt
 unset CERT_PATH

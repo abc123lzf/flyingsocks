@@ -130,8 +130,8 @@ public class DefaultConfigManager<T extends Component<?> & Environment>
     }
 
     @Override @SuppressWarnings("unchecked")
-    public final <T extends Config> T getConfig(String name, Class<T> requireType) {
-        return (T) configMap.get(name);
+    public final <C extends Config> C getConfig(String name, Class<C> requireType) {
+        return (C) configMap.get(name);
     }
 
     @Override
