@@ -15,14 +15,14 @@ function install_jdk() {
       JDK_VERSION='java-1.8.0-openjdk-devel.x86_64'
   fi
 
-  yum install $JDK_VERSION && return 0
+  yum install -y $JDK_VERSION && return 0
   apt-get install $JDK_VERSION && return 0
   return 1
 }
 
 function install_maven() {
   mvn -version && return 0
-  yum install maven && return 0
+  yum install -y maven && return 0
   apt-get install maven && return 0
   return 1
 }
@@ -30,7 +30,7 @@ function install_maven() {
 # 安装必要的工具
 function install_tools() {
   unzip -v && return 0
-  yum install unzip && return 0
+  yum install -y unzip && return 0
   apt-get install unzip && return 0
   return 1
 }
@@ -43,25 +43,25 @@ function compile_project() {
 
 function main() {
   install_tools
-  if [ $? == 0 ]; then
+  if [ $? -ne 0 ]; then
     echo "Install tools failure"
     exit 1
   fi
 
   install_jdk
-  if [ $? == 0 ]; then
+  if [ $? -ne 0 ]; then
     echo "Install JDK failure"
     exit 1
   fi
 
   install_maven
-  if [ $? == 0 ]; then
+  if [ $? -ne 0 ]; then
     echo "Install Maven failure"
     exit 1
   fi
 
   compile_project
-  if [ $? == 0 ]; then
+  if [ $? -ne 0 ]; then
     echo "Compile project failure"
     exit 1
   fi
