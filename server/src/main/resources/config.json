@@ -6,6 +6,6 @@
     "max-client": 10,
     "encrypt": "OpenSSL",
     "auth-type": "simple",
-    "password": "abc123lzf"
+    "password": "123456"
   }
 ]

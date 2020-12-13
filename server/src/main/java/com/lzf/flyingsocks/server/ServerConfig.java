@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,96 +29,84 @@ public class ServerConfig extends AbstractConfig implements Config {
 
     private String location;
 
-    private String locationURL;
-
     ServerConfig(ConfigManager<?> configManager) {
         super(configManager, NAME);
     }
 
     @Override
     protected void initInternal() throws ConfigInitializationException {
-        try (InputStream is = configManager.loadResource("classpath://config.properties")) {
-            Properties p = new Properties();
-            p.load(is);
+        String folderString = configManager.getSystemProperties("flyingsocks.config.location");
+        if (folderString == null) {
+            String msg = "Properties flyingsocks.config.location not configure!";
+            log.error(msg);
+            throw new ConfigInitializationException(msg);
+        }
 
-            String location;
-            if (configManager.isWindows()) {
-                location = p.getProperty("config.location.windows");
-            } else if (configManager.isMacOS()) {
-                location = p.getProperty("config.location.mac");
-            } else {
-                location = p.getProperty("config.location.linux");
-            }
+        File folder = new File(folderString);
+        if (folder.isFile()) {
+            String msg = "Properties flyingsocks.config.location is file";
+            log.error(msg);
+            throw new ConfigInitializationException(msg);
+        } else if (!folder.exists()) {
+            String msg = "Properties flyingsocks.config.location not exists";
+            log.error(msg);
+            throw new ConfigInitializationException(msg);
+        }
 
-            File folder = new File(location);
-            if (!folder.exists() && !folder.mkdirs()) {
-                throw new IOException("Could not create config folder at " + location);
-            }
+        this.location = folder.getAbsolutePath();
 
-            if (!location.endsWith("/")) {
-                location += "/";
-            }
-
-            this.location = location;
-
-            if (configManager.isWindows() || !location.startsWith("/")) {
-                this.locationURL = "file:///" + this.location;
-            } else {
-                this.locationURL = "file://" + this.location;
-            }
-
-            location += "config.json";
-            File file = new File(location);
-
-            if (!file.exists()) {
+        File file = new File(folder, "config.json");
+        if (!file.exists()) {
+            try {
                 makeTemplateConfigFile(file);
+            } catch (Exception e) {
+                throw new ConfigInitializationException(e);
             }
+        }
 
-            try (InputStream cis = file.toURI().toURL().openStream()) {
-                byte[] b = new byte[102400];
-                int len = cis.read(b);
-                String json = new String(b, 0, len, StandardCharsets.UTF_8);
-                JSONArray arr = JSON.parseArray(json);
-                for (int i = 0; i < arr.size(); i++) {
-                    JSONObject obj = arr.getJSONObject(i);
-                    String name = obj.getString("name");
-                    int port = obj.getIntValue("port");
-                    int certPort = obj.getIntValue("cert-port");
-                    int client = obj.getIntValue("max-client");
+        try (InputStream cis = new FileInputStream(file)) {
+            byte[] b = new byte[(int) file.length()];
+            int len = cis.read(b);
+            String json = new String(b, 0, len, StandardCharsets.UTF_8);
+            JSONArray arr = JSON.parseArray(json);
+            for (int i = 0; i < arr.size(); i++) {
+                JSONObject obj = arr.getJSONObject(i);
+                String name = obj.getString("name");
+                int port = obj.getIntValue("port");
+                int certPort = obj.getIntValue("cert-port");
+                int client = obj.getIntValue("max-client");
 
-                    if (!BaseUtils.isPort(port)) {
-                        log.error("Illegal Port {}, should be large than 0 and smaller than 65536", port);
-                        System.exit(1);
-                    }
-
-                    EncryptType encryptType = EncryptType.valueOf(obj.getString("encrypt"));
-                    AuthType authType = AuthType.valueOf(obj.getString("auth-type").toUpperCase());
-
-                    if (encryptType == EncryptType.OpenSSL && !BaseUtils.isPort(certPort)) {
-                        log.error("Illegal CertPort {}, should be large than 0 and smaller than 65536", certPort);
-                        System.exit(1);
-                    }
-
-                    Node n = new Node(name, port, certPort, client, authType, encryptType);
-
-                    switch (authType) {
-                        case SIMPLE: {
-                            String pwd = obj.getString("password");
-                            n.putArgument("password", pwd);
-                        }
-                        break;
-                        case USER: {
-                            String group = obj.getString("group");
-                            n.putArgument("group", group);
-                        }
-                    }
-
-                    nodeList.add(n);
-                    log.info("Create node {}", n.toString());
+                if (!BaseUtils.isPort(port)) {
+                    log.error("Illegal Port {}, should be large than 0 and smaller than 65536", port);
+                    System.exit(1);
                 }
-            }
 
-        } catch (Exception e) {
+                EncryptType encryptType = EncryptType.valueOf(obj.getString("encrypt"));
+                AuthType authType = AuthType.valueOf(obj.getString("auth-type").toUpperCase());
+
+                if (encryptType == EncryptType.OpenSSL && !BaseUtils.isPort(certPort)) {
+                    log.error("Illegal CertPort {}, should be large than 0 and smaller than 65536", certPort);
+                    System.exit(1);
+                }
+
+                Node n = new Node(name, port, certPort, client, authType, encryptType);
+
+                switch (authType) {
+                    case SIMPLE: {
+                        String pwd = obj.getString("password");
+                        n.putArgument("password", pwd);
+                    }
+                    break;
+                    case USER: {
+                        String group = obj.getString("group");
+                        n.putArgument("group", group);
+                    }
+                }
+
+                nodeList.add(n);
+                log.info("Create node {}", n.toString());
+            }
+        } catch (IOException e) {
             throw new ConfigInitializationException(e);
         }
     }
@@ -145,7 +134,7 @@ public class ServerConfig extends AbstractConfig implements Config {
     }
 
     public String getLocationURL() {
-        return locationURL;
+        return "file://" + location;
     }
 
     public Node[] getServerNode() {

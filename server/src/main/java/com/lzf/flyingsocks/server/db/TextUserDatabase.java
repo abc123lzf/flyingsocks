@@ -15,6 +15,7 @@ import com.lzf.flyingsocks.server.ServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -78,7 +79,7 @@ public class TextUserDatabase extends AbstractConfig implements UserDatabase {
 
 
     private void doInitial(ServerConfig cfg) throws ConfigInitializationException {
-        try (InputStream is = new URL("file:///" + cfg.getLocationURL() + "user.json").openStream()) {
+        try (InputStream is = new FileInputStream(cfg.getLocation())) {
             byte[] b = new byte[512000];
             int len = is.read(b);
             String json = new String(b, 0, len, StandardCharsets.UTF_8);
