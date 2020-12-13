@@ -36,8 +36,10 @@ function install_tools() {
 }
 
 function compile_project() {
-  mvn clean package || return 1
+  mvn clean install || return 1
+  cd server || exit 1
   mvn assembly:single || return 1
+  cd ..
   return 0
 }
 
@@ -67,7 +69,7 @@ function main() {
   fi
 
   cp server/target/flyingsocks-server-bin.zip ..
-  unzip ../flyingsocks-server-bin.zip
+  unzip ../flyingsocks-server-bin.zip -d ..
 
   echo "Server install success"
 }
