@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 
+FUNCTION_RESULT=""
+
 function getConfigDir() {
   CurrentDir=`pwd`
   cd ../config || exit 1
   ConfigDir=`pwd`
   cd $CurrentDir || exit 1
-  return $ConfigDir
+  $FUNCTION_RESULT=$ConfigDir
+  return 0
 }
 
 function getLibJars() {
@@ -16,7 +19,8 @@ function getLibJars() {
   do
     Result="$Result $Prefix$JarName"
   done
-  return $Result
+  $FUNCTION_RESULT=$Result
+  return 0
 }
 
 function checkoutRunningProcess() {
@@ -31,10 +35,10 @@ function checkoutRunningProcess() {
 
 checkoutRunningProcess
 getConfigDir
-CONFIG_DIR=$?
+CONFIG_DIR=$FUNCTION_RESULT
 
 getLibJars
-LIB_JARS=$?
+LIB_JARS=$FUNCTION_RESULT
 
 if [ "$1" == "-t" ]; then
   java -server -Dflyingsocks.config.location=$CONFIG_DIR -Xbootclasspath/a:../conf:../ -cp $LIB_JARS com.lzf.flyingsocks.server.ServerBoot

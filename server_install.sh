@@ -68,9 +68,7 @@ function main() {
     exit 1
   fi
 
-  cp server/target/flyingsocks-server-bin.zip ..
-  unzip ../flyingsocks-server-bin.zip -d ..
-
+  unzip server/target/flyingsocks-server-bin.zip -d ..
   echo "Server install success"
 }
 
