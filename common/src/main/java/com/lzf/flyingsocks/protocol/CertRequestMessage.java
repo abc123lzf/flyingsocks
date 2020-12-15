@@ -1,8 +1,8 @@
 package com.lzf.flyingsocks.protocol;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
-import io.netty.buffer.PooledByteBufAllocator;
 
 import java.util.Arrays;
 
@@ -41,12 +41,14 @@ public class CertRequestMessage extends AuthMessage implements Message {
 
     @Override
     public ByteBuf serialize() throws SerializationException {
+        ByteBufAllocator allocator = getAllocator();
+
         ByteBuf buf = super.serialize();
-        ByteBuf md5Buf = PooledByteBufAllocator.DEFAULT.buffer(16 + 4);
+        ByteBuf md5Buf = allocator.buffer(16 + 4);
         md5Buf.writeBytes(certMD5);
         md5Buf.writeBytes(END_MARK);
 
-        CompositeByteBuf cbf = PooledByteBufAllocator.DEFAULT.compositeBuffer();
+        CompositeByteBuf cbf = allocator.compositeBuffer();
         cbf.addComponent(true, buf);
         cbf.addComponent(true, md5Buf);
         return cbf;
@@ -55,8 +57,10 @@ public class CertRequestMessage extends AuthMessage implements Message {
     @Override
     public void deserialize(ByteBuf buf) throws SerializationException {
         super.deserialize(buf);
-        if(buf.readableBytes() != 16)
+        if (buf.readableBytes() != 16) {
             throw new SerializationException("MD5 Infomation must be 16 bytes long");
+        }
+
         byte[] b = new byte[16];
         buf.readBytes(b);
         this.certMD5 = b;

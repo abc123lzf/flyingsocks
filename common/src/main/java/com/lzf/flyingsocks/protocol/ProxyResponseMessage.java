@@ -1,7 +1,7 @@
 package com.lzf.flyingsocks.protocol;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.util.ReferenceCountUtil;
 
 /**
@@ -36,13 +36,15 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
         private final byte head;
 
         State(int head) {
-            this.head = (byte)head;
+            this.head = (byte) head;
         }
 
         private static State getStateByHead(byte head) {
-            for(State state : State.values())
-                if(state.head == head)
+            for (State state : State.values()) {
+                if (state.head == head) {
                     return state;
+                }
+            }
             return null;
         }
     }
@@ -61,17 +63,15 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
 
     @Override
     public ByteBuf serialize() throws SerializationException {
-        if(state == null)
-            throw new SerializationException("ProxyResponseMessage is not complete, message detail: \n" + toString());
+        assertTrue(state != null, "ProxyResponseMessage is not complete, message detail: \n" + toString());
+        ByteBufAllocator allocator = getAllocator();
 
         byte h = state.head;
 
-        if(state == State.SUCCESS) {
-            if(message == null) {
-                throw new SerializationException("When ProxyResponseMessage's state is SUCCESS, message must not be null");
-            }
+        if (state == State.SUCCESS) {
+            assertTrue(message != null, "When ProxyResponseMessage's state is SUCCESS, message must not be null");
 
-            ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer(4 + 1 + 4 + message.readableBytes());
+            ByteBuf buf = allocator.buffer(4 + 1 + 4 + message.readableBytes());
             buf.writeInt(serialId);
             buf.writeByte(h);
             buf.writeInt(message.readableBytes());
@@ -80,16 +80,16 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
             return buf;
         } else {
             ByteBuf buf;
-            if(message == null) {
-                buf = PooledByteBufAllocator.DEFAULT.buffer(4 + 1 + 4);
+            if (message == null) {
+                buf = allocator.buffer(4 + 1 + 4);
             } else {
-                buf = PooledByteBufAllocator.DEFAULT.buffer(4 + 1 + 4 + message.readableBytes());
+                buf = allocator.buffer(4 + 1 + 4 + message.readableBytes());
             }
 
             buf.writeInt(serialId);
 
             buf.writeByte(h);
-            if(message != null) {
+            if (message != null) {
                 buf.writeInt(message.readableBytes());
                 buf.writeBytes(getMessage());
             } else {
@@ -102,6 +102,8 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
 
     @Override
     public void deserialize(ByteBuf buf) throws SerializationException {
+        ByteBufAllocator allocator = getAllocator();
+
         try {
             int sid = buf.readInt();
 
@@ -109,13 +111,13 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
             State state = State.getStateByHead(h);
 
             ByteBuf msg;
-            if(state == State.SUCCESS) {
-                msg = PooledByteBufAllocator.DEFAULT.buffer(buf.readInt());
+            if (state == State.SUCCESS) {
+                msg = allocator.buffer(buf.readInt());
                 buf.readBytes(msg);
-            } else if(state == State.FAILURE) {
+            } else if (state == State.FAILURE) {
                 int len = buf.readInt();
-                if(len > 0) {
-                    msg = PooledByteBufAllocator.DEFAULT.buffer(len);
+                if (len > 0) {
+                    msg = allocator.buffer(len);
                     buf.readBytes(msg);
                 } else
                     msg = null;

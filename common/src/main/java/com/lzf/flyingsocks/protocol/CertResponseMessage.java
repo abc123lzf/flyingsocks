@@ -36,7 +36,7 @@ public class CertResponseMessage implements Message {
 
     public CertResponseMessage(boolean update, byte[] file) {
         this.update = update;
-        if(update) {
+        if (update) {
             this.file = Objects.requireNonNull(file);
             this.length = file.length;
         }
@@ -49,12 +49,13 @@ public class CertResponseMessage implements Message {
     @Override
     public ByteBuf serialize() {
         ByteBuf buf;
-        if(update)
+        if (update) {
             buf = PooledByteBufAllocator.DEFAULT.buffer(4 + file.length + END_MARK.length);
-        else
+        } else {
             buf = PooledByteBufAllocator.DEFAULT.buffer(4 + END_MARK.length);
+        }
 
-        if(update) {
+        if (update) {
             buf.writeInt((1 << 31) | length);
             buf.writeBytes(file);
         } else {

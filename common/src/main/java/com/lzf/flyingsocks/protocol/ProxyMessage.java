@@ -2,8 +2,6 @@ package com.lzf.flyingsocks.protocol;
 
 import io.netty.buffer.ByteBuf;
 
-import java.nio.charset.Charset;
-
 /**
  * 代理消息抽象类
  */
@@ -39,13 +37,22 @@ abstract class ProxyMessage implements Message {
      * @return 代理消息请求/响应正文
      */
     public final ByteBuf getMessage() {
-        if(message != null) {
+        if (message != null) {
             ByteBuf buf = message;
             message = null;
             return buf;
         }
 
         throw new UnsupportedOperationException("ProxyMessage content is only can get one time");
+    }
+
+    /**
+     * 当condition为false时抛出SerializationException
+     */
+    static void assertTrue(boolean condition, String errorMessage) throws SerializationException {
+        if (!condition) {
+            throw new SerializationException(errorMessage);
+        }
     }
 
 }

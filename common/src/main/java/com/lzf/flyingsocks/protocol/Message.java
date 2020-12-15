@@ -1,6 +1,8 @@
 package com.lzf.flyingsocks.protocol;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.PooledByteBufAllocator;
 
 /**
  * 统一报文接口，用于客户端与服务端之间的通信
@@ -23,4 +25,10 @@ public interface Message {
     void deserialize(ByteBuf buf) throws SerializationException;
 
 
+    /**
+     * @return 默认的ByteBuf分配器
+     */
+    default ByteBufAllocator getAllocator() {
+        return PooledByteBufAllocator.DEFAULT;
+    }
 }

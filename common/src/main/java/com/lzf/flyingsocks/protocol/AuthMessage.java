@@ -4,11 +4,15 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.PooledByteBufAllocator;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 客户端发送给服务器的认证消息，其报文格式为：
@@ -35,8 +39,8 @@ public class AuthMessage implements Message {
     private Map<String, String> authInfo;
 
     public enum AuthMethod {
-        SIMPLE((byte)0x01, "password"),
-        USER((byte)0x02, "user", "pass");
+        SIMPLE((byte) 0x01, "password"),
+        USER((byte) 0x02, "user", "pass");
 
         private final byte head;
         private final List<String> containsKey;
@@ -57,16 +61,18 @@ public class AuthMessage implements Message {
         }
 
         private static AuthMethod getAuthMethodByHead(byte head) {
-            for(AuthMethod method : AuthMethod.values()) {
-                if(method.head == head)
+            for (AuthMethod method : AuthMethod.values()) {
+                if (method.head == head) {
                     return method;
+                }
             }
 
             return null;
         }
     }
 
-    AuthMessage() { }
+    AuthMessage() {
+    }
 
     public AuthMessage(ByteBuf serialBuf) throws SerializationException {
         deserialize(serialBuf);
@@ -85,40 +91,46 @@ public class AuthMessage implements Message {
     }
 
     public String getContent(String key) {
-        if(authInfo == null)
+        if (authInfo == null) {
             return null;
+        }
+
         return authInfo.get(key);
     }
 
     public void putContent(String key, String value) {
-        if(authInfo == null)
+        if (authInfo == null) {
             authInfo = new HashMap<>(4);
+        }
         authInfo.put(key, value);
     }
 
 
     @Override
     public ByteBuf serialize() throws SerializationException {
-        if(authMethod == null)
+        if (authMethod == null) {
             throw new SerializationException("Auth type should not be null");
+        }
 
         @SuppressWarnings("unchecked")
-        JSONObject msg = new JSONObject((Map)authInfo);
+        JSONObject msg = new JSONObject((Map) authInfo);
         List<String> keys = authMethod.getContainsKey();
 
-        for(String key : keys) {
-            if(!msg.containsKey(key))
+        for (String key : keys) {
+            if (!msg.containsKey(key)) {
                 throw new SerializationException("illegal auth message, need key:" + key);
+            }
         }
 
         String str = msg.toJSONString();
         byte[] b = str.getBytes(DEFAULT_ENCODING);
-        if(str.length() > Short.MAX_VALUE)
+        if (str.length() > Short.MAX_VALUE) {
             throw new SerializationException("auth message is too long, it's should be no longer than 32767 bytes");
+        }
 
-        ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer(1 + 2 + b.length);
+        ByteBuf buf = getAllocator().buffer(1 + 2 + b.length);
         buf.writeByte(authMethod.getHead());
-        buf.writeShort((short)b.length);
+        buf.writeShort((short) b.length);
         buf.writeBytes(b);
 
         return buf;
@@ -128,8 +140,9 @@ public class AuthMessage implements Message {
     @Override
     public void deserialize(ByteBuf buf) throws SerializationException {
         AuthMethod type = AuthMethod.getAuthMethodByHead(buf.readByte());
-        if(type == null)
+        if (type == null) {
             throw new SerializationException("unsupport auth type");
+        }
 
         short len = buf.readShort();
         byte[] b = new byte[len];
@@ -143,10 +156,12 @@ public class AuthMessage implements Message {
         }
 
         List<String> keys = type.getContainsKey();
-        Map<String, String> map = new HashMap<>((int)(keys.size() * 1.6));
-        for(String key : keys) {
-            if(!obj.containsKey(key))
+        Map<String, String> map = new HashMap<>((int) (keys.size() * 1.6));
+        for (String key : keys) {
+            if (!obj.containsKey(key)) {
                 throw new SerializationException("auth message is not complete: not found key [" + key + "]");
+            }
+
             map.put(key, obj.getString(key));
         }
 

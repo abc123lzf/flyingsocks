@@ -11,7 +11,7 @@ import java.util.Arrays;
  * | Magic |              Delimiter                |
  * |6 Bytes|          128 Bit / 16 bytes           |
  * +-------+---------------------------------------+
- *
+ * <p>
  * 6字节魔数+16字节分隔符
  */
 public class DelimiterMessage implements Message {
@@ -19,8 +19,8 @@ public class DelimiterMessage implements Message {
     /**
      * 客户端和服务端共同约定的魔数,用于鉴别非flyingsocks客户端的访问
      */
-    public static final byte[] MAGIC = new byte[] {(byte) 0xE4, (byte) 0xBC, (byte) 0x8A,
-            (byte) 0xE8, (byte)0x94, (byte)0x93};
+    public static final byte[] MAGIC = new byte[]{(byte) 0xE4, (byte) 0xBC, (byte) 0x8A,
+            (byte) 0xE8, (byte) 0x94, (byte) 0x93};
 
     /**
      * 分隔符字节数，建议16字节以上避免与报文数据混淆
@@ -61,7 +61,7 @@ public class DelimiterMessage implements Message {
     public void deserialize(ByteBuf buf) throws SerializationException {
         buf = buf.copy();
         int size = buf.readableBytes();
-        if(size < LENGTH) {
+        if (size < LENGTH) {
             buf.release();
             throw new SerializationException("Delimiter Message length must be " + LENGTH + " bytes: including " +
                     MAGIC.length + " bytes magic and " + DEFAULT_SIZE + " bytes delimiter content");
@@ -69,7 +69,7 @@ public class DelimiterMessage implements Message {
 
         byte[] magic = new byte[MAGIC.length];
         buf.readBytes(magic);
-        if(!Arrays.equals(magic, MAGIC)) {
+        if (!Arrays.equals(magic, MAGIC)) {
             buf.release();  //防止非flyingsocks客户端访问导致此处内存泄漏
             throw new SerializationException("Illegal magic number: " + Arrays.toString(magic));
         }
@@ -84,7 +84,7 @@ public class DelimiterMessage implements Message {
     }
 
     public ByteBuf getDelimiter() {
-        if(delimiter == null || delimiter.length == 0) {
+        if (delimiter == null || delimiter.length == 0) {
             return null;
         }
 
@@ -92,13 +92,13 @@ public class DelimiterMessage implements Message {
     }
 
     public void setDelimiter(byte[] delimiter) {
-        if(delimiter.length != DEFAULT_SIZE)
+        if (delimiter.length != DEFAULT_SIZE)
             throw new IllegalArgumentException("Delimiter length must be " + DEFAULT_SIZE + " bytes");
         this.delimiter = Arrays.copyOf(delimiter, delimiter.length);
     }
 
     public void setDelimiter(ByteBuf buf) {
-        if(buf.readableBytes() < DEFAULT_SIZE)
+        if (buf.readableBytes() < DEFAULT_SIZE)
             throw new IllegalArgumentException("Delimiter length must be " + DEFAULT_SIZE + " bytes");
         byte[] b = new byte[DEFAULT_SIZE];
         buf.readBytes(b);
