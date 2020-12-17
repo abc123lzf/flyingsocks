@@ -7,7 +7,7 @@ function getConfigDir() {
   cd ../config || exit 1
   ConfigDir=`pwd`
   cd $CurrentDir || exit 1
-  $FUNCTION_RESULT=$ConfigDir
+  FUNCTION_RESULT=$ConfigDir
   return 0
 }
 
@@ -19,7 +19,7 @@ function getLibJars() {
   do
     Result="$Result $Prefix$JarName"
   done
-  $FUNCTION_RESULT=$Result
+  FUNCTION_RESULT=$Result
   return 0
 }
 
@@ -41,9 +41,9 @@ getLibJars
 LIB_JARS=$FUNCTION_RESULT
 
 if [ "$1" == "-t" ]; then
-  java -server -Dflyingsocks.config.location=$CONFIG_DIR -Xbootclasspath/a:../conf:../ -cp $LIB_JARS com.lzf.flyingsocks.server.ServerBoot
+  java -server -Dflyingsocks.config.location="$CONFIG_DIR" -Xbootclasspath/a:../conf:../ -cp $LIB_JARS com.lzf.flyingsocks.server.ServerBoot
   exit 0
 fi
 
-nohup java -server -Dflyingsocks.config.location=$CONFIG_DIR -Xbootclasspath/a:../conf:../ -cp $LIB_JARS com.lzf.flyingsocks.server.ServerBoot > /dev/null 2>&1& echo $! > .pid
+nohup java -server -Dflyingsocks.config.location="$CONFIG_DIR" -Xbootclasspath/a:../conf:../ -cp $LIB_JARS com.lzf.flyingsocks.server.ServerBoot > /dev/null 2>&1& echo $! > .pid
 exit 0
