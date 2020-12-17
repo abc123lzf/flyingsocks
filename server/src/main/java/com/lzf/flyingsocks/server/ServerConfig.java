@@ -37,9 +37,8 @@ public class ServerConfig extends AbstractConfig implements Config {
     protected void initInternal() throws ConfigInitializationException {
         String folderString = configManager.getSystemProperties("flyingsocks.config.location");
         if (folderString == null) {
-            String msg = "Properties flyingsocks.config.location not configure!";
-            log.error(msg);
-            throw new ConfigInitializationException(msg);
+            folderString = configManager.getSystemProperties("user.dir");
+            log.info("Properties flyingsocks.config.location not configure, using path {}", folderString);
         }
 
         File folder = new File(folderString);

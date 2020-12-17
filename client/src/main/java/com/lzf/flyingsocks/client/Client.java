@@ -1,16 +1,17 @@
 package com.lzf.flyingsocks.client;
 
-import com.lzf.flyingsocks.*;
 import com.lzf.flyingsocks.Component;
+import com.lzf.flyingsocks.ConfigManager;
+import com.lzf.flyingsocks.Environment;
+import com.lzf.flyingsocks.TopLevelComponent;
+import com.lzf.flyingsocks.VoidComponent;
 
-import java.awt.Desktop;
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.Objects;
-import java.util.Properties;
 
 public abstract class Client extends TopLevelComponent
         implements Component<VoidComponent>, Environment, ClientOperator {
@@ -18,12 +19,12 @@ public abstract class Client extends TopLevelComponent
     /**
      * 默认组件名
      */
-    public static final String DEFAULT_COMPONENT_NAME = "flyingsocks-client";
+    static final String DEFAULT_COMPONENT_NAME = "flyingsocks-client";
 
     /**
      * 当前版本号
      */
-    public static final String VERSION = "v3.0";
+    static final String VERSION = "v3.0";
 
 
     private Runnable guiTask;
@@ -50,20 +51,24 @@ public abstract class Client extends TopLevelComponent
         return super.getConfigManager();
     }
 
+
     @Override
     public void cleanLogFiles() {
         GlobalConfig gc = getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
         if (gc != null) {
             File folder = new File(gc.configPath() + "/log");
-            if (!folder.exists() || !folder.isDirectory())
+            if (!folder.exists() || !folder.isDirectory()) {
                 return;
+            }
 
             File[] files = folder.listFiles();
-            if (files == null)
+            if (files == null) {
                 return;
+            }
             for (File file : files) {
-                if (file.isFile() && !file.delete())
+                if (file.isFile() && !file.delete()) {
                     log.info("Can not delete file {}", file.getName());
+                }
             }
         }
     }

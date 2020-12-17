@@ -4,6 +4,7 @@ import java.util.Objects;
 
 /**
  * 配置模板类
+ *
  * @see com.lzf.flyingsocks.Config
  */
 public abstract class AbstractConfig implements Config {
@@ -40,7 +41,7 @@ public abstract class AbstractConfig implements Config {
 
     @Override
     public synchronized final void initialize() throws ConfigInitializationException {
-        if(initial) {
+        if (initial) {
             throw new IllegalStateException("can not initial double time in this config " + getName());
         }
 
@@ -66,12 +67,12 @@ public abstract class AbstractConfig implements Config {
 
     @Override
     public boolean equals(Object obj) {
-        if(obj == null)
+        if (obj == null)
             return false;
-        if(this == obj)
+        if (this == obj)
             return true;
 
-        if(obj.getClass() == getClass()) {
+        if (obj.getClass() == getClass()) {
             AbstractConfig c = (AbstractConfig) obj;
             return c.configManager.equals(this.configManager) && c.name.equals(this.name);
         }

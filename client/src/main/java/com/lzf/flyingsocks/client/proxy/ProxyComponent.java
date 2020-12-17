@@ -9,7 +9,10 @@ import com.lzf.flyingsocks.ConfigEventListener;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.LifecycleState;
 import com.lzf.flyingsocks.client.Client;
-import io.netty.util.ReferenceCountUtil;
+import com.lzf.flyingsocks.client.proxy.direct.DirectForwardComponent;
+import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
+import com.lzf.flyingsocks.client.proxy.socks.SocksReceiverComponent;
+import io.netty.channel.nio.NioEventLoopGroup;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,13 +20,17 @@ import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
 
 /**
  * 实现代理功能的核心组件
  */
-public abstract class ProxyComponent extends AbstractComponent<Client> implements ProxyRequestManager {
+public class ProxyComponent extends AbstractComponent<Client> implements ProxyRequestManager {
 
     public static final String NAME = "ProxyCore";
 
@@ -53,11 +60,24 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
     /**
      * 异步任务执行器
      */
-    private final ExecutorService executors = Executors.newCachedThreadPool();
+    private final ExecutorService asyncTaskExecutorService = Executors.newCachedThreadPool();
+
+    /**
+     * IO线程池
+     */
+    private final ExecutorService ioExectuorService;
 
 
-    protected ProxyComponent(Client client) {
+    public ProxyComponent(Client client) {
         super(NAME, Objects.requireNonNull(client));
+
+        int cpus = getParentComponent().availableProcessors();
+
+        ioExectuorService = new ThreadPoolExecutor(Math.max(cpus * 2, 8), Math.max(cpus * 4, 48), 15L, TimeUnit.MINUTES, new SynchronousQueue<>(),
+                (r, executor) -> {
+                    log.error("Can not execture more IO Task");
+                    throw new RejectedExecutionException("Can not execture more IO Task");
+                });
     }
 
 
@@ -70,15 +90,21 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
         this.proxyAutoChecker = pac.getProxyAutoChecker();
 
         //加载flyingsocks服务器配置
-        ProxyServerConfig cfg = new ProxyServerConfig(cm);
-        cm.registerConfig(cfg);
-        this.proxyServerConfig = cfg;
+        ProxyServerConfig psc = new ProxyServerConfig(cm);
+        cm.registerConfig(psc);
+        this.proxyServerConfig = psc;
         initProxyServerComponent();
 
         if (!loadBalance && activeProxyServers.size() > 1) {
             throw new ComponentException(new IllegalStateException("When load balance is turn off, " +
                     "the using proxy server number must not be grater than 1"));
         }
+
+        SocksConfig sc = new SocksConfig(cm);
+        cm.registerConfig(sc);
+
+        addComponent(new SocksReceiverComponent(this));
+        addComponent(new DirectForwardComponent(this));
 
         super.initInternal();
     }
@@ -91,8 +117,9 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
 
     @Override
     protected void stopInternal() {
-        executors.shutdownNow();
+        asyncTaskExecutorService.shutdownNow();
         super.stopInternal();
+        ioExectuorService.shutdownNow();
     }
 
     @Override
@@ -100,19 +127,29 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
         super.removeComponentByName(name);
     }
 
+    /**
+     * 构造EventLoopGroup
+     */
+    public NioEventLoopGroup createNioEventLoopGroup(int threads) {
+        return new NioEventLoopGroup(threads, ioExectuorService);
+    }
+
+
     @Override
     public void registerSubscriber(ProxyRequestSubscriber subscriber) {
         requestSubscribers.add(subscriber);
     }
+
 
     @Override
     public void removeSubscriber(ProxyRequestSubscriber subscriber) {
         requestSubscribers.remove(subscriber);
     }
 
+
     @Override
     public void publish(ProxyRequest request) {
-        if (requestSubscribers.isEmpty() && log.isWarnEnabled()) {
+        if (requestSubscribers.isEmpty()) {
             log.warn("No RequestSubscriber found in manager");
         }
         //根据PAC文件的配置自动选择代理模式
@@ -123,14 +160,14 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
         for (ProxyRequestSubscriber sub : requestSubscribers) {
             if (sub.requestType().isAssignableFrom(request.getClass()) &&
                     (sub.receiveNeedProxy() && np || sub.receiveNeedlessProxy() && !np) &&  //false&&true || true&&false
-                    sub.requestProtcol().contains(request.protocol())) {
+                    sub.requestProtocol().contains(request.protocol())) {
                 list.add(index);
             }
             index++;
         }
 
         if (list.isEmpty()) {
-            ReferenceCountUtil.release(request.takeClientMessage());
+            request.close();
             log.warn("ProxyRequest was not consume, target server: {}", request.host);
         } else {
             int hash = Math.abs(request.hashCode());
@@ -223,7 +260,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
 
                         ProxyServerComponent newPsc = new ProxyServerComponent(ProxyComponent.this, node);
                         addComponent(newPsc);
-                        executors.submit(() -> { //异步执行，防止连接超时阻塞GUI线程
+                        asyncTaskExecutorService.submit(() -> { //异步执行，防止连接超时阻塞GUI线程
                             synchronized (newPsc) {
                                 newPsc.init();
                                 newPsc.start();
@@ -231,7 +268,7 @@ public abstract class ProxyComponent extends AbstractComponent<Client> implement
                         });
                     } else if (psc != null) { //如果用户需要关闭这个代理服务器连接
                         psc.setUse(false);
-                        executors.submit(psc::stop);
+                        asyncTaskExecutorService.submit(psc::stop);
                         removeComponentByName(name);
                     }
                 }

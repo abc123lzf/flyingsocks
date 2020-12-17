@@ -37,22 +37,7 @@ public final class DatagramProxyRequest extends ProxyRequest {
 
     @Override
     public DatagramChannel clientChannel() {
-        return (DatagramChannel)super.clientChannel();
-    }
-
-    @Override
-    public ByteBuf takeClientMessage() {
-        if(content != null) {
-            ByteBuf buf = content;
-            content = null;
-            return buf;
-        }
-        return null;
-    }
-
-    @Override
-    public boolean ensureMessageOnlyOne() {
-        return true;
+        return (DatagramChannel) super.clientChannel();
     }
 
     @Override

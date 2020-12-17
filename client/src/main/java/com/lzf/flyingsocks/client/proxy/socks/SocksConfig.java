@@ -53,7 +53,7 @@ public class SocksConfig extends AbstractConfig {
      */
     private String address;
 
-    SocksConfig(ConfigManager<?> configManager) {
+    public SocksConfig(ConfigManager<?> configManager) {
         super(configManager, NAME);
     }
 

@@ -33,16 +33,6 @@ public final class SocksProxyRequest extends ProxyRequest {
     }
 
     @Override
-    protected Channel clientChannel() {
-        return super.clientChannel();
-    }
-
-    @Override
-    protected void closeClientChannel() {
-        super.closeClientChannel();
-    }
-
-    @Override
     protected void setCtl(int ctl) {
         super.setCtl(ctl);
     }
@@ -61,22 +51,12 @@ public final class SocksProxyRequest extends ProxyRequest {
         return serverChannel;
     }
 
+    void tryTransferMessageQueue(ByteBuf message) {
+        messageQueue.offer(message);
+    }
+
     BlockingQueue<ByteBuf> messageQueue() {
         return messageQueue;
-    }
-
-    @Override
-    public ByteBuf takeClientMessage() {
-        try {
-            return messageQueue.poll(1, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            return null;
-        }
-    }
-
-    @Override
-    public boolean ensureMessageOnlyOne() {
-        return false;
     }
 
     @Override

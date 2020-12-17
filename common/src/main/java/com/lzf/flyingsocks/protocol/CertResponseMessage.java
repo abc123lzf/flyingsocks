@@ -1,7 +1,7 @@
 package com.lzf.flyingsocks.protocol;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.buffer.ByteBufAllocator;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -48,11 +48,13 @@ public class CertResponseMessage implements Message {
 
     @Override
     public ByteBuf serialize() {
+        ByteBufAllocator allocator = getAllocator();
+
         ByteBuf buf;
         if (update) {
-            buf = PooledByteBufAllocator.DEFAULT.buffer(4 + file.length + END_MARK.length);
+            buf = allocator.buffer(4 + file.length + END_MARK.length);
         } else {
-            buf = PooledByteBufAllocator.DEFAULT.buffer(4 + END_MARK.length);
+            buf = allocator.DEFAULT.buffer(4 + END_MARK.length);
         }
 
         if (update) {

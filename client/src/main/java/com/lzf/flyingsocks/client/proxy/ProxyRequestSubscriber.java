@@ -48,7 +48,7 @@ public interface ProxyRequestSubscriber {
     /**
      * @return 可以接收的代理协议Set
      */
-    default Set<Protocol> requestProtcol() {
+    default Set<Protocol> requestProtocol() {
         return ANY_PROTOCOL;
     }
 }

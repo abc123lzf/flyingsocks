@@ -1,15 +1,20 @@
 package com.lzf.flyingsocks.client.proxy;
 
+import com.lzf.flyingsocks.client.proxy.util.MessageDeliverer;
+import com.lzf.flyingsocks.client.proxy.util.MessageReceiver;
 import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.SocketChannel;
 
+import java.io.IOException;
+
 /**
  * 代理请求
  */
-public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneable {
+public class ProxyRequest implements Comparable<ProxyRequest>, Cloneable {
 
     /**
      * 目标服务器
@@ -27,6 +32,11 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
     protected final Channel clientChannel;
 
     /**
+     * 客户端消息 -> 接收者传递工具/缓存
+     */
+    protected final MessageDeliverer clientMessageDeliverer = new MessageDeliverer();
+
+    /**
      * 代理协议
      */
     protected final Protocol protocol;
@@ -40,6 +50,11 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
      * 是否进行代理
      */
     protected boolean proxy;
+
+    /**
+     * 该Request是否已经关闭
+     */
+    protected volatile boolean close = false;
 
 
     /**
@@ -58,11 +73,11 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
     }
 
 
-    protected ProxyRequest(String host, int port, Channel channel, Protocol protocol) {
+    public ProxyRequest(String host, int port, Channel clientChannel, Protocol protocol) {
         this.host = host;
         this.port = port;
-        assertChannel(channel, protocol);
-        this.clientChannel = channel;
+        assertChannel(clientChannel, protocol);
+        this.clientChannel = clientChannel;
         this.protocol = protocol;
     }
 
@@ -118,31 +133,72 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
         this.ctl = c;
     }
 
-    protected Channel clientChannel() {
+    public Channel clientChannel() {
         return clientChannel;
     }
 
-    protected void closeClientChannel() {
-        if (clientChannel.isActive())
+    public void closeClientChannel() {
+        if (clientChannel.isActive()) {
             clientChannel.close();
+        }
     }
 
+    /**
+     * @param proxy 是否需要走代理通道
+     */
     protected void setProxy(boolean proxy) {
         this.proxy = proxy;
     }
 
     /**
-     * 获取客户端发送的请求信息
+     * 设置客户端消息ByteBuf接收者
      *
-     * @return 字节容器
+     * @param receiver 消息接收者
+     * @throws IOException 如果ClientMessageDeliverer已经cancel
      */
-    public abstract ByteBuf takeClientMessage();
+    public void setClientMessageReceiver(MessageReceiver receiver) throws IOException {
+        clientMessageDeliverer.setReceiver(receiver);
+    }
 
     /**
-     * @return 是否确定客户端发送的消息仅有一条，例如调用
-     * 一次getClientMessage()方法后不可能再次调用getClientMessage()方法后获取到ByteBuf实例
+     * 传递或者暂时缓存客户端的消息
+     *
+     * @param message 来自客户端的{@link ByteBuf}
+     * @throws IOException 如果ClientMessageDeliverer已经cancel
      */
-    public abstract boolean ensureMessageOnlyOne();
+    public void transferClientMessage(ByteBuf message) throws IOException {
+        clientMessageDeliverer.transfer(message);
+    }
+
+    /**
+     * @return 本次代理请求是否已经关闭或者废除
+     */
+    public boolean isClose() {
+        return close;
+    }
+
+
+    /**
+     * 关闭/废除本次代理请求
+     */
+    public void close() {
+        if (close) {
+            return;
+        }
+
+        synchronized (this) {
+            if (close) {
+                return;
+            }
+
+            close = true;
+            clientMessageDeliverer.cancel();
+
+            if (clientChannel.isActive()) {
+                clientChannel.close();
+            }
+        }
+    }
 
 
     @Override
@@ -166,8 +222,9 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
 
     @Override
     public int compareTo(ProxyRequest request) {
-        if (this.equals(request))
+        if (this.equals(request)) {
             return 0;
+        }
 
         if (this.hashCode() > request.hashCode())
             return 1;
@@ -179,6 +236,7 @@ public abstract class ProxyRequest implements Comparable<ProxyRequest>, Cloneabl
     protected ProxyRequest clone() throws CloneNotSupportedException {
         return (ProxyRequest) super.clone();
     }
+
 
     protected static void assertChannel(Channel channel, Protocol protocol) {
         switch (protocol) {

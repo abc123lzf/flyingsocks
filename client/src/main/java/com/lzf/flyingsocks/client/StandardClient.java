@@ -1,13 +1,14 @@
 package com.lzf.flyingsocks.client;
 
-import com.lzf.flyingsocks.*;
+import com.lzf.flyingsocks.ComponentException;
+import com.lzf.flyingsocks.ConfigEvent;
+import com.lzf.flyingsocks.ConfigEventListener;
 import com.lzf.flyingsocks.client.gui.swt.SWTViewComponent;
 import com.lzf.flyingsocks.client.proxy.ConnectionState;
 import com.lzf.flyingsocks.client.proxy.ProxyAutoConfig;
 import com.lzf.flyingsocks.client.proxy.ProxyComponent;
 import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
-import com.lzf.flyingsocks.client.proxy.socks.SocksProxyComponent;
 
 import java.io.IOException;
 import java.util.Map;
@@ -41,7 +42,7 @@ public final class StandardClient extends Client {
         GlobalConfig cfg = new GlobalConfig(getConfigManager());
         getConfigManager().registerConfig(cfg);
 
-        addComponent(new SocksProxyComponent(this));
+        addComponent(new ProxyComponent(this));
 
         if (cfg.isOpenGUI()) {
             addComponent(new SWTViewComponent(this));

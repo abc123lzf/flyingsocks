@@ -9,7 +9,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 
 import static com.lzf.flyingsocks.server.Server.VERSION;
@@ -74,7 +73,7 @@ public abstract class ServerBoot {
              BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.US_ASCII))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                log.info(line);
+                System.out.println(line);
             }
         } catch (IOException ignore) {
             // NOOP
