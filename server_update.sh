@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
 function backupConfig() {
-  cp ../flyingsocks-server/config /tmp || return 1
+  rm -rf /tmp/flyingsocks-backup
+  mkdir /tmp/flyingsocks-backup
+  cp ../flyingsocks-server/config /tmp/flyingsocks-backup || return 1
   return 0
 }
 
@@ -19,7 +21,7 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-cd ../server || exit 1
+cd server || exit 1
 
 mvn assembly:single
 if [ $? -ne 0 ]; then
