@@ -27,15 +27,15 @@
             <properties>
                 <swt-artifact>org.eclipse.swt.win32.win32.x86_64</swt-artifact>
             </properties>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
         </profile>
         <profile>
             <id>macos</id>
             <properties>
                 <swt-artifact>org.eclipse.swt.cocoa.macosx.x86_64</swt-artifact>
             </properties>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
         </profile>
         <profile>
             <id>linux32</id>

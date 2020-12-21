@@ -295,21 +295,20 @@ public final class SocksReceiverComponent extends AbstractComponent<ProxyCompone
 
             log.trace("Socks command request to {}:{}", host, port);
 
-            SocksProxyRequest spq = new SocksProxyRequest(host, port, ctx.channel());
-
+            ProxyRequest pr = new ProxyRequest(host, port, ctx.channel(), ProxyRequest.Protocol.TCP);
             ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.SUCCESS, SocksAddressType.IPv4));
-            ctx.pipeline().addLast(new TCPProxyMessageHandler(spq)).remove(this);
+            ctx.pipeline().addLast(new TCPProxyMessageHandler(pr)).remove(this);
         }
     }
 
     /**
      * 负责接收客户端要求代理的数据，仅TCP代理
      */
-    private class TCPProxyMessageHandler extends SimpleChannelInboundHandler<ByteBuf> {
+    class TCPProxyMessageHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
-        private final SocksProxyRequest proxyRequest;
+        private final ProxyRequest proxyRequest;
 
-        private TCPProxyMessageHandler(SocksProxyRequest request) {
+        TCPProxyMessageHandler(ProxyRequest request) {
             super(false);
             this.proxyRequest = request;
             parent.publish(request);
@@ -337,7 +336,7 @@ public final class SocksReceiverComponent extends AbstractComponent<ProxyCompone
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
-            proxyRequest.setCtl(31, true);
+            proxyRequest.close();
             ctx.pipeline().remove(this);
             ctx.fireChannelInactive();
         }

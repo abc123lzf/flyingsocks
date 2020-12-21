@@ -9,19 +9,16 @@ public interface Component<T extends Component<?>> extends Lifecycle, Named {
 
     /**
      * 设置组件名称
-     * @param name
+     * @param name 组件名
      */
     void setName(String name);
 
     /**
-     * 获取父组件
-     * @return
+     * @return 父组件
      */
     default T getParentComponent() {
         throw new UnsupportedOperationException(String.format("This component[%s] are not support to get parent component.", getName()));
     }
-
-
 
     /**
      * 根据模块名获取模块

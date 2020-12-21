@@ -5,16 +5,14 @@ import com.lzf.flyingsocks.client.proxy.ProxyComponent;
 import com.lzf.flyingsocks.client.proxy.ProxyRequest;
 import com.lzf.flyingsocks.client.proxy.ProxyRequestSubscriber;
 import com.lzf.flyingsocks.client.proxy.util.MessageReceiver;
+import com.lzf.flyingsocks.util.BootstrapTemplate;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ConnectTimeoutException;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 
 import java.io.IOException;
@@ -30,7 +28,7 @@ public class DirectForwardComponent extends AbstractComponent<ProxyComponent> im
     /**
      * Bootstrap模板
      */
-    private final Bootstrap connectTemplateBootstrap;
+    private final BootstrapTemplate connectBootstrapTemplate;
 
     public DirectForwardComponent(ProxyComponent component) {
         super("DirectForwardComponent", component);
@@ -42,7 +40,7 @@ public class DirectForwardComponent extends AbstractComponent<ProxyComponent> im
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .option(ChannelOption.AUTO_CLOSE, true);
 
-        this.connectTemplateBootstrap = template;
+        this.connectBootstrapTemplate = new BootstrapTemplate(template);
     }
 
 
@@ -59,23 +57,17 @@ public class DirectForwardComponent extends AbstractComponent<ProxyComponent> im
 
         log.trace("connect to server {}:{} established...", host, port);
 
-        Bootstrap b = connectTemplateBootstrap.clone();
-        b.handler(new ChannelInitializer<SocketChannel>() {
-            @Override
-            protected void initChannel(SocketChannel ch) {
-                ch.pipeline().addFirst(new TCPConnectHandler(request));
-            }
-        });
+        connectBootstrapTemplate.doConnect(host, port,
+                ch -> ch.pipeline().addFirst(new TCPConnectHandler(request)),
+                f -> {
+                    if (!f.isSuccess()) {
+                        handleConnectException(request, f.cause());
+                        f.channel().close();
+                        request.close();
+                    }
 
-        b.connect(host, port).addListener((ChannelFuture f) -> {
-            if (!f.isSuccess()) {
-                handleConnectException(request, f.cause());
-                f.channel().close();
-                request.close();
-            }
-
-            log.trace("connect establish success, target server {}:{}", host, port);
-        });
+                    log.trace("connect establish success, target server {}:{}", host, port);
+                });
     }
 
 

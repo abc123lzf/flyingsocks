@@ -20,6 +20,7 @@ import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
 import com.lzf.flyingsocks.protocol.ProxyResponseMessage;
 import com.lzf.flyingsocks.protocol.SerializationException;
 import com.lzf.flyingsocks.util.FSMessageChannelOutboundHandler;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -35,7 +36,6 @@ import io.netty.channel.ChannelPromise;
 import io.netty.channel.ConnectTimeoutException;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
@@ -89,26 +89,18 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     //通用Netty引导对象
     private volatile Bootstrap bootstrap;
 
-    //用于处理客户端消息
-    //private volatile ExecutorService clientMessageProcessor;
-
     //与flyingsocks服务器会话对象
     private volatile ProxyServerSession proxyServerSession;
 
     //下次重连的时间(绝对时间戳)
     private volatile long nextReconnectTime = -1L;
 
-    //代理请求消息队列
-    //private final BlockingQueue<SerialProxyRequest> proxyRequestQueue = new LinkedBlockingQueue<>();
 
     //活跃的代理请求Map
     private final ConcurrentMap<Integer, SerialProxyRequest> activeProxyRequestMap = new ConcurrentHashMap<>(512);
 
     //代理请求ID生成器
     private final AtomicInteger serialBuilder = new AtomicInteger(0);
-
-    //确保可以正式向服务器发送代理请求后释放clientMessageProcessor中的等待线程
-    private volatile CountDownLatch taskWaitLatch;
 
     /**
      * @param proxyComponent 父组件引用
@@ -189,83 +181,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             final String host = config.getHost();
             final int certPort = config.getCertPort();
             //尝试从服务器上获取SSL证书
-            final EventLoopGroup sslGroup = new NioEventLoopGroup(1);
-            Bootstrap sslBoot = new Bootstrap()
-                    .group(sslGroup)
-                    .channel(NioSocketChannel.class)
-                    .option(ChannelOption.SO_KEEPALIVE, true)
-                    .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, cfg.getConnectTimeout())
-                    .handler(new ChannelInitializer<SocketChannel>() {
-                        @Override
-                        protected void initChannel(SocketChannel ch) {
-                            ChannelPipeline cp = ch.pipeline();
-                            cp.addLast(FSMessageChannelOutboundHandler.INSTANCE);
-                            cp.addLast(new DelimiterBasedFrameDecoder(1024 * 100,
-                                    Unpooled.copiedBuffer(CertResponseMessage.END_MARK)));
-
-                            cp.addLast(new ChannelInboundHandlerAdapter() {
-                                @Override
-                                public void channelActive(ChannelHandlerContext ctx) {
-                                    updateConnectionState(ConnectionState.SSL_CONNECT);
-                                    CertRequestMessage msg;
-                                    switch (config.getAuthType()) {
-                                        case SIMPLE:
-                                            msg = new CertRequestMessage(AuthMethod.SIMPLE, md5);
-                                            break;
-                                        case USER:
-                                            msg = new CertRequestMessage(AuthMethod.USER, md5);
-                                            break;
-                                        default:
-                                            throw new IllegalArgumentException("Auth method: " + config.getAuthType() + " Not support.");
-                                    }
-
-                                    List<String> keys = msg.getAuthMethod().getContainsKey();
-                                    for (String key : keys) {
-                                        msg.putContent(key, config.getAuthArgument(key));
-                                    }
-
-                                    log.trace("Ready to send CertRequest to remote server {}:{}", host, certPort);
-
-                                    ctx.writeAndFlush(msg);
-                                }
-                            });
-
-                            cp.addLast(new SimpleChannelInboundHandler<ByteBuf>() {
-                                private boolean success = false;
-
-                                @Override
-                                protected void channelRead0(ChannelHandlerContext ctx, ByteBuf buf) throws Exception {
-                                    CertResponseMessage msg = new CertResponseMessage(buf);
-                                    if (msg.needUpdate()) {
-                                        InputStream is = msg.getFile();
-                                        int len = msg.getLength();
-                                        writeCertFile(cfg.configPath(), is, len);
-                                        if (log.isInfoEnabled())
-                                            log.info("Update cert file from remote flyingsocks server {}:{}", host, certPort);
-
-                                    } else if (log.isTraceEnabled()) {
-                                        log.trace("Remote server cert file is same as local, from {}:{}", host, certPort);
-                                    }
-
-                                    success = true;
-                                    ctx.close();
-                                }
-
-                                @Override
-                                public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-                                    if (success) {
-                                        updateConnectionState(ConnectionState.SSL_CONNECT_DONE);
-                                    } else {
-                                        updateConnectionState(ConnectionState.SSL_CONNECT_AUTH_FAILURE);
-                                    }
-
-                                    LockSupport.unpark(thread);
-                                    super.channelInactive(ctx);
-                                }
-                            });
-                        }
-                    });
-
+            final EventLoopGroup sslGroup = parent.createNioEventLoopGroup(1);
+            Bootstrap sslBoot = createSslServiceBootstrap(cfg);
             updateConnectionState(ConnectionState.SSL_CONNECTING);
             //连接到服务器的证书端口
             sslBoot.connect(host, certPort).addListener(f -> {
@@ -313,8 +230,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             throw new ComponentException("Unsupport encrypt type " + config.getEncryptType());
         }
 
-        taskWaitLatch = new CountDownLatch(1);
-
         Map<String, Object> params = new HashMap<>(2);
         params.put("alloc", PooledByteBufAllocator.DEFAULT);
 
@@ -338,10 +253,104 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     }
                 });
 
-        //clientMessageProcessor = createMessageExecutor();
-
         super.initInternal();
     }
+
+
+    private Bootstrap createSslServiceBootstrap(GlobalConfig cfg) {
+        if (config.getEncryptType() != EncryptType.SSL) {
+            throw new IllegalStateException();
+        }
+
+        final byte[] md5 = calcuateCertFileMD5(cfg.configPath());
+        if (md5 == null) {
+            throw new ComponentException();
+        }
+
+        final Thread thread = Thread.currentThread();
+        final String host = config.getHost();
+        final int certPort = config.getCertPort();
+        //尝试从服务器上获取SSL证书
+        final EventLoopGroup sslGroup = parent.createNioEventLoopGroup(1);
+        Bootstrap sslBoot = new Bootstrap()
+                .group(sslGroup)
+                .channel(NioSocketChannel.class)
+                .option(ChannelOption.SO_KEEPALIVE, true)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, cfg.getConnectTimeout());
+
+        sslBoot.handler(new ChannelInitializer<SocketChannel>() {
+            @Override
+            protected void initChannel(SocketChannel ch) {
+                ChannelPipeline cp = ch.pipeline();
+                cp.addLast(FSMessageChannelOutboundHandler.INSTANCE);
+                cp.addLast(new DelimiterBasedFrameDecoder(1024 * 100,
+                        Unpooled.copiedBuffer(CertResponseMessage.END_MARK)));
+
+                cp.addLast(new ChannelInboundHandlerAdapter() {
+                    @Override
+                    public void channelActive(ChannelHandlerContext ctx) {
+                        updateConnectionState(ConnectionState.SSL_CONNECT);
+                        CertRequestMessage msg;
+                        switch (config.getAuthType()) {
+                            case SIMPLE:
+                                msg = new CertRequestMessage(AuthMethod.SIMPLE, md5);
+                                break;
+                            case USER:
+                                msg = new CertRequestMessage(AuthMethod.USER, md5);
+                                break;
+                            default:
+                                throw new IllegalArgumentException("Auth method: " + config.getAuthType() + " Not support.");
+                        }
+
+                        List<String> keys = msg.getAuthMethod().getContainsKey();
+                        for (String key : keys) {
+                            msg.putContent(key, config.getAuthArgument(key));
+                        }
+
+                        log.trace("Ready to send CertRequest to remote server {}:{}", host, certPort);
+
+                        ctx.writeAndFlush(msg);
+                    }
+                });
+
+                cp.addLast(new SimpleChannelInboundHandler<ByteBuf>() {
+                    private boolean success = false;
+
+                    @Override
+                    protected void channelRead0(ChannelHandlerContext ctx, ByteBuf buf) throws Exception {
+                        CertResponseMessage msg = new CertResponseMessage(buf);
+                        if (msg.needUpdate()) {
+                            InputStream is = msg.getFile();
+                            int len = msg.getLength();
+                            writeCertFile(cfg.configPath(), is, len);
+                            if (log.isInfoEnabled())
+                                log.info("Update cert file from remote flyingsocks server {}:{}", host, certPort);
+
+                        } else if (log.isTraceEnabled()) {
+                            log.trace("Remote server cert file is same as local, from {}:{}", host, certPort);
+                        }
+
+                        success = true;
+                        ctx.close();
+                    }
+
+                    @Override
+                    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+                        if (success) {
+                            updateConnectionState(ConnectionState.SSL_CONNECT_DONE);
+                        } else {
+                            updateConnectionState(ConnectionState.SSL_CONNECT_AUTH_FAILURE);
+                        }
+
+                        LockSupport.unpark(thread);
+                        super.channelInactive(ctx);
+                    }
+                });
+            }
+        });
+        return sslBoot;
+    }
+
 
     @Override
     protected void startInternal() {
@@ -396,18 +405,11 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         return false;
     }
 
-    /**
-     * @return 可以处理所有类型的ProxyRequest
-     */
-    @Override
-    public Class<? extends ProxyRequest> requestType() {
-        return ProxyRequest.class;
-    }
-
 
     private void doConnect(boolean sync) {
-        if (active)
+        if (active) {
             throw new IllegalStateException("This component has been connect.");
+        }
 
         updateConnectionState(ConnectionState.PROXY_INITIAL);
         String host = config.getHost();
@@ -428,10 +430,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     log.info("Connect success to flyingsocks server {}:{}", host, port);
 
                     active = true;
-                    /*for (int i = 0; i < DEFAULT_PROCESSOR_THREAD; i++) {
-                        clientMessageProcessor.submit(new ClientMessageTransferTask());
-                    }*/
-
                     nextReconnectTime = -1L;
                     //连接成功后注册
                     parent.registerSubscriber(ProxyServerComponent.this);
@@ -494,10 +492,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             });
         }
 
-        /*if (clientMessageProcessor != null) {
-            clientMessageProcessor.shutdownNow();
-        }*/
-
         activeProxyRequestMap.clear();
         super.stopInternal();
 
@@ -532,9 +526,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         parent.removeSubscriber(this); //移除订阅，防止在此期间请求涌入队列
         active = false;
-        //清空队列
-        //proxyRequestQueue.clear();
-        //clientMessageProcessor.shutdownNow();
 
         loopGroup.shutdownGracefully();
 
@@ -548,18 +539,19 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         //处理掉线重连
         //如果父组件没有处于正在停止状态并且用户还希望继续使用该节点
         if (!parent.getState().after(LifecycleState.STOPING) && use) {
-            if (nextReconnectTime == -1L) {
-                nextReconnectTime = 2 * 1000;
+            long time = this.nextReconnectTime;
+            if (time == -1L) {
+                nextReconnectTime = time = 2 * 1000;
             } else {
-                nextReconnectTime = nextReconnectTime >= 30000 ? 30000 : nextReconnectTime * 2;
+                nextReconnectTime = time = time >= 30000 ? 30000 : time * 2;
             }
-            long d = nextReconnectTime;
-            if (d > 2000L) {
+
+            if (time > 2000L) {
                 if (log.isInfoEnabled())
-                    log.info("Waiting {}ms before reconnect server {}:{}", d, config.getHost(), config.getPort());
+                    log.info("Waiting {}ms before reconnect server {}:{}", time, config.getHost(), config.getPort());
                 Thread.interrupted(); //上述clientMessageProcessor和loopGroup调用了
                 try {
-                    wait(d);
+                    wait(time);
                 } catch (InterruptedException ignore) {
                 }
                 //wait会释放锁所以再一次检查
@@ -571,9 +563,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             if (log.isInfoEnabled())
                 log.info("Retry to connect flyingsocks server {}:{}", config.getHost(), config.getPort());
             this.proxyServerSession = null;
-            this.taskWaitLatch = new CountDownLatch(1);
             this.loopGroup = parent.createNioEventLoopGroup(1);
-            //this.clientMessageProcessor = createMessageExecutor();
             doConnect(false);
         }
     }
@@ -668,44 +658,45 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object buf) {
-            if (buf instanceof ByteBuf) {
-                log.trace("Receive flyingsocks delimiter message");
-                ByteBuf msg = (ByteBuf) buf;
-                try {
-                    DelimiterMessage dmsg = new DelimiterMessage(msg);
-                    byte[] b = new byte[DelimiterMessage.DEFAULT_SIZE];
-                    ByteBuf dbuf = dmsg.getDelimiter();
-                    dbuf.copy().readBytes(b);
+            if (!(buf instanceof ByteBuf)) {
+                ctx.fireChannelRead(buf);
+                return;
+            }
 
-                    byte[] rb = proxyServerSession.getDelimiter();
+            log.trace("Receive flyingsocks delimiter message");
+            ByteBuf msg = (ByteBuf) buf;
+            try {
+                DelimiterMessage dmsg = new DelimiterMessage(msg);
+                byte[] b = new byte[DelimiterMessage.DEFAULT_SIZE];
+                ByteBuf dbuf = dmsg.getDelimiter();
+                dbuf.copy().readBytes(b);
 
-                    if (rb == null) {
-                        log.info("Delimiter message magic number is not correct");
+                byte[] rb = proxyServerSession.getDelimiter();
+
+                if (rb == null) {
+                    log.info("Delimiter message magic number is not correct");
+                    ctx.close();
+                    return;
+                }
+
+                for (int i = 0; i < DelimiterMessage.DEFAULT_SIZE; i++) {
+                    if (b[i] != rb[i]) {
+                        log.debug("Channel close because of delimiter is difference");
                         ctx.close();
                         return;
                     }
-
-                    for (int i = 0; i < DelimiterMessage.DEFAULT_SIZE; i++) {
-                        if (b[i] != rb[i]) {
-                            log.debug("Channel close because of delimiter is difference");
-                            ctx.close();
-                            return;
-                        }
-                    }
-
-                    ctx.pipeline().remove(this)
-                            .addLast(new DelimiterBasedFrameDecoder(102400, dbuf.copy()))
-                            .addLast(new DelimiterOutboundHandler())
-                            .addLast(new AuthHandler());
-
-                } catch (SerializationException e) {
-                    log.warn("DelimiterMessage serialization error", e);
-                    ctx.close();
-                } finally {
-                    ReferenceCountUtil.release(msg);
                 }
-            } else {
-                ctx.fireChannelRead(buf);
+
+                ctx.pipeline().remove(this)
+                        .addLast(new DelimiterBasedFrameDecoder(102400, dbuf.copy()))
+                        .addLast(new DelimiterOutboundHandler())
+                        .addLast(new AuthHandler());
+
+            } catch (SerializationException e) {
+                log.warn("DelimiterMessage serialization error", e);
+                ctx.close();
+            } finally {
+                ReferenceCountUtil.release(msg);
             }
         }
 
@@ -792,12 +783,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
 
     private final class ProxyHandler extends ChannelInboundHandlerAdapter {
-
-        @Override
-        public void handlerAdded(ChannelHandlerContext ctx) {
-            taskWaitLatch.countDown();
-        }
-
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             if (cause instanceof IOException && log.isInfoEnabled()) {
@@ -903,96 +888,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         }
     }
 
-    /*private final class ClientMessageTransferTask implements Runnable {
-        private final List<SerialProxyRequest> requests = new LinkedList<>();
-
-        @Override
-        public void run() {
-            try {
-                taskWaitLatch.await();
-            } catch (InterruptedException e) {
-                return;
-            }
-
-            if (log.isTraceEnabled())
-                log.trace("Server: {}:{} ClientMessageTransferTask start", config.getHost(), config.getPort());
-
-            Thread t = Thread.currentThread();
-
-            while (!t.isInterrupted()) {
-                try {
-                    SerialProxyRequest pr;
-                    try {
-                        while ((pr = proxyRequestQueue.poll(1, TimeUnit.MILLISECONDS)) != null) {
-                            *//*if (pr.ensureMessageOnlyOne()) {
-                                ByteBuf buf = pr.takeClientMessage();
-                                sendToProxyServer(pr, buf);
-                                ReferenceCountUtil.release(buf);
-                                continue begin;
-                            }*//*
-                            requests.add(pr);
-                        }
-                    } catch (InterruptedException e) {
-                        break;
-                    }
-
-                    Iterator<SerialProxyRequest> it = requests.iterator();
-                    while (it.hasNext()) {
-                        SerialProxyRequest req = it.next();
-                        Channel cc = req.clientChannel();
-                        if (!cc.isActive() || req.isCtlMark(31)) {
-                            it.remove();
-                            activeProxyRequestMap.remove(req.serialId);
-                        } else {
-                            boolean isWrite = false;
-                            CompositeByteBuf buf = PooledByteBufAllocator.DEFAULT.compositeBuffer();
-                            ByteBuf b;
-                            while ((b = req.takeClientMessage()) != null) {
-                                buf.addComponent(true, b);
-                                isWrite = true;
-                            }
-
-                            if (isWrite) {
-                                sendToProxyServer(req, buf);
-                            }
-                        }
-                    }
-
-                } catch (Exception e) {
-                    log.error("Exception cause at ClientMessageTransferTask", e);
-                }
-            }
-
-            for (SerialProxyRequest request : requests) {
-                request.close();
-            }
-
-        }
-
-        private void sendToProxyServer(SerialProxyRequest request, ByteBuf buf) {
-            if (proxyServerSession == null) {
-                buf.release();
-                return;
-            }
-
-            ProxyRequestMessage prm = new ProxyRequestMessage(request.serialId,
-                    request.protocol.toMessageType());
-
-            prm.setHost(request.getHost());
-            prm.setPort(request.getPort());
-            prm.setMessage(buf);
-
-            try {
-                proxyServerSession.socketChannel().writeAndFlush(prm.serialize());
-            } catch (SerializationException e) {
-                log.warn("Serialize ProxyRequestMessage occur a exception");
-                request.close();
-            } finally {
-                buf.release();
-            }
-        }
-    }*/
-
     /**
      * 负责监听配置被移除时(用户删除正在使用的FS服务器)停止当前组件
      */
@@ -1019,9 +914,4 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         return String.format("ProxyServerComponent-%s:%d", host, port);
     }
 
-
-    /*private static ExecutorService createMessageExecutor() {
-        return new ThreadPoolExecutor(DEFAULT_PROCESSOR_THREAD, DEFAULT_PROCESSOR_THREAD + 2, 2, TimeUnit.MINUTES,
-                new SynchronousQueue<>());
-    }*/
 }

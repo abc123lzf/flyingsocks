@@ -158,8 +158,7 @@ public class ProxyComponent extends AbstractComponent<Client> implements ProxyRe
         int index = 0;
         List<Integer> list = new ArrayList<>(3);
         for (ProxyRequestSubscriber sub : requestSubscribers) {
-            if (sub.requestType().isAssignableFrom(request.getClass()) &&
-                    (sub.receiveNeedProxy() && np || sub.receiveNeedlessProxy() && !np) &&  //false&&true || true&&false
+            if ((sub.receiveNeedProxy() && np || sub.receiveNeedlessProxy() && !np) &&  //false&&true || true&&false
                     sub.requestProtocol().contains(request.protocol())) {
                 list.add(index);
             }
@@ -169,15 +168,16 @@ public class ProxyComponent extends AbstractComponent<Client> implements ProxyRe
         if (list.isEmpty()) {
             request.close();
             log.warn("ProxyRequest was not consume, target server: {}", request.host);
-        } else {
-            int hash = Math.abs(request.hashCode());
-            int size = list.size();
-            try {
-                requestSubscribers.get(list.get(hash % size)).receive(request);
-            } catch (IndexOutOfBoundsException e) {
-                log.warn("ProxySubscriber object changed");
-                publish(request);
-            }
+            return;
+        }
+
+        int hash = Math.abs(request.hashCode());
+        int size = list.size();
+        try {
+            requestSubscribers.get(list.get(hash % size)).receive(request);
+        } catch (IndexOutOfBoundsException e) {
+            log.warn("ProxySubscriber object changed");
+            publish(request);
         }
     }
 

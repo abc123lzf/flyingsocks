@@ -9,8 +9,9 @@ import java.util.Map;
 import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
 
 /**
- * @create 2019.8.18 1:17
- * @description GUI操作接口
+ * GUI操作接口
+ *
+ * @since 2019.8.18 1:17
  */
 public interface ClientOperator {
 

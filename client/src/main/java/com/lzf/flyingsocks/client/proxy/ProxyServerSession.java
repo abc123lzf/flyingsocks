@@ -28,8 +28,10 @@ public class ProxyServerSession extends AbstractSession {
     }
 
     byte[] getDelimiter() {
-        if (delimiter == null)
+        if (delimiter == null) {
             return null;
+        }
+
         return Arrays.copyOf(delimiter, delimiter.length);
     }
 }

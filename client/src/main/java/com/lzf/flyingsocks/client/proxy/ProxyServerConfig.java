@@ -42,20 +42,20 @@ public class ProxyServerConfig extends AbstractConfig {
         GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
         File file = new File(cfg.configPath(), SERVER_SETTING_FILE);
 
-        if(!file.exists()) {
+        if (!file.exists()) {
             return;
         }
 
-        try(FileInputStream is = new FileInputStream(file)) {
-            byte[] b = new byte[(int)file.length()];
+        try (FileInputStream is = new FileInputStream(file)) {
+            byte[] b = new byte[(int) file.length()];
             int cnt = is.read(b);
-            if(cnt != file.length()) {
+            if (cnt != file.length()) {
                 throw new ConfigInitializationException("File size is abnormalcy, you can restart this application");
             }
 
             JSONArray array = JSON.parseArray(new String(b, StandardCharsets.UTF_8));
 
-            for(int i = 0; i < array.size(); i++) {
+            for (int i = 0; i < array.size(); i++) {
                 JSONObject o = array.getJSONObject(i);
                 String host = o.getString("host");
                 int port = o.getIntValue("port");
@@ -67,9 +67,9 @@ public class ProxyServerConfig extends AbstractConfig {
 
                 Map<String, String> authArg = new HashMap<>(4);
                 JSONObject auth = o.getJSONObject("auth-arg");
-                for(String key : keys) {
+                for (String key : keys) {
                     String v = auth.getString(key);
-                    if(v == null)
+                    if (v == null)
                         throw new ConfigInitializationException(String.format("config.json: node %s:%d auth-arg need key %s",
                                 host, port, key));
                     authArg.put(key, v);
@@ -97,7 +97,7 @@ public class ProxyServerConfig extends AbstractConfig {
         File f = new File(cfg.configPath(), SERVER_SETTING_FILE);
 
         JSONArray arr = new JSONArray(nodes.size());
-        for(Node node : nodes) {
+        for (Node node : nodes) {
             JSONObject o = new JSONObject();
             o.put("host", node.getHost());
             o.put("port", node.getPort());
@@ -106,7 +106,7 @@ public class ProxyServerConfig extends AbstractConfig {
             JSONObject auth = new JSONObject();
             auth.putAll(node.authArgument);
             o.put("auth-arg", auth);
-            if(cfg.isOpenGUI()) {
+            if (cfg.isOpenGUI()) {
                 o.put("state", false);
             } else {  //仅当GUI关闭时才可将自连接设为true
                 o.put("state", node.isUse());
@@ -115,7 +115,7 @@ public class ProxyServerConfig extends AbstractConfig {
             arr.add(o);
         }
 
-        try(FileWriter writer = new FileWriter(f)) {
+        try (FileWriter writer = new FileWriter(f)) {
             writer.write(arr.toString(SerializerFeature.PrettyFormat));
         }
     }
@@ -131,7 +131,7 @@ public class ProxyServerConfig extends AbstractConfig {
     }
 
     public void updateProxyServerNode(Node node) {
-        if(containsProxyServerNode(node))
+        if (containsProxyServerNode(node))
             configManager.updateConfig(this);
         else
             throw new IllegalArgumentException(String.format("Node %s:%d doesn't exists",
@@ -143,9 +143,9 @@ public class ProxyServerConfig extends AbstractConfig {
     }
 
     public void setProxyServerUsing(Node node, boolean use) {
-        if(!nodes.contains(node))
+        if (!nodes.contains(node))
             throw new IllegalArgumentException(String.format("Server Node %s:%d not exists", node.getHost(), node.getPort()));
-        if(node.isUse() == use)
+        if (node.isUse() == use)
             return;
         node.setUse(use);
         configManager.updateConfig(this);
@@ -153,11 +153,11 @@ public class ProxyServerConfig extends AbstractConfig {
 
     public void setProxyServerUsing(Map<Node, Boolean> map) {
         map.forEach((node, using) -> {
-            if(!nodes.contains(node)) {
+            if (!nodes.contains(node)) {
                 throw new IllegalArgumentException(String.format("Server Node %s:%d not exists", node.getHost(), node.getPort()));
             }
 
-            if(node.isUse() != using) {
+            if (node.isUse() != using) {
                 node.setUse(using);
             }
         });
@@ -192,7 +192,8 @@ public class ProxyServerConfig extends AbstractConfig {
 
         private boolean use;
 
-        public Node() { }
+        public Node() {
+        }
 
         public Node(String host, int port, int certPort, AuthType authType, EncryptType type,
                     Map<String, String> authArgument, boolean use) {
@@ -242,7 +243,7 @@ public class ProxyServerConfig extends AbstractConfig {
         }
 
         public void putAuthArgument(String key, String val) {
-            if(authArgument == null)
+            if (authArgument == null)
                 authArgument = new HashMap<>(4);
             authArgument.put(key, val);
         }
