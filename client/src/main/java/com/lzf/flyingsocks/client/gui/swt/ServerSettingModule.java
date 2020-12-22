@@ -31,7 +31,7 @@ import static com.lzf.flyingsocks.client.gui.swt.Utils.*;
 
 /**
  * @author lizifan 695199262@qq.com
- * @since  2019.8.17 23:05
+ * @since 2019.8.17 23:05
  * 服务器设置界面
  */
 final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
@@ -85,7 +85,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                 int idx = serverList.getSelectionIndex();
                 select = idx;
                 Node n = serverMap.get(idx);
-                if(n == null) {
+                if (n == null) {
                     serverSettingForm.cleanForm();
                     return;
                 }
@@ -95,7 +95,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                 serverSettingForm.setEncrypt(n.getEncryptType());
                 serverSettingForm.setAuth(n.getAuthType());
 
-                if(n.getAuthType() == AuthType.USER) {
+                if (n.getAuthType() == AuthType.USER) {
                     serverSettingForm.setUser(n.getAuthArgument("user"));
                     serverSettingForm.setPass(n.getAuthArgument("pass"));
                 } else {
@@ -109,7 +109,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         }
 
         private void flush(boolean clean) {
-            if(clean) {
+            if (clean) {
                 serverList.remove(1, serverList.getItemCount() - 1);
                 serverMap.clear();
             }
@@ -128,7 +128,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
         boolean contains(String host, int port) {
             for (Node n : serverMap.values()) {
-                if(n.getHost().equals(host) && n.getPort() == port) {
+                if (n.getHost().equals(host) && n.getPort() == port) {
                     return true;
                 }
             }
@@ -165,10 +165,11 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             createLabel(shell, "密码", 270, 210, 70, 30, SWT.CENTER);
 
             host.setBounds(360, 10, 460, 30);
-            port.setBounds(360, 50, 180, 30); certPort.setBounds(640, 50, 180, 30);
+            port.setBounds(360, 50, 180, 30);
+            certPort.setBounds(640, 50, 180, 30);
             encrypt.setBounds(360, 90, 460, 30);
             auth.setBounds(360, 130, 460, 30);
-            user.setBounds(360,170, 460, 30);
+            user.setBounds(360, 170, 460, 30);
             pass.setBounds(360, 210, 460, 30);
 
             encrypt.add("无加密", 0);
@@ -182,7 +183,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
             addComboSelectionListener(auth, e -> {
                 int idx = auth.getSelectionIndex();
-                if(idx == 0) {
+                if (idx == 0) {
                     user.setText("");
                     user.setEditable(false);
                 } else {
@@ -192,7 +193,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
             addComboSelectionListener(encrypt, e -> {
                 int idx = encrypt.getSelectionIndex();
-                if(idx == 0) {
+                if (idx == 0) {
                     certPort.setText("");
                     certPort.setEditable(false);
                 } else {
@@ -212,14 +213,14 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
             addButtonSelectionListener(save, e -> {
                 String _host = ServerSettingForm.this.host.getText();
-                if(!BaseUtils.isIPv4Address(_host) && !BaseUtils.isHostName(_host)) {
+                if (!BaseUtils.isIPv4Address(_host) && !BaseUtils.isHostName(_host)) {
                     showMessageBox(shell, "错误", "服务器主机名格式有误:需要为IPv4地址或是合法主机名/域名", SWT.ICON_ERROR | SWT.OK);
                     return;
                 }
 
                 String _ports = ServerSettingForm.this.port.getText();
                 int _port;
-                if(!BaseUtils.isPortString(_ports)) {
+                if (!BaseUtils.isPortString(_ports)) {
                     showMessageBox(shell, "错误", "端口号有误,必须为1~65535之间的数字", SWT.ICON_ERROR | SWT.OK);
                     return;
                 }
@@ -228,8 +229,8 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                 int en = encrypt.getSelectionIndex();
                 String cports = ServerSettingForm.this.certPort.getText();
                 int cport = 0;
-                if(en == 1) {
-                    if(!BaseUtils.isPortString(cports)) {
+                if (en == 1) {
+                    if (!BaseUtils.isPortString(cports)) {
                         showMessageBox(shell, "错误", "证书端口号有误,必须为1~65535之间的数字", SWT.ICON_ERROR | SWT.OK);
                         return;
                     }
@@ -239,12 +240,12 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                 int au = auth.getSelectionIndex();
                 String _user = null, pwd;
                 pwd = ServerSettingForm.this.pass.getText();
-                if(au == 1) {
+                if (au == 1) {
                     _user = ServerSettingForm.this.user.getText();
                 }
 
                 Node n = serverList.selectNode();
-                if(n == null) {
+                if (n == null) {
                     n = new Node();
                 }
                 n.setHost(_host);
@@ -252,7 +253,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                 n.setCertPort(cport);
                 n.setEncryptType(en == 1 ? EncryptType.SSL : EncryptType.NONE);
                 n.setAuthType(au == 1 ? AuthType.USER : AuthType.SIMPLE);
-                if(au == 0) {
+                if (au == 0) {
                     n.setAuthArgument(Collections.singletonMap("password", pwd));
                 } else {
                     Map<String, String> map = new HashMap<>(2, 1);
@@ -261,8 +262,8 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                     n.setAuthArgument(map);
                 }
 
-                if(serverList.select == -1 || serverList.select == 0) {
-                    if(serverList.contains(_host, _port)) {
+                if (serverList.select == -1 || serverList.select == 0) {
+                    if (serverList.contains(_host, _port)) {
                         showMessageBox(shell, "提示", "已经包含服务器 " + _host + ":" + _port + " 的配置", SWT.ICON_ERROR | SWT.OK);
                         return;
                     }
@@ -278,7 +279,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             delete.setText("删除");
             delete.setBounds(550, 250, 270, 60);
 
-            try(InputStream is = ResourceManager.openDeleteIconImageStream()) {
+            try (InputStream is = ResourceManager.openDeleteIconImageStream()) {
                 delete.setImage(new Image(display, is));
             } catch (IOException e) {
                 log.warn("Can not read delete-icon image.", e);
@@ -286,12 +287,12 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
             addButtonSelectionListener(delete, e -> {
                 Node n = serverList.selectNode();
-                if(n == null) {
+                if (n == null) {
                     showMessageBox(shell, "提示", "请选择需要删除的服务器配置", SWT.ICON_INFORMATION | SWT.OK);
                     return;
                 }
 
-                if(n.isUse()) {
+                if (n.isUse()) {
                     operator.setProxyServerUsing(n, false);
                 }
 
@@ -312,7 +313,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         }
 
         void setPortText(int num) {
-            if(num < 0) {
+            if (num < 0) {
                 port.setText("");
             } else {
                 port.setText(String.valueOf(num));
@@ -320,7 +321,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         }
 
         void setCertPortText(int num) {
-            if(num < 0) {
+            if (num < 0) {
                 certPort.setText("");
             } else {
                 certPort.setText(String.valueOf(num));
@@ -329,8 +330,12 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
         void setEncrypt(EncryptType type) {
             switch (type) {
-                case NONE: encrypt.select(0); break;
-                case SSL: encrypt.select(1); break;
+                case NONE:
+                    encrypt.select(0);
+                    break;
+                case SSL:
+                    encrypt.select(1);
+                    break;
             }
         }
 
@@ -339,12 +344,14 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                 case SIMPLE: {
                     auth.select(0);
                     user.setEditable(false);
-                } break;
+                }
+                break;
 
                 case USER: {
                     auth.select(1);
                     user.setEditable(true);
-                } break;
+                }
+                break;
             }
         }
 

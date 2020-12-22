@@ -66,7 +66,7 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
             throw new Error(e);
         }
 
-        createLabel(shell, "选择服务器", 20, 200, 140, 40, SWT.CENTER).setBackground(new Color(display, 255,255, 255));
+        createLabel(shell, "选择服务器", 20, 200, 140, 40, SWT.CENTER).setBackground(new Color(display, 255, 255, 255));
         new ServerList(160, 200, 450, 40);
         setVisiable(false);
     }
@@ -89,6 +89,7 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
                     conn.setBackground(BUTTON_FOCUS_COLOR);
 
                 }
+
                 @Override
                 public void focusLost(FocusEvent e) {
                     conn.setBackground(BUTTON_NORMAL_COLOR);
@@ -101,18 +102,18 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
             operator.registerProxyServerConfigListener(Config.UPDATE_EVENT, this::update, false);
 
             addButtonSelectionListener(conn, e -> {
-                if(disconnect) {
+                if (disconnect) {
                     operator.setProxyServerUsing(usingNode, false);
                     setStatusLabelText("未连接");
                 } else {
                     Node n = selectNode();
-                    if(n != null) {
+                    if (n != null) {
                         operator.setProxyServerUsing(n, true);
                         display.timerExec(300, new Runnable() {
                             @Override
                             public void run() {
-                                if(!n.isUse()) {
-                                    if(disconnect) {
+                                if (!n.isUse()) {
+                                    if (disconnect) {
                                         setStatusLabelText("未连接");
                                         changeConnBtn(false);
                                     }
@@ -120,30 +121,62 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
                                 }
 
                                 ConnectionState cs = operator.queryProxyServerConnectionState(n);
-                                if(cs == null) {
+                                if (cs == null) {
                                     return;
                                 }
 
                                 switch (cs) {
-                                    case NEW: setStatusLabelText("初始化中..."); break;
-                                    case SSL_INITIAL: setStatusLabelText("准备SSL证书连接..."); break;
-                                    case SSL_CONNECTING: setStatusLabelText("正在发起SSL证书连接..."); break;
-                                    case SSL_CONNECT_TIMEOUT: setStatusLabelText("SSL证书连接超时,请检查服务器配置"); break;
-                                    case SSL_CONNECT_AUTH_FAILURE: setStatusLabelText("未通过服务器认证,请检查认证信息是否正确"); break;
-                                    case SSL_CONNECT: setStatusLabelText("正在获取SSL证书..."); break;
-                                    case SSL_CONNECT_DONE: setStatusLabelText("SSL证书获取完成"); break;
-                                    case SSL_CONNECT_ERROR: setStatusLabelText("SSL证书连接错误"); break;
-                                    case PROXY_INITIAL: setStatusLabelText("准备发起代理连接..."); break;
-                                    case PROXY_CONNECTING: setStatusLabelText("正在连接代理服务..."); break;
-                                    case PROXY_CONNECT_TIMEOUT: setStatusLabelText("代理服务连接超时"); break;
-                                    case PROXY_CONNECT: setStatusLabelText("成功与服务器建立代理服务连接"); break;
-                                    case PROXY_CONNECT_AUTH_FAILURE: setStatusLabelText("代理服务认证失败,请检查认证信息是否正确"); break;
-                                    case PROXY_CONNECT_ERROR: setStatusLabelText("与代理服务连接发生错误"); break;
-                                    case PROXY_DISCONNECT: setStatusLabelText("暂时与服务器断开连接,尝试进行重连..."); break;
-                                    case UNUSED: setStatusLabelText("代理服务器连接已停止"); break;
+                                    case NEW:
+                                        setStatusLabelText("初始化中...");
+                                        break;
+                                    case SSL_INITIAL:
+                                        setStatusLabelText("准备SSL证书连接...");
+                                        break;
+                                    case SSL_CONNECTING:
+                                        setStatusLabelText("正在发起SSL证书连接...");
+                                        break;
+                                    case SSL_CONNECT_TIMEOUT:
+                                        setStatusLabelText("SSL证书连接超时,请检查服务器配置");
+                                        break;
+                                    case SSL_CONNECT_AUTH_FAILURE:
+                                        setStatusLabelText("未通过服务器认证,请检查认证信息是否正确");
+                                        break;
+                                    case SSL_CONNECT:
+                                        setStatusLabelText("正在获取SSL证书...");
+                                        break;
+                                    case SSL_CONNECT_DONE:
+                                        setStatusLabelText("SSL证书获取完成");
+                                        break;
+                                    case SSL_CONNECT_ERROR:
+                                        setStatusLabelText("SSL证书连接错误");
+                                        break;
+                                    case PROXY_INITIAL:
+                                        setStatusLabelText("准备发起代理连接...");
+                                        break;
+                                    case PROXY_CONNECTING:
+                                        setStatusLabelText("正在连接代理服务...");
+                                        break;
+                                    case PROXY_CONNECT_TIMEOUT:
+                                        setStatusLabelText("代理服务连接超时");
+                                        break;
+                                    case PROXY_CONNECT:
+                                        setStatusLabelText("成功与服务器建立代理服务连接");
+                                        break;
+                                    case PROXY_CONNECT_AUTH_FAILURE:
+                                        setStatusLabelText("代理服务认证失败,请检查认证信息是否正确");
+                                        break;
+                                    case PROXY_CONNECT_ERROR:
+                                        setStatusLabelText("与代理服务连接发生错误");
+                                        break;
+                                    case PROXY_DISCONNECT:
+                                        setStatusLabelText("暂时与服务器断开连接,尝试进行重连...");
+                                        break;
+                                    case UNUSED:
+                                        setStatusLabelText("代理服务器连接已停止");
+                                        break;
                                 }
 
-                                if(!cs.isNormal() && !cs.canRetry()) {
+                                if (!cs.isNormal() && !cs.canRetry()) {
                                     return;
                                 }
 
@@ -164,20 +197,20 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
             for (int i = 0; i < nodes.length; i++) {
                 nodeMap.put(i, nodes[i]);
                 String text = nodes[i].getHost() + ":" + nodes[i].getPort();
-                if(i < cnt) {
+                if (i < cnt) {
                     combo.setItem(i, text);
                 } else {
                     combo.add(text, i);
                 }
 
-                if(nodes[i].isUse()) {
+                if (nodes[i].isUse()) {
                     combo.select(i);
                     usingNode = nodes[i];
                     use = true;
                 }
             }
 
-            if(use) {
+            if (use) {
                 changeConnBtn(true);
             } else {
                 changeConnBtn(false);
@@ -185,7 +218,7 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
         }
 
         private void changeConnBtn(boolean disconnect) {
-            if(disconnect) {
+            if (disconnect) {
                 connBtn.setText("断开连接");
                 this.disconnect = true;
             } else {

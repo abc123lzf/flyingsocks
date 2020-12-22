@@ -35,7 +35,7 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
         this.operator = component.getParentComponent();
 
         Image icon;
-        try (InputStream is = ResourceManager.openIconImageStream()){
+        try (InputStream is = ResourceManager.openIconImageStream()) {
             icon = loadImage(is);
         } catch (IOException e) {
             throw new Error(e);
@@ -68,7 +68,7 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
             String username = user.getText();
             String password = pass.getText();
             int p;
-            if(BaseUtils.isPortString(port.getText())) {
+            if (BaseUtils.isPortString(port.getText())) {
                 p = Integer.parseInt(port.getText());
             } else {
                 showMessageBox(shell, "提示", "端口不合法", SWT.ICON_ERROR | SWT.OK);
@@ -77,7 +77,7 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
 
             operator.updateSocksProxyAuthentication(p, auth, username, password);
             SocksConfig cfg = operator.getSocksConfig();
-            if(cfg.getPort() != p) {
+            if (cfg.getPort() != p) {
                 showMessageBox(shell, "提示", "修改完成, 代理端口的修改需要重启才可生效", SWT.ICON_INFORMATION | SWT.OK);
             } else {
                 showMessageBox(shell, "提示", "修改完成", SWT.ICON_INFORMATION | SWT.OK);
@@ -98,7 +98,7 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
         addButtonSelectionListener(cancel, e -> setVisiable(false));
 
         SocksConfig cfg = operator.getSocksConfig();
-        if(cfg.isAuth()) {
+        if (cfg.isAuth()) {
             open.setSelection(true);
         } else {
             off.setSelection(true);
@@ -106,11 +106,11 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
             pass.setEditable(false);
         }
 
-        if(cfg.getUsername() != null) {
+        if (cfg.getUsername() != null) {
             user.setText(cfg.getUsername());
         }
 
-        if(cfg.getPassword() != null) {
+        if (cfg.getPassword() != null) {
             pass.setText(cfg.getPassword());
         }
 
