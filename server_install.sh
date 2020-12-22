@@ -30,8 +30,8 @@ function install_maven() {
 # 安装必要的工具
 function install_tools() {
   unzip -v && return 0
-  yum install -y unzip && return 0
-  apt-get install unzip && return 0
+  yum install -y unzip openssl openssl-devel && return 0
+  apt-get install unzip openssl openssl-devel && return 0
   return 1
 }
 
