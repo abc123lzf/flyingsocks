@@ -28,6 +28,7 @@ public final class BaseUtils {
 
     /**
      * 判断是否是主机名
+     *
      * @param host 主机名
      * @return 是否是主机名
      */
@@ -37,6 +38,7 @@ public final class BaseUtils {
 
     /**
      * 判断是否是IPV6地址字符串
+     *
      * @param ip IP字符串
      * @return 是否是IPV6地址
      */
@@ -46,6 +48,7 @@ public final class BaseUtils {
 
     /**
      * 是否是IPV4或IPV6地址
+     *
      * @param ip IP地址
      * @return 是否是IPV4或IPV6地址
      */
@@ -76,6 +79,7 @@ public final class BaseUtils {
 
     /**
      * 将点标记法IPV4字符串转换为int
+     *
      * @param ipv4 IPV4字符串
      * @return IPV4地址的int表示法
      */
@@ -89,6 +93,7 @@ public final class BaseUtils {
 
     /**
      * 将int类型的数字转换为点标记法的IP地址
+     *
      * @param addr IP地址的4字节数字形式
      * @return 点标记法的IP地址
      */
@@ -109,7 +114,7 @@ public final class BaseUtils {
     }
 
     public static int parseByteArrayToIPv4Integer(byte[] b) {
-        if(b.length != 4)
+        if (b.length != 4)
             throw new IllegalArgumentException("illegal ipv4 byte array");
         int num = (b[0] & 0x0FF) << 24;
         num |= (b[1] & 0x0FF) << 16;
@@ -119,9 +124,10 @@ public final class BaseUtils {
 
     /**
      * 判断一个IPV4地址是否在目标网络号中
-     * @param ip 需要判断的IPv4地址
+     *
+     * @param ip      需要判断的IPv4地址
      * @param network 网络号
-     * @param mask 网络号子网掩码
+     * @param mask    网络号子网掩码
      * @return 判定结果
      */
     public static boolean isIPv4AddressInRange(int ip, int network, int mask) {
@@ -131,6 +137,7 @@ public final class BaseUtils {
 
     /**
      * 将无符号short转换为Int数字
+     *
      * @param val 无符号short
      * @return int数字
      */

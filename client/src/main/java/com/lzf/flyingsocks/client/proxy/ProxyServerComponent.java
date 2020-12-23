@@ -878,7 +878,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 log.warn("Serialize ProxyRequestMessage occur a exception");
                 request.close();
             } finally {
-                buf.release();
+                if (buf.refCnt() > 0) {
+                    buf.release();
+                }
             }
         }
 

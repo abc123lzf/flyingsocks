@@ -11,6 +11,7 @@ public interface Message {
 
     /**
      * 将报文对象序列化为ByteBuf
+     *
      * @return 序列化后的ByteBuf
      * @throws SerializationException 序列化异常
      */
@@ -19,6 +20,7 @@ public interface Message {
 
     /**
      * 反序列化
+     *
      * @param buf Netty的ByteBuf对象
      * @throws SerializationException 反序列化异常
      */

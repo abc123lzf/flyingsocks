@@ -10,6 +10,7 @@ public interface MessageReceiver {
 
     /**
      * 接收来自客户端的消息
+     *
      * @param message 客户端消息体
      */
     void receive(ByteBuf message);
@@ -17,5 +18,6 @@ public interface MessageReceiver {
     /**
      * {@link MessageDeliverer} 关闭后的行为
      */
-    default void close() { }
+    default void close() {
+    }
 }

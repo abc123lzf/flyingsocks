@@ -22,7 +22,7 @@ public class ServerCallbackController {
      */
     @PostMapping("connect")
     public ResponseObject<Void> onConnect(@RequestParam("username") String username,
-                                    @RequestParam("password") String password) {
+                                          @RequestParam("password") String password) {
         if (StringUtils.isAnyBlank(username, password)) {
             ResponseContext.setStatusCode(400);
             return ResponseObject.build(400, "用户名或密码不能为空");
@@ -33,9 +33,6 @@ public class ServerCallbackController {
             ResponseContext.setStatusCode(403);
             return ResponseObject.build(403, "用户名或密码不正确");
         }
-
-
-
 
 
         return ResponseObject.success();

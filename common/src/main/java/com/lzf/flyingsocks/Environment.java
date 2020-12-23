@@ -12,6 +12,7 @@ public interface Environment {
 
     /**
      * 获取环境变量
+     *
      * @param key 键值
      * @return 环境变量值
      */
@@ -19,6 +20,7 @@ public interface Environment {
 
     /**
      * 获取系统变量
+     *
      * @param key 键值
      * @return 系统变量值
      */
@@ -26,13 +28,15 @@ public interface Environment {
 
     /**
      * 设置系统变量
-     * @param key 变量名
+     *
+     * @param key   变量名
      * @param value 变量值
      */
     void setSystemProperties(String key, String value);
 
     /**
      * 获取资源
+     *
      * @param path 路径
      * @return 输入流
      */
@@ -47,6 +51,7 @@ public interface Environment {
 
     /**
      * 根据Netty的平台依赖类PlatformDependent获取当前环境是否是Windows
+     *
      * @return 当前系统是否是Windows系统
      */
     default boolean isWindows() {

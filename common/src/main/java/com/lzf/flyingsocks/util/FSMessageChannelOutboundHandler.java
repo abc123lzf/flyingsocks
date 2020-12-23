@@ -18,11 +18,12 @@ public class FSMessageChannelOutboundHandler extends ChannelOutboundHandlerAdapt
 
     public static final FSMessageChannelOutboundHandler INSTANCE = new FSMessageChannelOutboundHandler();
 
-    private FSMessageChannelOutboundHandler() {}
+    private FSMessageChannelOutboundHandler() {
+    }
 
     @Override
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
-        if(msg instanceof Message) {
+        if (msg instanceof Message) {
             Message message = (Message) msg;
             try {
                 ByteBuf buf = message.serialize();

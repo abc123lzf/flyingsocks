@@ -324,6 +324,7 @@ public final class SocksReceiverComponent extends AbstractComponent<ProxyCompone
                 throw e;
             }
         }
+
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             if (cause instanceof IOException) {

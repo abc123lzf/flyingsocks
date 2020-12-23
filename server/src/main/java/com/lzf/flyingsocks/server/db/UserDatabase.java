@@ -7,7 +7,8 @@ public interface UserDatabase {
 
     /**
      * 执行认证
-     * @param group 用户组名
+     *
+     * @param group    用户组名
      * @param username 用户名
      * @param password 密码
      * @return 是否认证成功
@@ -16,7 +17,8 @@ public interface UserDatabase {
 
     /**
      * 注册用户
-     * @param group 用户组名
+     *
+     * @param group    用户组名
      * @param username 用户名
      * @param password 密码
      * @return 是否认证成功
@@ -25,7 +27,8 @@ public interface UserDatabase {
 
     /**
      * 删除用户
-     * @param group 用户组名
+     *
+     * @param group    用户组名
      * @param username 用户名
      * @return 是否删除成功
      */
@@ -33,8 +36,9 @@ public interface UserDatabase {
 
     /**
      * 修改用户密码
-     * @param group 用户组名
-     * @param username 用户名
+     *
+     * @param group       用户组名
+     * @param username    用户名
      * @param newPassword 新密码
      * @return 是否修改成功
      */

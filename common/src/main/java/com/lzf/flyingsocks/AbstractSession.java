@@ -4,6 +4,7 @@ import io.netty.channel.socket.SocketChannel;
 
 /**
  * 会话模板类
+ *
  * @see com.lzf.flyingsocks.Session
  */
 public abstract class AbstractSession implements Session {

@@ -20,7 +20,7 @@ public interface Lifecycle {
     void init() throws LifecycleException;
 
     /**
-     *  启动组件
+     * 启动组件
      */
     void start() throws LifecycleException;
 
@@ -36,6 +36,7 @@ public interface Lifecycle {
 
     /**
      * 当前组件所处的状态
+     *
      * @return LifecycleState枚举对象
      */
     LifecycleState getState();
@@ -47,6 +48,7 @@ public interface Lifecycle {
 
     /**
      * 移除事件监听器
+     *
      * @param listener 监听器对象
      */
     void removeLifecycleEventListener(LifecycleEventListener listener);

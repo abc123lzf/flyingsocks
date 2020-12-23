@@ -91,13 +91,13 @@ public class DefaultConfigManager<T extends Component<?> & Environment>
         synchronized (configMap) {
             cfg = configMap.remove(name);
         }
-        if(cfg != null)
+        if (cfg != null)
             fireConfigEvent(Config.REMOVE_EVENT, cfg);
     }
 
     @Override
     public boolean saveConfig(Config config) {
-        if(config.canSave()) {
+        if (config.canSave()) {
             try {
                 config.save();
                 return true;
@@ -129,7 +129,8 @@ public class DefaultConfigManager<T extends Component<?> & Environment>
         return configMap.get(name);
     }
 
-    @Override @SuppressWarnings("unchecked")
+    @Override
+    @SuppressWarnings("unchecked")
     public final <C extends Config> C getConfig(String name, Class<C> requireType) {
         return (C) configMap.get(name);
     }
@@ -146,7 +147,7 @@ public class DefaultConfigManager<T extends Component<?> & Environment>
 
 
     protected void fireConfigEvent(ConfigEvent configEvent) {
-        for(ConfigEventListener listener : listeners)
+        for (ConfigEventListener listener : listeners)
             listener.configEvent(configEvent);
     }
 

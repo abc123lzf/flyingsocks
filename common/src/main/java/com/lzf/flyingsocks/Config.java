@@ -4,6 +4,7 @@ import java.io.Serializable;
 
 /**
  * 表示一个配置对象，需要和ConfigManager搭配使用
+ *
  * @see com.lzf.flyingsocks.ConfigManager
  */
 public interface Config extends Named, Serializable {
@@ -25,6 +26,7 @@ public interface Config extends Named, Serializable {
 
     /**
      * 获取该配置所属的配置管理器
+     *
      * @return 配置管理器
      */
     ConfigManager<?> configManager();

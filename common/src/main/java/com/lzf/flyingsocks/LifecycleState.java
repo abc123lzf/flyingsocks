@@ -21,12 +21,12 @@ public enum LifecycleState {
      * @return 状态是否在指定state后
      */
     public boolean after(LifecycleState state) {
-        if(this.step == -1) {
-            if(state.step >= 4)
+        if (this.step == -1) {
+            if (state.step >= 4)
                 return false;
             return true;
         }
-        if(this.step >= state.step)
+        if (this.step >= state.step)
             return true;
         return false;
     }

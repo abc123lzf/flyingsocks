@@ -63,7 +63,7 @@ public class SWTViewComponent extends AbstractComponent<Client> {
 
     @Override
     protected void startInternal() {
-        getParentComponent().setGUITask(() -> {
+        parent.setGUITask(() -> {
             try {
                 Thread t = Thread.currentThread();
                 while (!t.isInterrupted()) {

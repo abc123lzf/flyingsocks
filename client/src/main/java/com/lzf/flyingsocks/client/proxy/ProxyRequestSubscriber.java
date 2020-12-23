@@ -20,6 +20,7 @@ public interface ProxyRequestSubscriber {
 
     /**
      * 接收消息
+     *
      * @param request ProxyRequest请求
      */
     void receive(ProxyRequest request);

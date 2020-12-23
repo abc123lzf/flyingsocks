@@ -10,7 +10,7 @@ import java.net.URL;
 
 /**
  * @author lizifan 695199262@qq.com
- * @since  2019.8.13 11:26
+ * @since 2019.8.13 11:26
  * GUI资源管理器
  */
 public final class ResourceManager {

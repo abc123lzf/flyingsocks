@@ -24,6 +24,7 @@ public interface ProxyAutoChecker {
 
     /**
      * 判断是否需要代理
+     *
      * @param host 主机名或者IPv4/IPv6地址
      * @return 是否需要代理
      */
@@ -36,6 +37,7 @@ public interface ProxyAutoChecker {
 
     /**
      * 改变代理模式
+     *
      * @param mode 模式编号
      */
     void changeProxyMode(int mode);

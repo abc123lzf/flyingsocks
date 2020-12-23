@@ -29,7 +29,7 @@ public interface ResponseObject<T> {
     /**
      * 按照模版生存新的ResponseObject
      */
-    <U>ResponseObject<U> build(U data);
+    <U> ResponseObject<U> build(U data);
 
     /**
      * 构建无data的ResponseObject

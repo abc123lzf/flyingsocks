@@ -24,12 +24,12 @@ public class OpenSSLEncryptProvider implements EncryptProvider {
 
     @Override
     public synchronized void initialize(Map<String, ?> params) throws Exception {
-        if(initialize)
+        if (initialize)
             throw new IllegalStateException("OpenSSLEncryptProvider instance has been initialize");
-        if(!params.containsKey("client"))
+        if (!params.containsKey("client"))
             throw new IllegalArgumentException("params client must not be null and should be boolean type");
 
-        client = (Boolean)params.get("client");
+        client = (Boolean) params.get("client");
         sslContext = buildSSLContext(params);
         initialize = true;
     }
@@ -41,14 +41,14 @@ public class OpenSSLEncryptProvider implements EncryptProvider {
 
     @Override
     public ChannelInboundHandler decodeHandler(Map<String, ?> params) {
-        if(!initialize)
+        if (!initialize)
             throw new IllegalStateException("OpenSSLEncryptProvider instance must be initial first !");
         return createSSLHandler(params);
     }
 
     @Override
     public ChannelOutboundHandler encodeHandler(Map<String, ?> params) {
-        if(!initialize)
+        if (!initialize)
             throw new IllegalStateException("OpenSSLEncryptProvider instance must be initial first !");
         return createSSLHandler(params);
     }
@@ -60,8 +60,8 @@ public class OpenSSLEncryptProvider implements EncryptProvider {
     }
 
     private SslContext buildSSLContext(Map<String, ?> params) throws IOException {
-        if(client) {
-            if(params != null && params.containsKey("file.cert.root")) {
+        if (client) {
+            if (params != null && params.containsKey("file.cert.root")) {
                 try (InputStream x509crt = (InputStream) params.get("file.cert.root")) {
                     return SslContextBuilder.forClient().trustManager(x509crt).build();
                 }

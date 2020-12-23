@@ -49,7 +49,7 @@ public class OpenSSLConfig extends AbstractConfig {
     private synchronized void loadResource() throws Exception {
         GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
         this.rootCertFile = new File(new File(cfg.configPath(), folderName(host, port)), CERT_FILE_NAME);
-        if(!rootCertFile.exists())
+        if (!rootCertFile.exists())
             throw new FileNotFoundException("CA cert file at location " + rootCertFile.getAbsolutePath() + " doesn't exists.");
     }
 

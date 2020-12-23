@@ -4,6 +4,7 @@ import java.util.EventObject;
 
 /**
  * 当一个具有生命周期对象的状态发生变动时的事件
+ *
  * @see com.lzf.flyingsocks.LifecycleState
  * @see com.lzf.flyingsocks.LifecycleEventListener
  * @see com.lzf.flyingsocks.LifecycleBase

@@ -2,6 +2,7 @@ package com.lzf.flyingsocks;
 
 /**
  * 模块抽象模板类
+ *
  * @param <T> 所属的组件类型
  */
 public abstract class AbstractModule<T extends Component<?>> implements Module<T> {
@@ -28,7 +29,7 @@ public abstract class AbstractModule<T extends Component<?>> implements Module<T
 
     @Override
     public void setName(String name) {
-        if(belongComponent instanceof AbstractComponent<?>) {
+        if (belongComponent instanceof AbstractComponent<?>) {
             ((AbstractComponent) belongComponent).changeModuleComponentName(this.name, name);
         }
         this.name = name;

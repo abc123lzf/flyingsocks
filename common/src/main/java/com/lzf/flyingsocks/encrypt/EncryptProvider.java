@@ -14,6 +14,7 @@ public interface EncryptProvider extends Named {
 
     /**
      * 初始化Provider
+     *
      * @param params 初始化参数
      */
     void initialize(Map<String, ?> params) throws Exception;
@@ -27,6 +28,7 @@ public interface EncryptProvider extends Named {
 
     /**
      * 返回解密处理器
+     *
      * @param params 参数
      * @return ChannelInboundHandler实例
      * @throws Exception 实例化过程抛出的异常
@@ -35,6 +37,7 @@ public interface EncryptProvider extends Named {
 
     /**
      * 返回加密处理器
+     *
      * @param params 参数
      * @return ChannelOutboundHandler实例
      * @throws Exception 实例化过程抛出的一场

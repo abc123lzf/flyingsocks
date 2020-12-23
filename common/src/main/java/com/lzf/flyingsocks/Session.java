@@ -33,6 +33,7 @@ public interface Session {
 
     /**
      * 获取远程连接地址
+     *
      * @return InetSocketAddress对象
      */
     default InetSocketAddress remoteAddress() {
@@ -41,6 +42,7 @@ public interface Session {
 
     /**
      * 获取本地连接地址
+     *
      * @return 本地连接地址
      */
     default InetSocketAddress localAddress() {

@@ -24,12 +24,13 @@ public abstract class EncryptSupport {
 
     /**
      * 查找对应的加密Handler提供对象
+     *
      * @param name 加密方式
      * @return EncryptProvider对象
      */
     public static EncryptProvider lookupProvider(String name) {
         Class<? extends EncryptProvider> provider = providers.get(name.toLowerCase());
-        if(provider != null) {
+        if (provider != null) {
             try {
                 return provider.newInstance();
             } catch (InstantiationException | IllegalAccessException e) {
@@ -42,7 +43,7 @@ public abstract class EncryptSupport {
 
     public static <T extends EncryptProvider> T lookupProvider(String name, Class<T> type) {
         EncryptProvider p = lookupProvider(name);
-        if(p.getClass() == type) {
+        if (p.getClass() == type) {
             return (T) p;
         } else {
             throw new ClassCastException();
