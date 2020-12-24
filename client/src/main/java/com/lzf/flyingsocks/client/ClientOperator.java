@@ -1,7 +1,7 @@
 package com.lzf.flyingsocks.client;
 
 import com.lzf.flyingsocks.ConfigEventListener;
-import com.lzf.flyingsocks.client.proxy.ConnectionState;
+import com.lzf.flyingsocks.client.proxy.ConnectionStateListener;
 import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
 
 import java.util.Map;
@@ -138,12 +138,27 @@ public interface ClientOperator {
      */
     void updateSocksProxyAuthentication(int port, boolean auth, String username, String password);
 
+    /**
+     * 注册代理服务器连接状态监听器
+     *
+     * @param listener 监听器对象
+     */
+    void registerConnectionStateListener(Node node, ConnectionStateListener listener);
 
     /**
-     * 查询代理服务器连接状态
+     * 查询代理服务器上传带宽
      *
-     * @param node 配置节点
-     * @return 连接状态，如果查询不到返回null
+     * @param node 代理服务器配置节点
+     * @return 上传带宽，单位字节每秒
      */
-    ConnectionState queryProxyServerConnectionState(Node node);
+    long queryProxyServerUploadThroughput(Node node);
+
+
+    /**
+     * 查询代理服务器下载带宽
+     *
+     * @param node 代理服务器配置节点
+     * @return 下载带宽，单位字节每秒
+     */
+    long queryProxyServerDownloadThroughput(Node node);
 }

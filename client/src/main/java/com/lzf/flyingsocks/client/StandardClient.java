@@ -4,7 +4,7 @@ import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.ConfigEvent;
 import com.lzf.flyingsocks.ConfigEventListener;
 import com.lzf.flyingsocks.client.gui.swt.SWTViewComponent;
-import com.lzf.flyingsocks.client.proxy.ConnectionState;
+import com.lzf.flyingsocks.client.proxy.ConnectionStateListener;
 import com.lzf.flyingsocks.client.proxy.ProxyAutoConfig;
 import com.lzf.flyingsocks.client.proxy.ProxyComponent;
 import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
@@ -213,16 +213,29 @@ public final class StandardClient extends Client {
         cfg.setProxyServerUsing(map);
     }
 
+
     @Override
-    public ConnectionState queryProxyServerConnectionState(Node node) {
+    public void registerConnectionStateListener(Node node, ConnectionStateListener listener) {
         ProxyComponent pc = getComponentByName(ProxyComponent.NAME, ProxyComponent.class);
-        return pc.queryProxyServerConnectionState(node.getHost(), node.getPort());
+        pc.registerProxyServerConnectionStateListener(node.getHost(), node.getPort(), listener);
     }
 
     @Override
     public SocksConfig getSocksConfig() {
         SocksConfig cfg = getConfigManager().getConfig(SocksConfig.NAME, SocksConfig.class);
         return cfg.configFacade();
+    }
+
+    @Override
+    public long queryProxyServerUploadThroughput(Node node) {
+        ProxyComponent pc = getComponentByName(ProxyComponent.NAME, ProxyComponent.class);
+        return pc.queryProxyServerUploadThroughput(node.getHost(), node.getPort());
+    }
+
+    @Override
+    public long queryProxyServerDownloadThroughput(Node node) {
+        ProxyComponent pc = getComponentByName(ProxyComponent.NAME, ProxyComponent.class);
+        return pc.queryProxyServerDownloadThroughput(node.getHost(), node.getPort());
     }
 
     private ProxyServerConfig getProxyServerConfig() {

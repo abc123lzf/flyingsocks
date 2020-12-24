@@ -2,6 +2,7 @@ package com.lzf.flyingsocks.client.gui.swt;
 
 import io.netty.util.internal.PlatformDependent;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.PaletteData;
@@ -19,9 +20,7 @@ import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 
-import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferByte;
 import java.awt.image.WritableRaster;
 import java.io.InputStream;
 
@@ -49,6 +48,11 @@ abstract class Utils {
      */
     static boolean isMacOS() {
         return PlatformDependent.isOsx();
+    }
+
+
+    static int adaptDPI(int pixel) {
+        return (int) (DPI_SCALE * pixel);
     }
 
 
@@ -107,7 +111,7 @@ abstract class Utils {
      * @return 窗口对象
      */
     static Shell createShell(Display display, String title, Image icon, int width, int height) {
-        Shell sh = new Shell(display, (SWT.SHELL_TRIM & (~SWT.RESIZE)) | SWT.MIN);
+        Shell sh = new Shell(display, (SWT.SHELL_TRIM & (~SWT.RESIZE)) | SWT.MIN | SWT.ON_TOP);
         sh.setText(title);
         sh.setSize(width, height);
         sh.setVisible(false);
@@ -139,6 +143,13 @@ abstract class Utils {
      */
     static Image loadImage(InputStream is) {
         return new Image(null, is);
+    }
+
+    /**
+     * 构造颜色
+     */
+    static Color createColor(int r, int g, int b) {
+        return new Color(null, r, g, b);
     }
 
     /**

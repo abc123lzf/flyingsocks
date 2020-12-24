@@ -182,10 +182,25 @@ public class ProxyComponent extends AbstractComponent<Client> implements ProxyRe
     }
 
 
-    public ConnectionState queryProxyServerConnectionState(String host, int port) {
+    public void registerProxyServerConnectionStateListener(String host, int port, ConnectionStateListener listener) {
         ProxyServerComponent psc = getComponentByName(ProxyServerComponent.generalName(host, port), ProxyServerComponent.class);
-        return psc != null ? psc.connectionState() : null;
+        if (psc != null) {
+            psc.registerConnectionStateListener(listener);
+        }
     }
+
+
+    public long queryProxyServerUploadThroughput(String host, int port) {
+        ProxyServerComponent psc = getComponentByName(ProxyServerComponent.generalName(host, port), ProxyServerComponent.class);
+        return psc != null ? psc.queryUploadThroughput() : 0;
+    }
+
+
+    public long queryProxyServerDownloadThroughput(String host, int port) {
+        ProxyServerComponent psc = getComponentByName(ProxyServerComponent.generalName(host, port), ProxyServerComponent.class);
+        return psc != null ? psc.queryDownloadThroughput() : 0;
+    }
+
 
 
     /**

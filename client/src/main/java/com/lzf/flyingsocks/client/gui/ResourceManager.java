@@ -24,10 +24,6 @@ public final class ResourceManager {
         }
     }
 
-    public static InputStream openFlyingsocksImageStream() throws IOException {
-        return new URL("classpath://flyingsocks.png").openStream();
-    }
-
     public static InputStream openIconImageStream() throws IOException {
         return new URL("classpath://icon.png").openStream();
     }

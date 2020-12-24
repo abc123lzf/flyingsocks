@@ -39,6 +39,8 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
+import io.netty.handler.traffic.ChannelTrafficShapingHandler;
+import io.netty.handler.traffic.TrafficCounter;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
@@ -57,6 +59,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -83,6 +86,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     //连接状态
     private volatile ConnectionState connectionState = ConnectionState.NEW;
 
+    //连接状态监听器
+    private final List<ConnectionStateListener> connectionStateListeners = new CopyOnWriteArrayList<>();
+
     //连接线程池
     private volatile EventLoopGroup loopGroup;
 
@@ -92,9 +98,11 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     //与flyingsocks服务器会话对象
     private volatile ProxyServerSession proxyServerSession;
 
+    //流量监测器
+    private volatile TrafficCounter trafficCounter;
+
     //下次重连的时间(绝对时间戳)
     private volatile long nextReconnectTime = -1L;
-
 
     //活跃的代理请求Map
     private final ConcurrentMap<Integer, SerialProxyRequest> activeProxyRequestMap = new ConcurrentHashMap<>(512);
@@ -242,6 +250,13 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     @Override
                     protected void initChannel(SocketChannel ch) throws Exception {
                         ChannelPipeline cp = ch.pipeline();
+                        ChannelTrafficShapingHandler trafficHandler = new ChannelTrafficShapingHandler(1000L);
+                        cp.addLast(trafficHandler);
+                        /*TrafficCounter trafficCounter = new TrafficCounter(trafficHandler, loopGroup, getName() + "-TrafficHandler", 1000);
+                        trafficCounter.start();*/
+                        ProxyServerComponent.this.trafficCounter = trafficHandler.trafficCounter();;
+
+                        cp.addLast(new ChannelTrafficShapingHandler(1000L));
                         if (provider != null) {
                             if (!provider.isInboundHandlerSameAsOutboundHandler()) {
                                 cp.addLast(provider.encodeHandler(params));
@@ -380,14 +395,30 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
      */
     private void updateConnectionState(ConnectionState state) {
         this.connectionState = state;
+        for (ConnectionStateListener listener : connectionStateListeners) {
+            listener.connectionStateChanged(config, state);
+        }
     }
 
     /**
-     * @return 获取连接状态
+     * 注册连接状态变更监听器
+     * @param listener 监听器
      */
-    public ConnectionState connectionState() {
-        return connectionState;
+    public void registerConnectionStateListener(ConnectionStateListener listener) {
+        Objects.requireNonNull(listener);
+        if (connectionStateListeners.contains(listener)) {
+            return;
+        }
+        connectionStateListeners.add(listener);
     }
+
+    /**
+     * 删除连接状态变更监听器
+     */
+    public void removeConnectionStateListener(ConnectionStateListener listener) {
+        connectionStateListeners.remove(listener);
+    }
+
 
     /**
      * @return 只接收需要代理的请求
@@ -492,6 +523,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             });
         }
 
+        connectionStateListeners.clear();
         activeProxyRequestMap.clear();
         super.stopInternal();
 
@@ -510,6 +542,24 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
      */
     public boolean isUse() {
         return use;
+    }
+
+
+    /**
+     * @return 上行吞吐量，单位字节每秒
+     */
+    public long queryUploadThroughput() {
+        TrafficCounter counter = this.trafficCounter;
+        return counter != null ? counter.lastWriteThroughput() : 0;
+    }
+
+    /**
+     * @return 下行吞吐量，单位字节每秒
+     */
+    public long queryDownloadThroughput() {
+        TrafficCounter counter = this.trafficCounter;
+        //log.warn("{}", counter != null ? counter.lastReadThroughput() : "null");
+        return counter != null ? counter.lastReadThroughput() : 0;
     }
 
 
@@ -534,6 +584,12 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         if (!connectionState.isNormal() && !connectionState.canRetry()) {
             return;
+        }
+
+        TrafficCounter trafficCounter = this.trafficCounter;
+        if (trafficCounter != null) {
+            trafficCounter.stop();
+            this.trafficCounter = null;
         }
 
         //处理掉线重连
