@@ -91,8 +91,6 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
     private final Canvas downloadChartCanvas;
 
 
-
-
     MainScreenModule(SWTViewComponent component, Display display) {
         super(Objects.requireNonNull(component), "Main-Screen");
         this.display = display;
@@ -103,8 +101,8 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
         this.shell = shell;
 
         this.statusTextArea = initStatusTextArea(shell);
-        this.uploadChart = new DynamicTimeSeriesChart("UPLOAD", "TIME", "MB/s", 60, DynamicTimeSeriesChart.STYLE_PURPLE);
-        this.downloadChart = new DynamicTimeSeriesChart("DOWNLOAD", "TIME", "MB/s", 60, DynamicTimeSeriesChart.STYLE_BLUE);
+        this.uploadChart = new DynamicTimeSeriesChart("UPLOAD", "", "MB/s", 60, DynamicTimeSeriesChart.STYLE_PURPLE);
+        this.downloadChart = new DynamicTimeSeriesChart("DOWNLOAD", "", "MB/s", 60, DynamicTimeSeriesChart.STYLE_BLUE);
 
 
         this.uploadChartCanvas = initChartCanvas(this.uploadChart, 10, 270, CHART_WIDTH, CHART_HEIGHT);
@@ -127,11 +125,17 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
         }
     }
 
+    /**
+     * 初始化服务器选择列表
+     */
     private ServerList initServerChooseList(Shell shell) {
         createLabel(shell, "选择服务器", 10, 10, 160, 40, SWT.CENTER).setBackground(createColor(255, 255, 255));
         return new ServerList(180, 10, 340, 40);
     }
 
+    /**
+     * 初始化
+     */
     private Text initStatusTextArea(Shell shell) {
         Text text = new Text(shell, SWT.READ_ONLY | SWT.WRAP | SWT.LEFT | SWT.V_SCROLL);
         text.setBounds(10, 60, 680, 200);
