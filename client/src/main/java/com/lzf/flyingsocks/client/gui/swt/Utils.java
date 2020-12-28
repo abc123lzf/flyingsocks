@@ -4,9 +4,6 @@ import io.netty.util.internal.PlatformDependent;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.ImageData;
-import org.eclipse.swt.graphics.PaletteData;
-import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Combo;
@@ -19,9 +16,9 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
+import org.jfree.swt.SWTUtils;
 
 import java.awt.image.BufferedImage;
-import java.awt.image.WritableRaster;
 import java.io.InputStream;
 
 /**
@@ -182,35 +179,14 @@ abstract class Utils {
     static Canvas createCanvas(Composite comp, BufferedImage image, int x, int y, int width, int height) {
         Canvas canvas = new Canvas(comp, SWT.CENTER);
         canvas.setBounds(x, y, width, height);
-        canvas.setBackgroundImage(new Image(null, parseBufferedImage(image)));
+        canvas.setBackgroundImage(new Image(null, SWTUtils.convertAWTImageToSWT(image)));
         return canvas;
     }
 
 
     static void refreshCanvas(Canvas canvas, BufferedImage image) {
-        canvas.setBackgroundImage(new Image(null, parseBufferedImage(image)));
+        canvas.setBackgroundImage(new Image(null, SWTUtils.convertAWTImageToSWT(image)));
         canvas.redraw();
-    }
-
-
-    private static ImageData parseBufferedImage(BufferedImage image) {
-        PaletteData palette = new PaletteData(0x0000FF, 0x00FF00, 0xFF0000);
-
-        int[] arr = new int[4];
-        WritableRaster raster = image.getRaster();
-
-        int width = image.getWidth();
-        int height = image.getHeight();
-        ImageData data = new ImageData(width, height, 24, palette);
-        for (int i = 0; i < height; i++) {
-            for (int j = 0; j < width; j++) {
-                raster.getPixel(j, i, arr);
-                int pixel = palette.getPixel(new RGB(arr[0], arr[1], arr[2]));
-                data.setPixel(j, i, pixel);
-            }
-        }
-
-        return data;
     }
 
 

@@ -54,7 +54,7 @@ public class CertResponseMessage implements Message {
         if (update) {
             buf = allocator.buffer(4 + file.length + END_MARK.length);
         } else {
-            buf = allocator.DEFAULT.buffer(4 + END_MARK.length);
+            buf = allocator.buffer(4 + END_MARK.length);
         }
 
         if (update) {

@@ -87,7 +87,11 @@ public class MessageDeliverer {
             }
 
             if (transferCache != null) {
-                transferCache.forEach(ByteBuf::release);
+                transferCache.forEach(buf -> {
+                    if (buf.refCnt() > 0) {
+                        buf.release();
+                    }
+                });
                 transferCache = null;
             }
         }

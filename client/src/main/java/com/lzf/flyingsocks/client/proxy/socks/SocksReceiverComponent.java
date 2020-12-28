@@ -59,7 +59,7 @@ public final class SocksReceiverComponent extends AbstractComponent<ProxyCompone
     private Bootstrap udpProxyBootstrap;
 
     // Netty线程池
-    private EventLoopGroup socksReceiveGroup;
+    private EventLoopGroup ioEventLoop;
 
     //活跃的UDP代理端口
     private final ConcurrentMap<String, DatagramChannel> udpProxyChannelMap = new ConcurrentHashMap<>(128);
@@ -101,10 +101,10 @@ public final class SocksReceiverComponent extends AbstractComponent<ProxyCompone
             }
         });
 
-        this.socksReceiveGroup = parent.createNioEventLoopGroup(1);
+        this.ioEventLoop = parent.createNioEventLoopGroup(4);
 
         ServerBootstrap boot = new ServerBootstrap();
-        boot.group(socksReceiveGroup, parent.createNioEventLoopGroup(4))
+        boot.group(ioEventLoop)
                 .channel(NioServerSocketChannel.class)
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
@@ -119,7 +119,7 @@ public final class SocksReceiverComponent extends AbstractComponent<ProxyCompone
         this.serverBootstrap = boot;
 
         Bootstrap udpBoot = new Bootstrap();
-        udpBoot.group(socksReceiveGroup).channel(NioDatagramChannel.class);
+        udpBoot.group(ioEventLoop).channel(NioDatagramChannel.class);
         this.udpProxyBootstrap = udpBoot;
     }
 
@@ -143,7 +143,7 @@ public final class SocksReceiverComponent extends AbstractComponent<ProxyCompone
 
     @Override
     protected void stopInternal() {
-        socksReceiveGroup.shutdownGracefully();
+        ioEventLoop.shutdownGracefully();
         super.stopInternal();
     }
 
@@ -319,8 +319,10 @@ public final class SocksReceiverComponent extends AbstractComponent<ProxyCompone
             //proxyRequest.messageQueue().offer(msg);
             try {
                 proxyRequest.transferClientMessage(msg);
-            } catch (IOException e) {
-                msg.release();
+            } catch (Throwable e) {
+                if (msg.refCnt() > 0) {
+                    msg.release();
+                }
                 throw e;
             }
         }

@@ -1,6 +1,7 @@
 package com.lzf.flyingsocks.client.gui.swt;
 
 import org.apache.commons.lang3.time.DateUtils;
+import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
@@ -9,12 +10,14 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYAreaRenderer;
+import org.jfree.chart.swt.ChartComposite;
 import org.jfree.data.time.DynamicTimeSeriesCollection;
 import org.jfree.data.time.Second;
 import org.jfree.data.xy.XYDataset;
 import org.jfree.ui.RectangleInsets;
 
-import java.awt.*;
+import java.awt.BasicStroke;
+import java.awt.Color;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -38,13 +41,14 @@ public class JFreeChartDemo {
         JFreeChart chart = createChart(demo.timeSeriesCollection);
 
         Canvas canvas = Utils.createCanvas(shell, chart.createBufferedImage(600, 300), 0, 0, 600, 300);
+        ChartComposite composite = new ChartComposite(canvas, SWT.NONE, chart);
 
         display.timerExec(1000, new Runnable() {
             @Override
             public void run() {
                 demo.timeSeriesCollection.advanceTime();
                 demo.timeSeriesCollection.appendData(new float[] {(float) (Math.random() * 100.0)});
-                Utils.refreshCanvas(canvas, chart.createBufferedImage(600, 300));
+                composite.forceRedraw();
                 display.timerExec(1000, this);
             }
         });

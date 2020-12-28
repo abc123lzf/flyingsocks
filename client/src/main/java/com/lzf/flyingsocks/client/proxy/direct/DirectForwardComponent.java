@@ -4,6 +4,7 @@ import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.client.proxy.ProxyComponent;
 import com.lzf.flyingsocks.client.proxy.ProxyRequest;
 import com.lzf.flyingsocks.client.proxy.ProxyRequestSubscriber;
+import com.lzf.flyingsocks.client.proxy.util.MessageDelivererCancelledException;
 import com.lzf.flyingsocks.client.proxy.util.MessageReceiver;
 import com.lzf.flyingsocks.util.BootstrapTemplate;
 import io.netty.bootstrap.Bootstrap;
@@ -135,7 +136,11 @@ public class DirectForwardComponent extends AbstractComponent<ProxyComponent> im
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            if (cause instanceof IOException) {
+            if (cause instanceof MessageDelivererCancelledException) {
+                request.close();
+                ctx.close();
+                return;
+            } else if (cause instanceof IOException) {
                 log.trace("Direct TCP Connection force to close, from remote server {}:{}", request.getHost(), request.getPort());
             }
 

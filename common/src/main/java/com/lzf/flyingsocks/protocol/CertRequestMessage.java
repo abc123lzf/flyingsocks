@@ -2,7 +2,6 @@ package com.lzf.flyingsocks.protocol;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.CompositeByteBuf;
 
 import java.util.Arrays;
 
@@ -44,14 +43,16 @@ public class CertRequestMessage extends AuthMessage implements Message {
         ByteBufAllocator allocator = getAllocator();
 
         ByteBuf buf = super.serialize();
-        ByteBuf md5Buf = allocator.buffer(16 + 4);
-        md5Buf.writeBytes(certMD5);
-        md5Buf.writeBytes(END_MARK);
 
-        CompositeByteBuf cbf = allocator.compositeBuffer();
-        cbf.addComponent(true, buf);
-        cbf.addComponent(true, md5Buf);
-        return cbf;
+        try {
+            ByteBuf res = allocator.buffer(buf.readableBytes() + 16 + 4);
+            res.writeBytes(buf);
+            res.writeBytes(certMD5);
+            res.writeBytes(END_MARK);
+            return res;
+        } finally {
+            buf.release();
+        }
     }
 
     @Override

@@ -122,9 +122,6 @@ public final class DynamicTimeSeriesChart {
         plot.getRangeAxis().setAutoRange(true);
         plot.getRangeAxis().setAutoRangeMinimumSize(0.2);
 
-        //plot.getRangeAxis().setLowerBound(0);
-
-
     }
 
 
