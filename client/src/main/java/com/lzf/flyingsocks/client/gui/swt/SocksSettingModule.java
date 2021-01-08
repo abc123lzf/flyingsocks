@@ -5,7 +5,6 @@ import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
 import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
 import com.lzf.flyingsocks.util.BaseUtils;
-
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Button;
@@ -17,7 +16,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
 
-import static com.lzf.flyingsocks.client.gui.swt.Utils.*;
+import static com.lzf.flyingsocks.client.gui.swt.Utils.adaptDPI;
+import static com.lzf.flyingsocks.client.gui.swt.Utils.addButtonSelectionListener;
+import static com.lzf.flyingsocks.client.gui.swt.Utils.createButton;
+import static com.lzf.flyingsocks.client.gui.swt.Utils.createLabel;
+import static com.lzf.flyingsocks.client.gui.swt.Utils.createRadio;
+import static com.lzf.flyingsocks.client.gui.swt.Utils.createShell;
+import static com.lzf.flyingsocks.client.gui.swt.Utils.loadImage;
+import static com.lzf.flyingsocks.client.gui.swt.Utils.showMessageBox;
 
 /**
  * @author lizifan 695199262@qq.com

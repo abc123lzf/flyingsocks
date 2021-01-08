@@ -18,8 +18,11 @@ import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.jfree.swt.SWTUtils;
 
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 
 /**
  * @author lizifan
@@ -37,7 +40,29 @@ abstract class Utils {
     static {
         String baseDpiStr = System.getProperty("flyingsocks.basedpi", "144");
         float base = Float.parseFloat(baseDpiStr);
-        DPI_SCALE = Display.getDefault().getDPI().x / base;
+        float result;
+        if (isMacOS()) {
+            try {
+                GraphicsDevice device = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
+                Class<? extends GraphicsDevice> deviceClass = device.getClass();
+                Method getScaleFactor = deviceClass.getDeclaredMethod("getScaleFactor");
+                Method getXResolution = deviceClass.getDeclaredMethod("getXResolution");
+                Method getYResolution = deviceClass.getDeclaredMethod("getYResolution");
+
+                int scaleFactor = (Integer) getScaleFactor.invoke(device);
+                int xResolution = (Integer) getXResolution.invoke(device);
+                int yResolution = (Integer) getYResolution.invoke(device);
+
+                float dpi = scaleFactor * (xResolution + yResolution) / 2.f;
+                result = dpi / base;
+            } catch (Exception e) {
+                result = 1;
+            }
+        } else {
+            result = Display.getDefault().getDPI().x / base;
+        }
+
+        DPI_SCALE = result;
     }
 
     /**
