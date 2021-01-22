@@ -1,3 +1,24 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.client.proxy;
 
 import com.alibaba.fastjson.JSON;
@@ -10,11 +31,12 @@ import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.client.GlobalConfig;
 import com.lzf.flyingsocks.protocol.AuthMessage;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,16 +62,16 @@ public class ProxyServerConfig extends AbstractConfig {
     @Override
     protected void initInternal() throws ConfigInitializationException {
         GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
-        File file = new File(cfg.configPath(), SERVER_SETTING_FILE);
+        Path path = cfg.configPath().resolve(SERVER_SETTING_FILE);
 
-        if (!file.exists()) {
+        if (!Files.exists(path)) {
             return;
         }
 
-        try (FileInputStream is = new FileInputStream(file)) {
-            byte[] b = new byte[(int) file.length()];
+        try (FileInputStream is = new FileInputStream(path.toFile())) {
+            byte[] b = new byte[(int) Files.size(path)];
             int cnt = is.read(b);
-            if (cnt != file.length()) {
+            if (cnt != Files.size(path)) {
                 throw new ConfigInitializationException("File size is abnormalcy, you can restart this application");
             }
 
@@ -94,7 +116,7 @@ public class ProxyServerConfig extends AbstractConfig {
     public void save() throws Exception {
         GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
 
-        File f = new File(cfg.configPath(), SERVER_SETTING_FILE);
+        Path p = cfg.configPath().resolve(SERVER_SETTING_FILE);
 
         JSONArray arr = new JSONArray(nodes.size());
         for (Node node : nodes) {
@@ -115,7 +137,7 @@ public class ProxyServerConfig extends AbstractConfig {
             arr.add(o);
         }
 
-        try (FileWriter writer = new FileWriter(f)) {
+        try (FileWriter writer = new FileWriter(p.toFile())) {
             writer.write(arr.toString(SerializerFeature.PrettyFormat));
         }
     }

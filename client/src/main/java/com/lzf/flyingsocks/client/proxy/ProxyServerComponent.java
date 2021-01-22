@@ -1,3 +1,24 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.client.proxy;
 
 import com.lzf.flyingsocks.AbstractComponent;
@@ -16,6 +37,8 @@ import com.lzf.flyingsocks.protocol.AuthMessage;
 import com.lzf.flyingsocks.protocol.CertRequestMessage;
 import com.lzf.flyingsocks.protocol.CertResponseMessage;
 import com.lzf.flyingsocks.protocol.DelimiterMessage;
+import com.lzf.flyingsocks.protocol.PingMessage;
+import com.lzf.flyingsocks.protocol.PongMessage;
 import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
 import com.lzf.flyingsocks.protocol.ProxyResponseMessage;
 import com.lzf.flyingsocks.protocol.SerializationException;
@@ -39,17 +62,20 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
+import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.handler.traffic.ChannelTrafficShapingHandler;
 import io.netty.handler.traffic.TrafficCounter;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
@@ -179,12 +205,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             provider = null;
         } else if (config.getEncryptType() == EncryptType.SSL) {
             updateConnectionState(ConnectionState.SSL_INITIAL);
-            //首先计算证书文件的MD5
-            final byte[] md5 = calcuateCertFileMD5(cfg.configPath());
-            if (md5 == null) {
-                throw new ComponentException();
-            }
-
             final Thread thread = Thread.currentThread();
             final String host = config.getHost();
             final int certPort = config.getCertPort();
@@ -252,8 +272,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                         ChannelPipeline cp = ch.pipeline();
                         ChannelTrafficShapingHandler trafficHandler = new ChannelTrafficShapingHandler(1000L);
                         cp.addLast(trafficHandler);
-                        /*TrafficCounter trafficCounter = new TrafficCounter(trafficHandler, loopGroup, getName() + "-TrafficHandler", 1000);
-                        trafficCounter.start();*/
                         ProxyServerComponent.this.trafficCounter = trafficHandler.trafficCounter();;
 
                         cp.addLast(new ChannelTrafficShapingHandler(1000L));
@@ -630,34 +648,42 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
      * @param location 存放证书文件的路径
      * @return MD5值，若文件不存在则返回一个长度为16，值全部为0的byte数组
      */
-    private byte[] calcuateCertFileMD5(String location) {
-        File folder = new File(location, OpenSSLConfig.folderName(config.getHost(), config.getPort()));
+    private byte[] calcuateCertFileMD5(Path location) {
+        Path folder = location.resolve(OpenSSLConfig.folderName(config.getHost(), config.getPort()));
 
-        if (!folder.exists()) {
-            if (!folder.mkdirs()) {
-                log.error("Can not create folder at {}", folder.getAbsolutePath());
+        if (!Files.exists(folder)) {
+            try {
+                Files.createDirectories(folder);
+                return new byte[16];
+            } catch (IOException e) {
+                log.error("Can not create folder at {}", folder);
                 return null;
             }
-            return new byte[16];
-        } else if (folder.isFile()) {
-            if (!folder.delete()) {
-                log.error("Location {} exists a file and can not delete.", folder.getName());
+        } else if (Files.isRegularFile(folder)) {
+            try {
+                Files.delete(folder);
+            } catch (IOException e) {
+                log.error("Location {} exists a file and can not delete.", folder, e);
                 return null;
             }
         }
 
-        if (folder.isDirectory()) {
-            File file = new File(folder, OpenSSLConfig.CERT_FILE_NAME);
-            if (!file.exists() || file.length() == 0L) {
+        if (Files.isDirectory(folder)) {
+            Path file = folder.resolve(OpenSSLConfig.CERT_FILE_NAME);
+            if (!Files.exists(file)) {
                 return new byte[16];
             }
 
-            if (file.isDirectory() && !file.delete()) {
-                log.error("location {} exists a folder and can not delete.", file.getAbsolutePath());
-                return null;
+            if (Files.isDirectory(file)) {
+                try {
+                    Files.delete(file);
+                } catch (IOException e) {
+                    log.error("location {} exists a folder and can not delete.", file, e);
+                    return null;
+                }
             }
 
-            try (FileInputStream fis = new FileInputStream(file)) {
+            try (FileInputStream fis = new FileInputStream(file.toFile())) {
                 byte[] b = new byte[10240];
                 int len = fis.read(b);
                 byte[] rb = new byte[len];
@@ -676,15 +702,15 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     }
 
 
-    private void writeCertFile(String location, final InputStream is, final int len) throws IOException {
-        File file = new File(new File(location, OpenSSLConfig.folderName(config.getHost(), config.getPort())), OpenSSLConfig.CERT_FILE_NAME);
+    private void writeCertFile(Path location, final InputStream is, final int len) throws IOException {
+        Path path = location.resolve(OpenSSLConfig.folderName(config.getHost(), config.getPort())).resolve(OpenSSLConfig.CERT_FILE_NAME);
         byte[] b = new byte[len];
         int r = is.read(b);
         if (r != len) {
             throw new IOException("File real size is different from server message");
         }
 
-        try (FileOutputStream fos = new FileOutputStream(file)) {
+        try (FileOutputStream fos = new FileOutputStream(path.toFile())) {
             fos.write(b);
             fos.flush();
         }
@@ -713,47 +739,42 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         }
 
         @Override
-        public void channelRead(ChannelHandlerContext ctx, Object buf) {
-            if (!(buf instanceof ByteBuf)) {
+        public void channelRead(ChannelHandlerContext ctx, Object buf) throws Exception {
+            if (buf instanceof ByteBuf) {
+                try {
+                    channelRead0(ctx, (ByteBuf) buf);
+                } finally {
+                    ReferenceCountUtil.release(buf);
+                }
+            } else {
                 ctx.fireChannelRead(buf);
+            }
+        }
+
+
+        private void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws SerializationException {
+            DelimiterMessage dmsg = new DelimiterMessage(msg);
+            byte[] b = dmsg.getDelimiter();
+            byte[] rb = proxyServerSession.getDelimiter();
+
+            if (rb == null) {
+                log.info("Delimiter message magic number is not correct");
+                ctx.close();
                 return;
             }
 
-            log.trace("Receive flyingsocks delimiter message");
-            ByteBuf msg = (ByteBuf) buf;
-            try {
-                DelimiterMessage dmsg = new DelimiterMessage(msg);
-                byte[] b = new byte[DelimiterMessage.DEFAULT_SIZE];
-                ByteBuf dbuf = dmsg.getDelimiter();
-                dbuf.copy().readBytes(b);
-
-                byte[] rb = proxyServerSession.getDelimiter();
-
-                if (rb == null) {
-                    log.info("Delimiter message magic number is not correct");
+            for (int i = 0; i < DelimiterMessage.DEFAULT_SIZE; i++) {
+                if (b[i] != rb[i]) {
+                    log.debug("Channel close because of delimiter is difference");
                     ctx.close();
                     return;
                 }
-
-                for (int i = 0; i < DelimiterMessage.DEFAULT_SIZE; i++) {
-                    if (b[i] != rb[i]) {
-                        log.debug("Channel close because of delimiter is difference");
-                        ctx.close();
-                        return;
-                    }
-                }
-
-                ctx.pipeline().remove(this)
-                        .addLast(new DelimiterBasedFrameDecoder(102400, dbuf.copy()))
-                        .addLast(new DelimiterOutboundHandler())
-                        .addLast(new AuthHandler());
-
-            } catch (SerializationException e) {
-                log.warn("DelimiterMessage serialization error", e);
-                ctx.close();
-            } finally {
-                ReferenceCountUtil.release(msg);
             }
+
+            ctx.pipeline().remove(this)
+                    .addLast(new DelimiterBasedFrameDecoder(102400, Unpooled.wrappedBuffer(b)))
+                    .addLast(new DelimiterOutboundHandler())
+                    .addLast(new AuthHandler());
         }
 
         @Override
@@ -839,6 +860,21 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
 
     private final class ProxyHandler extends ChannelInboundHandlerAdapter {
+
+        @Override
+        public void handlerAdded(ChannelHandlerContext ctx) {
+            ctx.pipeline().addFirst(new IdleStateHandler(15, 0, 0));
+        }
+
+        @Override
+        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
+            if (evt instanceof IdleStateEvent) {
+                ctx.writeAndFlush(new PingMessage(), ctx.voidPromise());
+                return;
+            }
+            ctx.fireUserEventTriggered(evt);
+        }
+
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             if (cause instanceof IOException && log.isInfoEnabled()) {
@@ -855,31 +891,56 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
             if (msg instanceof ByteBuf) {
                 try {
-                    ProxyResponseMessage resp;
-                    try {
-                        resp = new ProxyResponseMessage((ByteBuf) msg);
-                    } catch (SerializationException e) {
-                        log.warn("Serialize ProxyResponseMessage error", e);
-                        ctx.close();
-                        return;
-                    }
-
-                    if (resp.getState() == ProxyResponseMessage.State.SUCCESS) {
-                        SerialProxyRequest req = activeProxyRequestMap.get(resp.serialId());
-                        if (req == null) {
-                            return;
-                        }
-
-                        req.sendMessage(resp.getMessage());
+                    ByteBuf buf = (ByteBuf) msg;
+                    byte head = buf.getByte(0);
+                    if (head == ProxyResponseMessage.HEAD) {
+                        processProxyResponseMessage(ctx, buf);
+                    } else if (head == PingMessage.HEAD) {
+                        processPingMessage(ctx, buf);
                     }
                 } finally {
                     ReferenceCountUtil.release(msg);
                 }
-
             } else {
                 ctx.fireChannelRead(msg);
             }
         }
+
+        private void processProxyResponseMessage(ChannelHandlerContext ctx, ByteBuf buf) {
+            ProxyResponseMessage response;
+            try {
+                response = new ProxyResponseMessage(buf);
+            } catch (SerializationException e) {
+                log.warn("Serialize ProxyResponseMessage error", e);
+                ctx.close();
+                return;
+            }
+
+            if (response.getState() == ProxyResponseMessage.State.SUCCESS) {
+                SerialProxyRequest request = activeProxyRequestMap.get(response.serialId());
+                if (request == null) {
+                    buf.release();
+                    log.warn("Unable get active request [serialId:{}]", response.serialId());
+                    return;
+                }
+
+                request.sendMessage(response.getMessage());
+            }
+        }
+
+
+        protected void processPingMessage(ChannelHandlerContext ctx, ByteBuf buf) {
+            try {
+                PingMessage msg = new PingMessage();
+                msg.deserialize(buf);
+                PongMessage pong = new PongMessage();
+                ctx.writeAndFlush(pong, ctx.voidPromise());
+            } catch (SerializationException e) {
+                log.warn("Illegal PingMessage", e);
+                ctx.close();
+            }
+        }
+
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
@@ -892,8 +953,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     public void receive(ProxyRequest request) {
         final int id = serialBuilder.getAndIncrement();
         final SerialProxyRequest req = new SerialProxyRequest(id, request);
-        /*proxyRequestQueue.add(req);
-        activeProxyRequestMap.put(id, req);*/
         try {
             req.setClientMessageReceiver(new ClientMessageReceiver(req));
         } catch (IOException e) {
@@ -929,14 +988,11 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             prm.setMessage(buf);
 
             try {
-                proxyServerSession.socketChannel().writeAndFlush(prm.serialize());
+                proxyServerSession.socketChannel().writeAndFlush(prm.serialize(buf.alloc()));
             } catch (SerializationException e) {
                 log.warn("Serialize ProxyRequestMessage occur a exception");
+                buf.release();
                 request.close();
-            } finally {
-                if (buf.refCnt() > 0) {
-                    buf.release();
-                }
             }
         }
 

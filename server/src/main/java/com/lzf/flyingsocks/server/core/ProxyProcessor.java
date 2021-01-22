@@ -1,20 +1,37 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.server.core;
 
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.server.Server;
 import com.lzf.flyingsocks.server.ServerConfig;
-import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.util.concurrent.FastThreadLocal;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.lzf.flyingsocks.server.core.client.ClientProcessor;
 
-import javax.net.ssl.SSLException;
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.WeakHashMap;
-import java.util.concurrent.ConcurrentHashMap;
+import com.lzf.flyingsocks.server.core.dispatch.DispatchProceessor;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.kqueue.KQueueEventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -22,55 +39,55 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
 
     private static final AtomicInteger ID_BUILDER = new AtomicInteger(0);
 
-    private final Logger log;
-
     //ProxyProcessor ID
     private final int handlerId;
 
-    //活跃的ClientSession Map
-    private final Map<Channel, ClientSession> activeClientMap = new ConcurrentHashMap<>();
-
     //Boss线程
-    private EventLoopGroup connectionReceiveWorker = new NioEventLoopGroup(2);
+    private final EventLoopGroup bossWorker;
 
     //Worker线程池
-    private EventLoopGroup requestProcessWorker = new NioEventLoopGroup();
-
-    //绑定的端口
-    private final int port;
-
-    //收发证书的端口
-    private final int certPort;
-
-    //最大客户端数
-    private final int maxClient;
-
-    //负责添加ClientSession的进站处理器
-    private final ChannelInboundHandler clientSessionHandler;
+    private final EventLoopGroup childWorker;
 
     //配置信息
     private final ServerConfig.Node serverConfig;
 
     //代理任务订阅者列表
-    private final List<ProxyTaskSubscriber> proxyTaskSubscribers = new CopyOnWriteArrayList<>();
-
-    private final FastThreadLocal<Map<Channel, ClientSession>> localClientMap = new FastThreadLocal<Map<Channel, ClientSession>>() {
-        @Override
-        protected Map<Channel, ClientSession> initialValue() {
-            return new WeakHashMap<>();
-        }
-    };
+    private final CopyOnWriteArrayList<ProxyTaskSubscriber> proxyTaskSubscribers = new CopyOnWriteArrayList<>();
 
 
     public ProxyProcessor(Server server, ServerConfig.Node serverConfig) {
         super(serverConfig.name, server);
         this.handlerId = ID_BUILDER.incrementAndGet();
-        this.port = serverConfig.port;
-        this.maxClient = serverConfig.maxClient;
         this.serverConfig = serverConfig;
-        this.clientSessionHandler = new ClientSessionHandler();
-        this.certPort = serverConfig.certPort;
-        this.log = LoggerFactory.getLogger(String.format("ProxyProcessor [ID:%d Port:%d]", handlerId, port));
+
+        int cpus = parent.availableProcessors();
+        int bossWorkerCount = cpus <= 4 ? 1 : 2;
+        int childWorkerCount = cpus * 2;
+        boolean linux = !parent.isMacOS() && !parent.isWindows();
+        EventLoopGroup bossWorker;
+        EventLoopGroup childWorker;
+        if (linux) {
+            try {
+                bossWorker = new EpollEventLoopGroup(bossWorkerCount);
+                childWorker = new EpollEventLoopGroup(childWorkerCount);
+            } catch (Throwable t) {
+                log.info("Unable to create EpollEventLoopGroup [{}]", t.getMessage());
+                try {
+                    bossWorker = new KQueueEventLoopGroup(bossWorkerCount);
+                    childWorker = new KQueueEventLoopGroup(childWorkerCount);
+                } catch (Throwable t2) {
+                    log.info("Unable to create KQueueEventLoopGroup [{}]", t2.getMessage());
+                    bossWorker = new NioEventLoopGroup(bossWorkerCount);
+                    childWorker = new NioEventLoopGroup(childWorkerCount);
+                }
+            }
+        } else {
+            bossWorker = new NioEventLoopGroup(bossWorkerCount);
+            childWorker = new NioEventLoopGroup(childWorkerCount);
+        }
+
+        this.bossWorker = bossWorker;
+        this.childWorker = childWorker;
     }
 
     @Override
@@ -82,9 +99,8 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
 
     @Override
     protected void stopInternal() {
-        connectionReceiveWorker.shutdownGracefully();
-        requestProcessWorker.shutdownGracefully();
-        activeClientMap.clear();
+        bossWorker.shutdownGracefully();
+        childWorker.shutdownGracefully();
         super.stopInternal();
     }
 
@@ -96,53 +112,37 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
      * @return 该代理处理器绑定的端口
      */
     public final int getPort() {
-        return port;
+        return serverConfig.port;
     }
 
     /**
      * @return 收发CA证书的端口
      */
     public final int getCertPort() {
-        return certPort;
+        return serverConfig.certPort;
     }
 
     /**
      * @return 该代理处理器最大的客户端TCP连接数
      */
     public final int getMaxClient() {
-        return maxClient;
+        return serverConfig.maxClient;
     }
 
     /**
      * @return 连接请求处理线程池
      */
-    final EventLoopGroup getRequestProcessWorker() {
-        return requestProcessWorker;
+    public final EventLoopGroup getChildWorker() {
+        return childWorker;
     }
 
     /**
      * @return 连接接收线程池
      */
-    final EventLoopGroup getConnectionReceiveWorker() {
-        return connectionReceiveWorker;
+    public final EventLoopGroup getBossWorker() {
+        return bossWorker;
     }
 
-    /**
-     * @param clientSession 客户端会话对象
-     */
-    private void putClientSession(ClientSession clientSession) {
-        activeClientMap.put(clientSession.socketChannel(), clientSession);
-    }
-
-    /**
-     * 根据Channel获取客户端会话对象
-     *
-     * @param channel Channel通道
-     * @return 客户端会话
-     */
-    final ClientSession getClientSession(Channel channel) {
-        return activeClientMap.get(channel);
-    }
 
     @Override
     public void registerSubscriber(ProxyTaskSubscriber subscriber) {
@@ -178,79 +178,13 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
             task.getRequestMessage().getMessage().release();
         }
     }
-
-    private void removeClientSession(Channel channel) {
-        if (log.isInfoEnabled()) {
-            log.info("Remote client has disconnect, connection information: {}", activeClientMap.get(channel));
-        }
-        activeClientMap.remove(channel);
-    }
-
-    /**
-     * 获取默认的会话管理器
-     *
-     * @return 会话管理器
-     */
-    public ChannelInboundHandler clientSessionHandler() {
-        return clientSessionHandler;
-    }
-
     /**
      * 获取当前ProxyHandler的配置信息
      *
      * @return 配置信息
      */
-    ServerConfig.Node getServerConfig() {
+    public ServerConfig.Node getServerConfig() {
         return serverConfig;
     }
 
-    /**
-     * 用于管理客户端连接(ClientSession)
-     */
-    @ChannelHandler.Sharable
-    private final class ClientSessionHandler extends ChannelInboundHandlerAdapter {
-        private final int maxClient;
-
-        private ClientSessionHandler() {
-            maxClient = serverConfig.maxClient;
-        }
-
-        @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) {
-            localClientMap.get().get(ctx.channel()).updateLastActiveTime();
-            ctx.fireChannelRead(msg);
-        }
-
-        @Override
-        public void channelActive(ChannelHandlerContext ctx) {
-            if (activeClientMap.size() > maxClient) {
-                log.info("Node \"{}\" Client number out of maxClient limit, value:{}", serverConfig.name, maxClient);
-                ctx.close();
-            }
-            ClientSession state = new ClientSession(ctx.channel());
-            putClientSession(state);
-            localClientMap.get().put(state.socketChannel(), state);
-
-            ctx.fireChannelActive();
-        }
-
-        @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            if (cause instanceof SSLException || cause.getCause() instanceof SSLException) {
-                log.info("Client connection is not SSL Connection");
-            } else if (cause instanceof IOException) {
-                log.info("Remote host close the connection");
-            } else if (log.isWarnEnabled()) {
-                log.warn("An exception occur", cause);
-            }
-            ctx.close();
-        }
-
-        @Override
-        public void channelInactive(ChannelHandlerContext ctx) {
-            localClientMap.get().remove(ctx.channel());
-            removeClientSession(ctx.channel());
-            ctx.fireChannelInactive();
-        }
-    }
 }

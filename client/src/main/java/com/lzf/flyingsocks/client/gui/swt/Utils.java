@@ -1,6 +1,28 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.client.gui.swt;
 
 import io.netty.util.internal.PlatformDependent;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
@@ -23,11 +45,14 @@ import java.awt.GraphicsEnvironment;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.lang.reflect.Method;
+import java.util.Locale;
+import java.util.ResourceBundle;
 
 /**
+ * SWT GUI工具类
+ *
  * @author lizifan
  * @since 2019.10.2 0:22
- * SWT GUI工具类
  */
 abstract class Utils {
 
@@ -37,25 +62,27 @@ abstract class Utils {
      */
     private static final float DPI_SCALE;
 
+    /**
+     * GUI国际化
+     */
+    private static final ResourceBundle RESOURCE_BUNDLE;
+
+
     static {
         String baseDpiStr = System.getProperty("flyingsocks.basedpi", "144");
         float base = Float.parseFloat(baseDpiStr);
         float result;
+
+        // MacOS通过Display得到的DPI不准确
         if (isMacOS()) {
             try {
                 GraphicsDevice device = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
                 Class<? extends GraphicsDevice> deviceClass = device.getClass();
                 Method getScaleFactor = deviceClass.getDeclaredMethod("getScaleFactor");
-                Method getXResolution = deviceClass.getDeclaredMethod("getXResolution");
-                Method getYResolution = deviceClass.getDeclaredMethod("getYResolution");
-
                 int scaleFactor = (Integer) getScaleFactor.invoke(device);
-                int xResolution = (Integer) getXResolution.invoke(device);
-                int yResolution = (Integer) getYResolution.invoke(device);
-
-                float dpi = scaleFactor * (xResolution + yResolution) / 2.f;
-                result = dpi / base;
+                result = scaleFactor * 0.75f;
             } catch (Exception e) {
+                System.err.println("Can not get scale factor, cause:" + e.getMessage());
                 result = 1;
             }
         } else {
@@ -63,6 +90,8 @@ abstract class Utils {
         }
 
         DPI_SCALE = result;
+        Locale locale = Locale.getDefault();
+        RESOURCE_BUNDLE = ResourceBundle.getBundle("i18n/swtui", locale);
     }
 
     /**
@@ -134,7 +163,7 @@ abstract class Utils {
      */
     static Shell createShell(Display display, String title, Image icon, int width, int height) {
         Shell sh = new Shell(display, (SWT.SHELL_TRIM & (~SWT.RESIZE)) | SWT.MIN | SWT.ON_TOP);
-        sh.setText(title);
+        sh.setText(i18n(title));
         sh.setSize(width, height);
         sh.setVisible(false);
         if (icon != null) {
@@ -186,6 +215,7 @@ abstract class Utils {
      * @param style  样式
      */
     static Label createLabel(Composite comp, String text, int x, int y, int width, int height, int style) {
+        text = i18n(text);
         Label l = new Label(comp, style);
         l.setBounds(x, y, width, height);
         if (text != null) {
@@ -210,15 +240,19 @@ abstract class Utils {
 
 
     static void refreshCanvas(Canvas canvas, BufferedImage image) {
+        Image now = canvas.getBackgroundImage();
         canvas.setBackgroundImage(new Image(null, SWTUtils.convertAWTImageToSWT(image)));
         canvas.redraw();
+        if (now != null) {
+            now.dispose();
+        }
     }
 
 
 
     static Button createButton(Composite comp, String text, int x, int y, int width, int height) {
         Button b = new Button(comp, SWT.PUSH);
-        b.setText(text);
+        b.setText(i18n(text));
         b.setBounds(x, y, width, height);
         return b;
     }
@@ -226,7 +260,7 @@ abstract class Utils {
 
     static Button createRadio(Composite comp, String text, int x, int y, int width, int height) {
         Button b = new Button(comp, SWT.RADIO);
-        b.setText(text);
+        b.setText(i18n(text));
         b.setBounds(x, y, width, height);
         return b;
     }
@@ -241,6 +275,9 @@ abstract class Utils {
      * @param style   样式
      */
     static void showMessageBox(Shell shell, String title, String content, int style) {
+        title = i18n(title);
+        content = i18n(content);
+
         MessageBox box = new MessageBox(shell, style);
         box.setText(title);
         box.setMessage(content);
@@ -256,7 +293,7 @@ abstract class Utils {
      */
     static void createMenuItem(Menu menu, String text, SimpleSelectionListener listener) {
         MenuItem it = new MenuItem(menu, SWT.PUSH);
-        it.setText(text);
+        it.setText(i18n(text));
         if (listener != null) {
             it.addSelectionListener(listener);
         }
@@ -271,11 +308,20 @@ abstract class Utils {
      */
     static void createCascadeMenuItem(Menu menu, String text, SimpleSelectionListener listener) {
         MenuItem it = new MenuItem(menu, SWT.CASCADE);
-        it.setText(text);
+        it.setText(i18n(text));
         if (listener != null) {
             it.addSelectionListener(listener);
         }
     }
+
+
+    static String i18n(String key) {
+        if (!StringUtils.isBlank(key) && RESOURCE_BUNDLE.containsKey(key)) {
+            return RESOURCE_BUNDLE.getString(key);
+        }
+        return key;
+    }
+
 
     /**
      * 创建菜单分隔线
@@ -285,7 +331,6 @@ abstract class Utils {
     static void createMenuSeparator(Menu menu) {
         new MenuItem(menu, SWT.SEPARATOR);
     }
-
 
     private Utils() {
         throw new UnsupportedOperationException();

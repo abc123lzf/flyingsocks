@@ -1,9 +1,31 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.protocol;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -107,7 +129,7 @@ public class AuthMessage implements Message {
 
 
     @Override
-    public ByteBuf serialize() throws SerializationException {
+    public ByteBuf serialize(ByteBufAllocator allocator) throws SerializationException {
         if (authMethod == null) {
             throw new SerializationException("Auth type should not be null");
         }
@@ -128,7 +150,7 @@ public class AuthMessage implements Message {
             throw new SerializationException("auth message is too long, it's should be no longer than 32767 bytes");
         }
 
-        ByteBuf buf = getAllocator().buffer(1 + 2 + b.length);
+        ByteBuf buf = allocator.buffer(1 + 2 + b.length);
         buf.writeByte(authMethod.getHead());
         buf.writeShort((short) b.length);
         buf.writeBytes(b);

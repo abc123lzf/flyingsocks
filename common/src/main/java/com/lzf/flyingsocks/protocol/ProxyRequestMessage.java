@@ -1,8 +1,30 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.protocol;
 
 import com.lzf.flyingsocks.util.BaseUtils;
 import io.netty.buffer.ByteBuf;
-import io.netty.util.ReferenceCountUtil;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.CompositeByteBuf;
 
 import java.nio.charset.Charset;
 import java.util.Objects;
@@ -17,7 +39,7 @@ import java.util.Objects;
  * |                              Message                           |
  * |                              Content                           |
  * +----------------------------------------------------------------+
- * <p>
+ *
  * Serial ID：客户端消息序列号，用于识别代理消息从哪个应用程序发送
  * Host Len：目标主机名/IP地址长度
  * Host：目标主机名
@@ -26,9 +48,17 @@ import java.util.Objects;
  * Message Len：消息长度
  * Message Content：消息体
  */
-public class ProxyRequestMessage extends ProxyMessage implements Message, Cloneable {
+public class ProxyRequestMessage extends ProxyMessage implements Message {
 
+    /**
+     * 目标主机名编码
+     */
     private static final Charset HOST_ENCODING = Charset.forName("Unicode");
+
+    /**
+     * HEAD，用于区分不同类型的消息
+     */
+    public static final byte HEAD = 0x00;
 
     /**
      * 代理主机名，例如www.google.com
@@ -79,11 +109,11 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
     }
 
     public void setPort(int port) {
-        this.port = port;
-    }
+        if (!BaseUtils.isPort(port)) {
+            throw new IllegalArgumentException("Port:" + port);
+        }
 
-    public void setMessage(ByteBuf message) {
-        this.message = message;
+        this.port = port;
     }
 
     public Protocol getProtocol() {
@@ -91,38 +121,48 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
     }
 
     @Override
-    public ByteBuf serialize() throws SerializationException {
+    public ByteBuf serialize(ByteBufAllocator allocator) throws SerializationException {
+        ByteBuf message = getMessage();
         assertTrue(host != null && port > 0 && port <= 65535 && message != null,
                 "ProxyRequestMessage is not complete, or port is illegal, message detail: \n" + toString());
 
         byte[] h = host.getBytes(HOST_ENCODING);
 
-        int size = 4 + 1 + h.length + 1 + 2 + 4 + message.readableBytes();
-        ByteBuf buf = getAllocator().buffer(size);
+        int size = 1 + 4 + 1 + h.length + 1 + 2 + 4;
+        ByteBuf header = allocator.directBuffer(size);
 
-        buf.writeInt(serialId);
+        header.writeByte(HEAD);
+        header.writeInt(serialId);
 
-        buf.writeByte(h.length);
-        buf.writeBytes(h);
+        header.writeByte(h.length);
+        header.writeBytes(h);
 
         if (protocol == Protocol.UDP) {
-            buf.writeByte(1 << 7);
+            header.writeByte(1 << 7);
         } else if (protocol == Protocol.CLOSE) {
-            buf.writeByte(1 << 6);
+            header.writeByte(1 << 6);
         } else {
-            buf.writeByte(0);
+            header.writeByte(0);
         }
 
-        buf.writeShort(port);
-        buf.writeInt(message.readableBytes());
-        buf.writeBytes(message);
+        header.writeShort(port);
+        header.writeInt(message.readableBytes());
 
-        return buf;
+        CompositeByteBuf result = allocator.compositeBuffer(2);
+        result.addComponent(true, header);
+        result.addComponent(true, message);
+        return result;
     }
+
 
     @Override
     public void deserialize(ByteBuf buf) throws SerializationException {
         try {
+            byte head = buf.readByte();
+            if (head != HEAD) {
+                throw new SerializationException(ProxyRequestMessage.class, "Illegal head value:" + head);
+            }
+
             int sid = buf.readInt();
             int hostlen = BaseUtils.parseByteToInteger(buf.readByte());
             byte[] hb = new byte[hostlen];
@@ -146,30 +186,16 @@ public class ProxyRequestMessage extends ProxyMessage implements Message, Clonea
             assertTrue(msglen >= 0, "Illegal ProxyRequestMessage, msglen should be greater than 0");
             assertTrue(msglen <= buf.readableBytes(), "Illegal ProxyRequestMessage, msglen is not equals real message length");
 
-            ByteBuf msg = getAllocator().buffer(msglen);
-            buf.readBytes(msg);
-
+            ByteBuf msg = buf.readRetainedSlice(msglen);
             this.serialId = sid;
             this.host = host;
             this.port = port;
-            this.message = msg;
-
+            setMessage(msg);
         } catch (IndexOutOfBoundsException e) {
             throw new SerializationException("Illegal ProxyRequestMessage", e);
         }
     }
 
-    @Override
-    public ProxyRequestMessage clone() throws CloneNotSupportedException {
-        ProxyRequestMessage obj = (ProxyRequestMessage) super.clone();
-        obj.setMessage(message.copy());
-        return obj;
-    }
-
-    @Override
-    protected void finalize() {
-        ReferenceCountUtil.release(message);
-    }
 
     @Override
     public String toString() {

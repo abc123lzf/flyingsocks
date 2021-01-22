@@ -1,5 +1,25 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.server.core;
-
 
 import com.lzf.flyingsocks.AbstractSession;
 import com.lzf.flyingsocks.Session;
@@ -44,19 +64,18 @@ public class ClientSession extends AbstractSession implements Session {
     }
 
     public byte[] getDelimiterKey() {
-        byte[] b = new byte[DelimiterMessage.DEFAULT_SIZE];
-        System.arraycopy(delimiterKey, 0, b, 0, DelimiterMessage.DEFAULT_SIZE);
-        return b;
+        byte[] b = this.delimiterKey;
+        return Arrays.copyOf(b, b.length);
     }
 
     public void writeMessage(ByteBuf msg) {
         checkChannelState();
-        socketChannel.write(msg);
+        socketChannel.write(msg, socketChannel.voidPromise());
     }
 
     public void writeAndFlushMessage(ByteBuf msg) {
         checkChannelState();
-        socketChannel.writeAndFlush(msg);
+        socketChannel.writeAndFlush(msg, socketChannel.voidPromise());
     }
 
     public void flushMessage() {

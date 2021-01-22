@@ -1,3 +1,24 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.server;
 
 import com.alibaba.fastjson.JSON;
@@ -12,13 +33,20 @@ import com.lzf.flyingsocks.util.BaseUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 
 public class ServerConfig extends AbstractConfig implements Config {
     private static final Logger log = LoggerFactory.getLogger(ServerConfig.class);
@@ -27,7 +55,7 @@ public class ServerConfig extends AbstractConfig implements Config {
 
     private final List<Node> nodeList = new ArrayList<>();
 
-    private String location;
+    private Path location;
 
     ServerConfig(ConfigManager<?> configManager) {
         super(configManager, NAME);
@@ -37,25 +65,25 @@ public class ServerConfig extends AbstractConfig implements Config {
     protected void initInternal() throws ConfigInitializationException {
         String folderString = configManager.getSystemProperties("flyingsocks.config.location");
         if (folderString == null) {
-            folderString = configManager.getSystemProperties("user.dir");
+            folderString = configManager.getSystemProperties("user.home");
             log.info("Properties flyingsocks.config.location not configure, using path {}", folderString);
         }
 
-        File folder = new File(folderString);
-        if (folder.isFile()) {
+        Path folder = Paths.get(folderString);
+        if (Files.isRegularFile(folder)) {
             String msg = "Properties flyingsocks.config.location is file";
             log.error(msg);
             throw new ConfigInitializationException(msg);
-        } else if (!folder.exists()) {
+        } else if (Files.notExists(folder)) {
             String msg = "Properties flyingsocks.config.location not exists";
             log.error(msg);
             throw new ConfigInitializationException(msg);
         }
 
-        this.location = folder.getAbsolutePath();
+        this.location = folder;
 
-        File file = new File(folder, "config.json");
-        if (!file.exists()) {
+        Path file = location.resolve("config.json");
+        if (Files.notExists(file)) {
             try {
                 makeTemplateConfigFile(file);
             } catch (Exception e) {
@@ -63,8 +91,8 @@ public class ServerConfig extends AbstractConfig implements Config {
             }
         }
 
-        try (InputStream cis = new FileInputStream(file)) {
-            byte[] b = new byte[(int) file.length()];
+        try (InputStream cis = Files.newInputStream(file, StandardOpenOption.READ)) {
+            byte[] b = new byte[(int) Files.size(file)];
             int len = cis.read(b);
             String json = new String(b, 0, len, StandardCharsets.UTF_8);
             JSONArray arr = JSON.parseArray(json);
@@ -111,7 +139,7 @@ public class ServerConfig extends AbstractConfig implements Config {
     }
 
 
-    private void makeTemplateConfigFile(File file) throws Exception {
+    private void makeTemplateConfigFile(Path path) throws Exception {
         JSONArray arr = new JSONArray();
         JSONObject obj = new JSONObject();
         obj.put("name", "default");
@@ -123,17 +151,13 @@ public class ServerConfig extends AbstractConfig implements Config {
         obj.put("password", UUID.randomUUID().toString().replace("-", "").substring(0, 8));
         arr.add(obj);
 
-        FileWriter writer = new FileWriter(file);
-        writer.write(arr.toJSONString());
-        writer.close();
+        try(FileWriter writer = new FileWriter(path.toFile())) {
+            writer.write(arr.toJSONString());
+        }
     }
 
-    public String getLocation() {
+    public Path getLocation() {
         return location;
-    }
-
-    public String getLocationURL() {
-        return "file://" + location;
     }
 
     public Node[] getServerNode() {
@@ -144,7 +168,8 @@ public class ServerConfig extends AbstractConfig implements Config {
      * 服务器指定的认证类型
      */
     public enum AuthType {
-        SIMPLE(AuthMessage.AuthMethod.SIMPLE), USER(AuthMessage.AuthMethod.USER);
+        SIMPLE(AuthMessage.AuthMethod.SIMPLE),
+        USER(AuthMessage.AuthMethod.USER);
 
         public final AuthMessage.AuthMethod authMethod;
 

@@ -1,9 +1,28 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.client.gui;
 
 import io.netty.util.internal.PlatformDependent;
 
-import javax.imageio.ImageIO;
-import java.awt.Image;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -25,35 +44,24 @@ public final class ResourceManager {
     }
 
     public static InputStream openIconImageStream() throws IOException {
-        return new URL("classpath://icon.png").openStream();
+        return new URL("classpath://ui-resource/icon.png").openStream();
     }
 
     public static InputStream openSystemTrayImageStream() throws IOException {
         if (PlatformDependent.isOsx()) {
-            return new URL("classpath://icon-tray-mac.png").openStream();
+            return new URL("classpath://ui-resource/icon-tray-mac.png").openStream();
         }
 
-        return new URL("classpath://icon-tray.png").openStream();
+        return new URL("classpath://ui-resource/icon-tray.png").openStream();
     }
 
     public static InputStream openSaveIconImageStream() throws IOException {
-        return new URL("classpath://save-icon.png").openStream();
+        return new URL("classpath://ui-resource/save-icon.png").openStream();
     }
 
     public static InputStream openDeleteIconImageStream() throws IOException {
-        return new URL("classpath://delete-icon.png").openStream();
+        return new URL("classpath://ui-resource/delete-icon.png").openStream();
     }
-
-    @Deprecated
-    public static Image loadSystemTrayImage() throws IOException {
-        return ImageIO.read(new URL("classpath://icon.png"));
-    }
-
-    @Deprecated
-    public static Image loadIconImage() throws IOException {
-        return ImageIO.read(new URL("classpath://icon-tray.png"));
-    }
-
 
     private ResourceManager() {
         throw new UnsupportedOperationException();

@@ -1,8 +1,29 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.protocol;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.util.ReferenceCountUtil;
+import io.netty.buffer.CompositeByteBuf;
 
 /**
  * 服务器代理响应报文
@@ -16,6 +37,11 @@ import io.netty.util.ReferenceCountUtil;
  * +-------------------------------------+
  */
 public class ProxyResponseMessage extends ProxyMessage implements Message {
+
+    /**
+     * HEAD，用于区分不同类型的消息
+     */
+    public static final byte HEAD = 0x00;
 
     /**
      * 连接状态
@@ -57,79 +83,81 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
         this.state = state;
     }
 
-    public void setMessage(ByteBuf buf) {
-        super.message = buf;
-    }
-
     @Override
-    public ByteBuf serialize() throws SerializationException {
+    public ByteBuf serialize(ByteBufAllocator allocator) throws SerializationException {
+        State state = this.state;
         assertTrue(state != null, "ProxyResponseMessage is not complete, message detail: \n" + toString());
-        ByteBufAllocator allocator = getAllocator();
 
         byte h = state.head;
+        ByteBuf message = getMessage();
 
         if (state == State.SUCCESS) {
             assertTrue(message != null, "When ProxyResponseMessage's state is SUCCESS, message must not be null");
+            CompositeByteBuf result = allocator.compositeBuffer(2);
+            ByteBuf header = allocator.buffer(1 + 4 + 1 + 4);
+            header.writeByte(HEAD);
+            header.writeInt(serialId);
+            header.writeByte(h);
+            header.writeInt(message.readableBytes());
 
-            ByteBuf buf = allocator.buffer(4 + 1 + 4 + message.readableBytes());
-            buf.writeInt(serialId);
-            buf.writeByte(h);
-            buf.writeInt(message.readableBytes());
-            buf.writeBytes(getMessage());
-
-            return buf;
+            result.addComponent(true, header);
+            result.addComponent(true, message);
+            return result;
         } else {
-            ByteBuf buf;
+            ByteBuf header = allocator.buffer(1 + 4 + 1 + 4);
+            header.writeByte(HEAD);
+            header.writeInt(serialId);
+            header.writeByte(h);
+
             if (message == null) {
-                buf = allocator.buffer(4 + 1 + 4);
+                header.writeInt(0);
+                return header;
             } else {
-                buf = allocator.buffer(4 + 1 + 4 + message.readableBytes());
+                header.writeInt(message.readableBytes());
             }
 
-            buf.writeInt(serialId);
-
-            buf.writeByte(h);
-            if (message != null) {
-                buf.writeInt(message.readableBytes());
-                buf.writeBytes(getMessage());
-            } else {
-                buf.writeInt(0);
-            }
-
-            return buf;
+            CompositeByteBuf result = allocator.compositeBuffer(2);
+            result.addComponent(true, header);
+            result.addComponent(true, message);
+            return result;
         }
     }
 
     @Override
     public void deserialize(ByteBuf buf) throws SerializationException {
-        ByteBufAllocator allocator = getAllocator();
-
         try {
+            checkoutHeadField(buf);
             int sid = buf.readInt();
-
             byte h = buf.readByte();
             State state = State.getStateByHead(h);
+            int len = buf.readInt();
 
             ByteBuf msg;
             if (state == State.SUCCESS) {
-                msg = allocator.buffer(buf.readInt());
-                buf.readBytes(msg);
+                msg = buf.readRetainedSlice(len);
             } else if (state == State.FAILURE) {
-                int len = buf.readInt();
                 if (len > 0) {
-                    msg = allocator.buffer(len);
-                    buf.readBytes(msg);
-                } else
+                    msg = buf.readRetainedSlice(len);
+                } else {
                     msg = null;
+                }
             } else {
                 throw new SerializationException("Unknown ProxyResponseMessage type " + h);
             }
 
             this.serialId = sid;
-            this.message = msg;
+            setMessage(msg);
             this.state = state;
         } catch (IndexOutOfBoundsException e) {
             throw new SerializationException("Illegal ProxyResponseMessage", e);
+        }
+    }
+
+
+    private void checkoutHeadField(ByteBuf buf) throws SerializationException {
+        byte head = buf.readByte();
+        if (head != HEAD) {
+            throw new SerializationException(ProxyResponseMessage.class, "Illegal head value:" + head);
         }
     }
 
@@ -140,8 +168,4 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
                 '}';
     }
 
-    @Override
-    protected void finalize() {
-        ReferenceCountUtil.release(message);
-    }
 }

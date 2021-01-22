@@ -1,15 +1,36 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.protocol;
 
+/**
+ * 序列化时数据格式有误抛出的异常
+ */
 public class SerializationException extends Exception {
 
-    /**
-     * 发生序列化错误的对象，可能为Message类型（序列化）
-     * 可能为ByteBuf反序列化
-     */
-    private Object errorMessage;
+    private static final StackTraceElement[] NONE_STACK = new StackTraceElement[0];
 
     public SerializationException(String msg) {
         super(msg);
+
     }
 
     public SerializationException(String msg, Throwable t) {
@@ -20,22 +41,21 @@ public class SerializationException extends Exception {
         super(t);
     }
 
-    SerializationException(String msg, Object message) {
-        super(msg);
-        this.errorMessage = message;
-
+    public SerializationException(Class<? extends Message> messageClass, String msg) {
+        super(toMessage(messageClass, msg));
     }
 
-    public SerializationException(String msg, Throwable t, Object message) {
-        super(msg, t);
-        this.errorMessage = message;
+
+    private static String toMessage(Class<? extends Message> messageClass, String msg) {
+        return "[" + messageClass.getName() + "]" + msg;
     }
 
-    public void setErrorMessage(Object errorMessage) {
-        this.errorMessage = errorMessage;
-    }
-
-    public Object getErrorMessage() {
-        return errorMessage;
+    /**
+     * 不爬栈
+     */
+    @Override
+    public synchronized Throwable fillInStackTrace() {
+        setStackTrace(NONE_STACK);
+        return this;
     }
 }

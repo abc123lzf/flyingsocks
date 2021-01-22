@@ -1,3 +1,24 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.client.proxy.http;
 
 import com.lzf.flyingsocks.AbstractComponent;
@@ -119,11 +140,11 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
             parent.publish(pr);
 
             ChannelPipeline pipeline = ctx.pipeline();
+
             pipeline.remove(this);
             pipeline.remove(HttpObjectAggregator.class);
             pipeline.remove(HttpServerCodec.class);
             pipeline.addLast(new TunnelProxyHandler(pr));
-
             ctx.writeAndFlush(new DefaultFullHttpResponse(request.protocolVersion(), CONNECTION_ESTABLISHED));
         }
 
@@ -159,7 +180,13 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
             if (msg instanceof ByteBuf) {
-                proxyRequest.transferClientMessage((ByteBuf) msg);
+                ByteBuf buf = (ByteBuf) msg;
+                try {
+                    proxyRequest.transferClientMessage(buf);
+                } finally {
+                    buf.release();
+                }
+                return;
             }
 
             ctx.fireChannelRead(msg);
@@ -209,9 +236,9 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
             HttpHeaders headers = request.headers();
             headers.get(HttpHeaderNames.CONNECTION);
 
-
             DefaultFullHttpRequest message = new DefaultFullHttpRequest(request.protocolVersion(),
                     request.method(), request.uri());
+
         }
 
         @Override

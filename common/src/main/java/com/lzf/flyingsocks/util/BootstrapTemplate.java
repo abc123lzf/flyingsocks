@@ -1,8 +1,32 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.util;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
+import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.util.concurrent.GenericFutureListener;
 
@@ -21,11 +45,11 @@ public final class BootstrapTemplate {
         this.bootstrap = Objects.requireNonNull(template);
     }
 
-    public Bootstrap newInstance(Consumer<SocketChannel> channelInitializer) {
+    public <T extends Channel> Bootstrap newInstance(Consumer<T> channelInitializer) {
         Bootstrap b = bootstrap.clone();
-        b.handler(new ChannelInitializer<SocketChannel>() {
+        b.handler(new ChannelInitializer<T>() {
             @Override
-            protected void initChannel(SocketChannel ch) {
+            protected void initChannel(T ch) {
                 channelInitializer.accept(ch);
             }
         });
@@ -33,11 +57,29 @@ public final class BootstrapTemplate {
         return b;
     }
 
-    public void doConnect(String host, int port, Consumer<SocketChannel> channelInitializer,
+
+    public ChannelFuture doConnect(String host, int port, Consumer<SocketChannel> channelInitializer,
                           GenericFutureListener<ChannelFuture> future) {
         Bootstrap b = newInstance(channelInitializer);
-        b.connect(host, port).addListener(future);
+        return b.connect(host, port).addListener(future);
+    }
+
+    public ChannelFuture doConnect(String host, int port, ChannelHandler handler,
+                                   GenericFutureListener<ChannelFuture> future) {
+        Bootstrap b = bootstrap.clone().handler(handler);
+        return b.connect(host, port).addListener(future);
     }
 
 
+    public ChannelFuture doBind(int port, Consumer<DatagramChannel> channelInitializer,
+                       GenericFutureListener<ChannelFuture> future) {
+        Bootstrap b = newInstance(channelInitializer);
+        return b.bind(port).addListener(future);
+    }
+
+    public ChannelFuture doBind(int port, ChannelHandler handler,
+                                GenericFutureListener<ChannelFuture> future) {
+        Bootstrap b = bootstrap.clone().handler(handler);
+        return b.bind(port).addListener(future);
+    }
 }

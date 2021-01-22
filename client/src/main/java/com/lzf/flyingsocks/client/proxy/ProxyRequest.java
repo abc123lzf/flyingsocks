@@ -1,9 +1,29 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.client.proxy;
 
 import com.lzf.flyingsocks.client.proxy.util.MessageDeliverer;
 import com.lzf.flyingsocks.client.proxy.util.MessageReceiver;
 import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.socket.DatagramChannel;
@@ -40,11 +60,6 @@ public class ProxyRequest implements Comparable<ProxyRequest>, Cloneable {
      * 代理协议
      */
     protected final Protocol protocol;
-
-    /**
-     * 附加字段
-     */
-    protected int ctl;
 
     /**
      * 是否进行代理
@@ -93,45 +108,6 @@ public class ProxyRequest implements Comparable<ProxyRequest>, Cloneable {
         return protocol;
     }
 
-    /**
-     * 判断ctl字段某一位是否被标记为1
-     *
-     * @param index 位数
-     * @return 是否被标记为1
-     */
-    public final boolean isCtlMark(int index) {
-        int c = ctl;
-        return (c & (1 << index)) > 0;
-    }
-
-    public final int getCtl() {
-        return ctl;
-    }
-
-    public final boolean needProxy() {
-        return proxy;
-    }
-
-    protected void setCtl(int ctl) {
-        this.ctl = ctl;
-    }
-
-    /**
-     * 将ctl字段某一位标为0或1
-     *
-     * @param index 位数，从0开始
-     * @param mark  true标为1 false标为0
-     */
-    protected void setCtl(int index, boolean mark) {
-        int c = ctl;
-        if (mark) {
-            c |= (1 << index);
-        } else {
-            c &= (~(1 << index));
-        }
-
-        this.ctl = c;
-    }
 
     public Channel clientChannel() {
         return clientChannel;

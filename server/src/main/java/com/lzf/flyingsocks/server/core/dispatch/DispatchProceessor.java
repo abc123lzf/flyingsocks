@@ -1,37 +1,61 @@
-package com.lzf.flyingsocks.server.core;
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+package com.lzf.flyingsocks.server.core.dispatch;
 
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
 import com.lzf.flyingsocks.protocol.ProxyResponseMessage;
 import com.lzf.flyingsocks.protocol.SerializationException;
+import com.lzf.flyingsocks.server.core.ClientSession;
+import com.lzf.flyingsocks.server.core.ProxyProcessor;
+import com.lzf.flyingsocks.server.core.ProxyTask;
+import com.lzf.flyingsocks.server.core.ProxyTaskSubscriber;
+import com.lzf.flyingsocks.util.BootstrapTemplate;
 import com.lzf.flyingsocks.util.ReturnableLinkedHashSet;
 import com.lzf.flyingsocks.util.ReturnableSet;
-
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOption;
-import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -47,29 +71,35 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
     /**
      * TCP客户端连接引导模板
      */
-    private final Bootstrap tcpBootstrap;
+    private final BootstrapTemplate tcpBootstrap;
 
     /**
      * UDP引导模板
      */
-    private final Bootstrap udpBootstrap;
+    private final BootstrapTemplate udpBootstrap;
 
     /**
      * 该模块核心线程池
      */
     private ExecutorService requestReceiver;
 
-    DispatchProceessor(ProxyProcessor parent) {
-        super("DispatcherProcessor", parent);
-        this.tcpBootstrap = new Bootstrap().group(parent.getRequestProcessWorker())
+
+    public DispatchProceessor(ProxyProcessor parent) {
+        super("DispatcherProcessor", Objects.requireNonNull(parent));
+
+        EventLoopGroup eventLoopGroup = parent.getChildWorker();
+
+        Bootstrap tcpBoot = new Bootstrap()
+                .group(eventLoopGroup)
                 .channel(NioSocketChannel.class)
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 8000)
-                .option(ChannelOption.SO_KEEPALIVE, true)
-                .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
+                .option(ChannelOption.SO_KEEPALIVE, true);
+        this.tcpBootstrap = new BootstrapTemplate(tcpBoot);
 
-        this.udpBootstrap = new Bootstrap().group(parent.getRequestProcessWorker())
-                .channel(NioDatagramChannel.class)
-                .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
+        Bootstrap udpBoot = new Bootstrap()
+                .group(eventLoopGroup)
+                .channel(NioDatagramChannel.class);
+        this.udpBootstrap = new BootstrapTemplate(udpBoot);
     }
 
     @Override
@@ -90,7 +120,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
         log.info("Using {} dispatcher thread.", task);
 
         for (int i = 0; i < task; i++) {
-            requestReceiver.submit(new DispatcherTask());
+            requestReceiver.execute(new DispatcherTask());
         }
 
         super.initInternal();
@@ -103,7 +133,11 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
     @Override
     protected void stopInternal() {
-        requestReceiver.shutdownNow();
+        ExecutorService requestReceiver = this.requestReceiver;
+        if (requestReceiver != null) {
+            requestReceiver.shutdownNow();
+        }
+
         super.stopInternal();
     }
 
@@ -146,8 +180,10 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
     }
 
     private final class DispatcherTask implements Runnable, ProxyTaskSubscriber {
+
         private final Map<ClientSession, ReturnableSet<ActiveConnection>> activeConnectionMap = new LinkedHashMap<>(64);
-        private final BlockingQueue<ProxyTask> taskQueue = new LinkedBlockingQueue<>();
+
+        private final BlockingQueue<ProxyTask> taskQueue = new ArrayBlockingQueue<>(256);
 
         private DispatcherTask() {
             parent.registerSubscriber(this);
@@ -211,30 +247,28 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                         } else {
                             switch (prm.getProtocol()) {
                                 case TCP: {
-                                    Bootstrap b = tcpBootstrap.clone();
-                                    b.handler(new TCPDispatchHandler(task));
-                                    conn.future = b.connect(host, port).addListener(future -> {
-                                        if (!future.isSuccess()) { //如果连接没有建立成功，那么向客户端返回一个错误的消息
-                                            log.warn("Can not connect to {}:{}", host, port);
-                                            writeFailureResponse(cs, prm);
-                                        } else {
-                                            log.trace("Connect to {}:{} success", host, port);
-                                        }
-                                    });
+                                    conn.future = tcpBootstrap.doConnect(host, port, new TcpDispatchHandler(task),
+                                            future -> {
+                                                if (!future.isSuccess()) { //如果连接没有建立成功，那么向客户端返回一个错误的消息
+                                                    log.warn("Can not connect to {}:{}", host, port);
+                                                    writeFailureResponse(cs, prm);
+                                                } else {
+                                                    log.trace("Connect to {}:{} success", host, port);
+                                                }
+                                            });
                                 }
                                 break;
 
                                 case UDP: {
-                                    Bootstrap b = udpBootstrap.clone();
-                                    b.handler(new UDPDisaptchHandler(task));
-                                    conn.future = b.bind(0).addListener(future -> {
-                                        if (!future.isSuccess()) {
-                                            log.warn("Can not bind UDP Port");
-                                            writeFailureResponse(cs, prm);
-                                        } else {
-                                            log.trace("Bind UDP Port success, ready to send packet to {}:{}", host, port);
-                                        }
-                                    });
+                                    conn.future = udpBootstrap.doBind(0, new UdpDispatchHandler(task),
+                                            future -> {
+                                                if (!future.isSuccess()) {
+                                                    log.warn("Can not bind UDP Port");
+                                                    writeFailureResponse(cs, prm);
+                                                } else {
+                                                    log.trace("Bind UDP Port success, ready to send packet to {}:{}", host, port);
+                                                }
+                                            });
                                 }
                                 break;
                             }
@@ -258,6 +292,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
         @Override
         public void receive(ProxyTask task) {
+            Objects.requireNonNull(task);
             taskQueue.add(task);
         }
 
@@ -266,7 +301,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
             ProxyResponseMessage resp = new ProxyResponseMessage(request.serialId());
             resp.setState(ProxyResponseMessage.State.FAILURE);
             try {
-                session.writeAndFlushMessage(resp.serialize());
+                session.writeAndFlushMessage(resp.serialize(PooledByteBufAllocator.DEFAULT));
             } catch (SerializationException e) {  //不应该发生
                 log.error("Serialize FailureResponse occur a exception", e);
             } catch (IllegalStateException e) {
@@ -280,148 +315,67 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
          */
         private void checkoutConnection() {
             Iterator<Map.Entry<ClientSession, ReturnableSet<ActiveConnection>>> it = activeConnectionMap.entrySet().iterator();
-            it.forEachRemaining(e -> {
-                final ClientSession cs = e.getKey();
-                final ReturnableSet<ActiveConnection> val = e.getValue();
-
-                if (!cs.isActive()) {
+            it.forEachRemaining(entry -> {
+                ClientSession session = entry.getKey();
+                ReturnableSet<ActiveConnection> set = entry.getValue();
+                boolean remove = checkoutConnection0(session, set);
+                if (remove) {
                     it.remove();
-                    //清除连接中断的客户端中所有ActiveConnection的msgQueue队列中的ByteBuf对象
-                    val.forEach(ac -> {
-                        if (!ac.msgQueue.isEmpty())
-                            ac.msgQueue.forEach(ByteBuf::release);
-                    });
-                } else {
-                    long now = System.currentTimeMillis();
-                    Iterator<ActiveConnection> sit = val.iterator();
-                    sit.forEachRemaining(ac -> {
-                        if (ac.future.isDone()) {
-                            //如果已经建立过连接但是该连接已经不活跃了，那么清除这个ActiveConnection
-                            if (!ac.future.channel().isActive()) {
-                                if (!ac.msgQueue.isEmpty())
-                                    ac.msgQueue.forEach(ByteBuf::release);
-                                sit.remove();
-                            } else {
-                                Channel ch = ac.future.channel();
-                                if (ac.msgQueue.isEmpty() && now - ac.lastActiveTime > DEFAULT_TIMEOUT) {
-                                    ch.close();
-                                    sit.remove();
-                                } else {
-                                    if (ch instanceof SocketChannel) {
-                                        ByteBuf buf;
-                                        while ((buf = ac.msgQueue.poll()) != null)
-                                            ch.write(buf);
-                                        ch.flush();
-                                        ac.lastActiveTime = now;
-                                    } else if (ch instanceof DatagramChannel) {
-                                        InetSocketAddress addr = new InetSocketAddress(ac.host, ac.port);
-                                        ByteBuf buf;
-                                        while ((buf = ac.msgQueue.poll()) != null)
-                                            ch.write(new DatagramPacket(buf, addr));
-                                        ch.flush();
-                                        ac.lastActiveTime = now;
-                                    } else {
-                                        log.error("Unsupport Channel type: {}", ch.getClass().getName());
-                                    }
-                                }
-                            }
-                        }
-                    });
                 }
             });
         }
-    }
 
-    /**
-     * 将来自客户端的TCP协议请求内容转发给目标服务器
-     */
-    private class TCPDispatchHandler extends SimpleChannelInboundHandler<ByteBuf> {
-        private final ProxyTask proxyTask;
-        private final String host;
-        private final int port;
 
-        private TCPDispatchHandler(ProxyTask task) {
-            super(false);
-            this.proxyTask = task;
-            this.host = proxyTask.getRequestMessage().getHost();
-            this.port = proxyTask.getRequestMessage().getPort();
-        }
-
-        @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            if (cause instanceof IOException) {
-                log.info("Target remote host {}:{} close, cause IOException", host, port);
-            } else {
-                log.warn("DispathcerHandelr occur a exception", cause);
+        private boolean checkoutConnection0(ClientSession session, ReturnableSet<ActiveConnection> connectionSet) {
+            if (!session.isActive()) {
+                //清除连接中断的客户端中所有ActiveConnection的msgQueue队列中的ByteBuf对象
+                connectionSet.forEach(ac -> {
+                    if (!ac.msgQueue.isEmpty()) {
+                        ac.msgQueue.forEach(ByteBuf::release);
+                    }
+                });
+                return true;
             }
-        }
 
-        @Override
-        public void channelInactive(ChannelHandlerContext ctx) {
-            log.trace("Connection close by {}:{}", host, port);
-        }
+            long now = System.currentTimeMillis();
+            Iterator<ActiveConnection> it = connectionSet.iterator();
+            it.forEachRemaining(ac -> {
+                if (ac.future.isDone()) {
+                    //如果已经建立过连接但是该连接已经不活跃了，那么清除这个ActiveConnection
+                    if (!ac.future.channel().isActive()) {
+                        if (!ac.msgQueue.isEmpty()) {
+                            ac.msgQueue.forEach(ByteBuf::release);
+                        }
+                        it.remove();
+                    } else {
+                        Channel ch = ac.future.channel();
+                        if (ac.msgQueue.isEmpty() && now - ac.lastActiveTime > DEFAULT_TIMEOUT) {
+                            ch.close();
+                            it.remove();
+                        } else {
+                            if (ch instanceof SocketChannel) {
+                                ByteBuf buf;
+                                while ((buf = ac.msgQueue.poll()) != null) {
+                                    ch.write(buf);
+                                }
+                                ch.flush();
+                                ac.lastActiveTime = now;
+                            } else if (ch instanceof DatagramChannel) {
+                                InetSocketAddress addr = new InetSocketAddress(ac.host, ac.port);
+                                ByteBuf buf;
+                                while ((buf = ac.msgQueue.poll()) != null)
+                                    ch.write(new DatagramPacket(buf, addr));
+                                ch.flush();
+                                ac.lastActiveTime = now;
+                            } else {
+                                log.error("Unsupport Channel type: {}", ch.getClass().getName());
+                            }
+                        }
+                    }
+                }
+            });
 
-        @Override
-        public void channelActive(ChannelHandlerContext ctx) throws Exception {
-            ByteBuf buf = proxyTask.getRequestMessage().getMessage();
-            ctx.writeAndFlush(buf);
-            super.channelActive(ctx);
-        }
-
-        @Override
-        protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
-            log.trace("Receive from {}:{} response.", host, port);
-
-            ProxyResponseMessage prm = new ProxyResponseMessage(proxyTask.getRequestMessage().serialId());
-            prm.setState(ProxyResponseMessage.State.SUCCESS);
-            prm.setMessage(msg);
-            try {
-                proxyTask.session().writeAndFlushMessage(prm.serialize());
-            } catch (IllegalStateException e) {
-                ctx.close();
-            } finally {
-                msg.release();
-            }
-        }
-    }
-
-    /**
-     * 将来自客户端的UDP协议请求内容转发给目标服务器
-     */
-    private class UDPDisaptchHandler extends SimpleChannelInboundHandler<DatagramPacket> {
-        private final ProxyTask proxyTask;
-        private final String host;
-        private final int port;
-
-        private UDPDisaptchHandler(ProxyTask task) {
-            super(false);
-            this.proxyTask = task;
-            this.host = proxyTask.getRequestMessage().getHost();
-            this.port = proxyTask.getRequestMessage().getPort();
-        }
-
-        @Override
-        public void channelActive(ChannelHandlerContext ctx) throws Exception {
-            ByteBuf buf = proxyTask.getRequestMessage().getMessage();
-            DatagramPacket packet = new DatagramPacket(buf, new InetSocketAddress(host, port));
-            ctx.writeAndFlush(packet);
-            super.channelActive(ctx);
-        }
-
-        @Override
-        protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket msg) throws Exception {
-            log.trace("Receive from {}:{} Datagram.", host, port);
-
-            ProxyResponseMessage prm = new ProxyResponseMessage(proxyTask.getRequestMessage().serialId());
-            prm.setState(ProxyResponseMessage.State.SUCCESS);
-            prm.setMessage(msg.content());
-            try {
-                proxyTask.session().writeAndFlushMessage(prm.serialize());
-            } catch (IllegalStateException e) {
-                ctx.close();
-            } finally {
-                msg.release();
-            }
+            return false;
         }
     }
 }

@@ -1,3 +1,24 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.util;
 
 import org.apache.commons.lang3.StringUtils;
@@ -113,6 +134,22 @@ public final class BaseUtils {
         return (num | (b[3] & 0x0FF));
     }
 
+    public static String parseByteArrayToIPv6Address(byte[] b) {
+        if (b.length != 16) {
+            throw new IllegalArgumentException();
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 16; i += 2) {
+            sb.append(String.format("%02X%02X", parseByteToInteger(b[i]), parseByteToInteger(b[i + 1])));
+            if (i < 14) {
+                sb.append(':');
+            }
+        }
+
+        return sb.toString();
+    }
+
     /**
      * 判断一个IPV4地址是否在目标网络号中
      *
@@ -133,7 +170,7 @@ public final class BaseUtils {
      * @return int数字
      */
     public static int parseUnsignedShortToInteger(short val) {
-        return val & 0x0FFFF;
+        return Short.toUnsignedInt(val);
     }
 
     public static int parseByteToInteger(byte val) {

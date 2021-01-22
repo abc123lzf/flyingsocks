@@ -1,3 +1,24 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.client.proxy;
 
 import com.lzf.flyingsocks.AbstractConfig;
@@ -6,11 +27,9 @@ import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.client.GlobalConfig;
 import com.lzf.flyingsocks.util.BaseUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -21,6 +40,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.Map;
@@ -31,7 +52,10 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 
-import static com.lzf.flyingsocks.client.proxy.ProxyAutoChecker.*;
+import static com.lzf.flyingsocks.client.proxy.ProxyAutoChecker.PROXY_GFW_LIST;
+import static com.lzf.flyingsocks.client.proxy.ProxyAutoChecker.PROXY_GLOBAL;
+import static com.lzf.flyingsocks.client.proxy.ProxyAutoChecker.PROXY_NO;
+import static com.lzf.flyingsocks.client.proxy.ProxyAutoChecker.PROXY_NON_CN;
 
 /**
  * 代理模式相关组件
@@ -68,8 +92,9 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     protected void initInternal() throws ConfigInitializationException {
         configManager.setSystemProperties("sun.net.spi.nameservice.provider.1", "dns,sun"); //解决部分情况IPV6解析失败的场景
         GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
-        File gfwFile = new File(cfg.configPath(), GFWLIST_FILE);
-        if (!gfwFile.exists()) {
+
+        Path gfwFile = cfg.configPath().resolve(GFWLIST_FILE);
+        if (!Files.exists(gfwFile)) {
             copyGFWListConfig();
         }
 
@@ -80,8 +105,8 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
             System.exit(1);
         }
 
-        File cnipv4file = new File(cfg.configPath(), CNIPV4_FILE);
-        if (!cnipv4file.exists()) {
+        Path cnipv4file = cfg.configPath().resolve(CNIPV4_FILE);
+        if (!Files.exists(cnipv4file)) {
             copyCNIPv4Config();
         }
 
@@ -93,20 +118,20 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
         }
 
         int proxyMode;
-        File file = new File(cfg.configPath(), PAC_CONFIG_FILE);
-        if (!file.exists()) {
+        Path file = cfg.configPath().resolve(PAC_CONFIG_FILE);
+        if (!Files.exists(file)) {
             try {
                 proxyMode = PROXY_GFW_LIST;
                 makeTemplatePACSettingFile(file);
             } catch (IOException e) {
-                throw new ConfigInitializationException("Can not create new File at " + file.getAbsolutePath());
+                throw new ConfigInitializationException("Can not create new File at " + file);
             }
         } else {
-            if (file.isDirectory()) {
-                throw new ConfigInitializationException("File at " + file.getAbsolutePath() + " is a Directory!");
+            if (Files.isDirectory(file)) {
+                throw new ConfigInitializationException("File at " + file + " is a Directory!");
             }
 
-            try (FileInputStream is = new FileInputStream(file);
+            try (FileInputStream is = new FileInputStream(file.toFile());
                  Scanner sc = new Scanner(is)) {
                 String s = sc.next();
                 switch (s) {
@@ -143,9 +168,9 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
      * @param f GFWList文件路径
      * @throws IOException 加载错误
      */
-    private void loadGFWListFile(File f) throws IOException {
+    private void loadGFWListFile(Path f) throws IOException {
         NavigableSet<String> set = new TreeSet<>();
-        try (FileInputStream fis = new FileInputStream(f);
+        try (FileInputStream fis = new FileInputStream(f.toFile());
              Scanner sc = new Scanner(fis)) {
             while (sc.hasNext()) {
                 String host = sc.next();
@@ -167,10 +192,10 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
      * @param f cnipv4.txt文件路径
      * @throws IOException 加载错误
      */
-    private void loadIPv4CNAddressFile(File f) throws IOException {
+    private void loadIPv4CNAddressFile(Path f) throws IOException {
         Pattern tar = Pattern.compile("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/\\d{1,2}");
         NavigableMap<Integer, Integer> map = new TreeMap<>();
-        try (FileInputStream fis = new FileInputStream(f);
+        try (FileInputStream fis = new FileInputStream(f.toFile());
              Scanner sc = new Scanner(fis)) {
             while (sc.hasNext(tar)) {
                 String str = sc.next(tar);
@@ -194,7 +219,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     public void save() throws Exception {
         GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
 
-        File f = new File(cfg.configPath(), PAC_CONFIG_FILE);
+        Path path = cfg.configPath().resolve(PAC_CONFIG_FILE);
         String content;
         switch (this.proxyAutoChecker.proxyMode()) {
             case PROXY_NO:
@@ -213,7 +238,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
                 content = "";
         }
 
-        try (FileWriter writer = new FileWriter(f)) {
+        try (FileWriter writer = new FileWriter(path.toFile())) {
             writer.write(content);
         }
     }
@@ -239,11 +264,11 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     }
 
 
-    private void makeTemplatePACSettingFile(File file) throws IOException {
+    private void makeTemplatePACSettingFile(Path path) throws IOException {
         String content = "pac";
         ByteBuffer buf = ByteBuffer.allocate(content.length());
         buf.put(content.getBytes(StandardCharsets.US_ASCII));
-        try (FileChannel ch = FileChannel.open(file.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+        try (FileChannel ch = FileChannel.open(path, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
             buf.rewind();
             ch.write(buf);
         }
@@ -257,8 +282,8 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
             int r = is.read(b);
             String str = new String(b, 0, r, DEFAULT_CONFIG_ENCODING);
             GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
-            File f = new File(cfg.configPath(), GFWLIST_FILE);
-            try (FileWriter fw = new FileWriter(f)) {
+            Path path = cfg.configPath().resolve(GFWLIST_FILE);
+            try (FileWriter fw = new FileWriter(path.toFile())) {
                 fw.write(str);
             }
         } catch (IOException e) {
@@ -274,8 +299,8 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
             int r = is.read(b);
             String str = new String(b, 0, r, StandardCharsets.US_ASCII);
             GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
-            File f = new File(cfg.configPath(), CNIPV4_FILE);
-            try (FileWriter fw = new FileWriter(f)) {
+            Path path = cfg.configPath().resolve(CNIPV4_FILE);
+            try (FileWriter fw = new FileWriter(path.toFile())) {
                 fw.write(str);
             }
         } catch (IOException e) {

@@ -1,3 +1,24 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.client.gui.swt;
 
 import com.lzf.flyingsocks.AbstractModule;
@@ -96,14 +117,13 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
         this.display = display;
         this.operator = getComponent().getParentComponent();
 
-        Shell shell = createShell(display, "主界面", initTitleIcon(), 700, 580);
+        Shell shell = createShell(display, "主界面", initTitleIcon(), 720, 580);
         shell.setBackground(new Color(display, 255, 255, 255));
         this.shell = shell;
 
         this.statusTextArea = initStatusTextArea(shell);
         this.uploadChart = new DynamicTimeSeriesChart("UPLOAD", "", "MB/s", 60, DynamicTimeSeriesChart.STYLE_PURPLE);
         this.downloadChart = new DynamicTimeSeriesChart("DOWNLOAD", "", "MB/s", 60, DynamicTimeSeriesChart.STYLE_BLUE);
-
 
         this.uploadChartCanvas = initChartCanvas(this.uploadChart, 10, 270, CHART_WIDTH, CHART_HEIGHT);
         this.downloadChartCanvas = initChartCanvas(this.downloadChart, 355, 270, CHART_WIDTH, CHART_HEIGHT);
@@ -319,7 +339,7 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
 
     private void appendStatusText(String text) {
         LocalTime time = LocalTime.now();
-        String str = "【" + time.toString() + "】" + text + Text.DELIMITER;
+        String str = "【" + time.toString() + "】" + Utils.i18n(text) + Text.DELIMITER;
         if (statusTextArea.getLineCount() > 5000) {
             statusTextArea.setText(str);
         } else {

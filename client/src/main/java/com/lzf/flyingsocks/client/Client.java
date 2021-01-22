@@ -1,3 +1,24 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.client;
 
 import com.lzf.flyingsocks.Component;
@@ -6,11 +27,19 @@ import com.lzf.flyingsocks.Environment;
 import com.lzf.flyingsocks.TopLevelComponent;
 import com.lzf.flyingsocks.VoidComponent;
 
-import java.awt.*;
+import org.apache.log4j.Appender;
+import org.apache.log4j.FileAppender;
+import org.apache.log4j.Logger;
+
+import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Enumeration;
 import java.util.Objects;
 
 public abstract class Client extends TopLevelComponent
@@ -55,19 +84,21 @@ public abstract class Client extends TopLevelComponent
     @Override
     public void cleanLogFiles() {
         GlobalConfig gc = getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
-        if (gc != null) {
-            File folder = new File(gc.configPath() + "/log");
-            if (!folder.exists() || !folder.isDirectory()) {
-                return;
-            }
+        if (gc == null) {
+            return;
+        }
 
-            File[] files = folder.listFiles();
-            if (files == null) {
-                return;
-            }
-            for (File file : files) {
-                if (file.isFile() && !file.delete()) {
-                    log.info("Can not delete file {}", file.getName());
+        Enumeration<?> appenders = Logger.getRootLogger().getAllAppenders();
+        while (appenders.hasMoreElements()) {
+            Appender appender = (Appender) appenders.nextElement();
+            if (appender instanceof FileAppender) {
+                Path path = Paths.get(((FileAppender) appender).getFile());
+                try {
+                    if (Files.exists(path) && Files.isRegularFile(path)) {
+                        Files.delete(path);
+                    }
+                } catch (IOException e) {
+                    log.warn("Could not delete log file [{}]", path, e);
                 }
             }
         }
@@ -77,11 +108,14 @@ public abstract class Client extends TopLevelComponent
     public void openLogDirectory() {
         GlobalConfig gc = getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
         if (gc != null) {
-            File folder = new File(gc.configPath() + "/log");
-            try {
-                Desktop.getDesktop().open(folder);
-            } catch (IOException e) {
-                log.warn("Open log file directory occur a exception", e);
+            Appender appender = Logger.getRootLogger().getAppender(log.getName());
+            if (appender instanceof FileAppender) {
+                File folder = new File(((FileAppender) appender).getFile());
+                try {
+                    Desktop.getDesktop().open(folder);
+                } catch (IOException e) {
+                    log.warn("An error occurred while open log file directory", e);
+                }
             }
         }
     }
@@ -90,9 +124,8 @@ public abstract class Client extends TopLevelComponent
     public void openConfigDirectory() {
         GlobalConfig gc = getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
         if (gc != null) {
-            File folder = new File(gc.configPath());
             try {
-                Desktop.getDesktop().open(folder);
+                Desktop.getDesktop().open(gc.configPath().toFile());
             } catch (IOException e) {
                 log.warn("Open config file directory occur a exception", e);
             }

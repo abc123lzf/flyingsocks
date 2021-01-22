@@ -1,3 +1,24 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.client.proxy.direct;
 
 import com.lzf.flyingsocks.AbstractComponent;
@@ -11,9 +32,10 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ConnectTimeoutException;
-import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 
 import java.io.IOException;
@@ -31,11 +53,16 @@ public class DirectForwardComponent extends AbstractComponent<ProxyComponent> im
      */
     private final BootstrapTemplate connectBootstrapTemplate;
 
+
+    private final EventLoopGroup eventLoopGroup;
+
+
+
     public DirectForwardComponent(ProxyComponent component) {
         super("DirectForwardComponent", component);
 
         Bootstrap template = new Bootstrap();
-        template.group(parent.createNioEventLoopGroup(4))
+        template.group(this.eventLoopGroup = parent.createNioEventLoopGroup(4))
                 .channel(NioSocketChannel.class)
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 8000)
                 .option(ChannelOption.SO_KEEPALIVE, true)
@@ -49,6 +76,11 @@ public class DirectForwardComponent extends AbstractComponent<ProxyComponent> im
     protected void startInternal() {
         parent.registerSubscriber(this);
         super.startInternal();
+    }
+
+    @Override
+    protected void stopInternal() {
+        eventLoopGroup.shutdownGracefully();
     }
 
     @Override
@@ -102,11 +134,10 @@ public class DirectForwardComponent extends AbstractComponent<ProxyComponent> im
     /**
      * 与目标服务器直连的进站处理器，一般用于无需代理的网站
      */
-    private final class TCPConnectHandler extends SimpleChannelInboundHandler<ByteBuf> {
+    private final class TCPConnectHandler extends ChannelInboundHandlerAdapter {
         final ProxyRequest request;
 
         private TCPConnectHandler(ProxyRequest request) {
-            super(false);
             this.request = request;
         }
 
@@ -160,8 +191,13 @@ public class DirectForwardComponent extends AbstractComponent<ProxyComponent> im
         }
 
         @Override
-        public void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) {
-            request.clientChannel().writeAndFlush(msg);
+        public void channelRead(ChannelHandlerContext ctx, Object msg) {
+            if (msg instanceof ByteBuf) {
+                request.clientChannel().writeAndFlush(msg);
+                return;
+            }
+
+            ctx.fireChannelRead(msg);
         }
     }
 

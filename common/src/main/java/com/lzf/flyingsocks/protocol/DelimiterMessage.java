@@ -1,7 +1,28 @@
+/*
+ * Copyright (c) 2019 abc123lzf <abc123lzf@126.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.lzf.flyingsocks.protocol;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.buffer.ByteBufAllocator;
 
 import java.util.Arrays;
 
@@ -46,11 +67,11 @@ public class DelimiterMessage implements Message {
     }
 
     @Override
-    public ByteBuf serialize() throws SerializationException {
-        ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer(LENGTH);
-        buf.writeBytes(MAGIC);
-        buf.writeBytes(delimiter);
+    public ByteBuf serialize(ByteBufAllocator allocator) throws SerializationException {
         try {
+            ByteBuf buf = allocator.buffer(LENGTH);
+            buf.writeBytes(MAGIC);
+            buf.writeBytes(delimiter);
             return buf;
         } catch (Exception e) {
             throw new SerializationException(e);
@@ -59,10 +80,8 @@ public class DelimiterMessage implements Message {
 
     @Override
     public void deserialize(ByteBuf buf) throws SerializationException {
-        buf = buf.copy();
         int size = buf.readableBytes();
         if (size < LENGTH) {
-            buf.release();
             throw new SerializationException("Delimiter Message length must be " + LENGTH + " bytes: including " +
                     MAGIC.length + " bytes magic and " + DEFAULT_SIZE + " bytes delimiter content");
         }
@@ -70,7 +89,6 @@ public class DelimiterMessage implements Message {
         byte[] magic = new byte[MAGIC.length];
         buf.readBytes(magic);
         if (!Arrays.equals(magic, MAGIC)) {
-            buf.release();  //防止非flyingsocks客户端访问导致此处内存泄漏
             throw new SerializationException("Illegal magic number: " + Arrays.toString(magic));
         }
 
@@ -83,23 +101,27 @@ public class DelimiterMessage implements Message {
         }
     }
 
-    public ByteBuf getDelimiter() {
+    public byte[] getDelimiter() {
+        byte[] delimiter = this.delimiter;
         if (delimiter == null || delimiter.length == 0) {
             return null;
         }
 
-        return PooledByteBufAllocator.DEFAULT.buffer(DEFAULT_SIZE).writeBytes(delimiter);
+        return Arrays.copyOf(delimiter, delimiter.length);
     }
 
     public void setDelimiter(byte[] delimiter) {
-        if (delimiter.length != DEFAULT_SIZE)
+        if (delimiter.length != DEFAULT_SIZE) {
             throw new IllegalArgumentException("Delimiter length must be " + DEFAULT_SIZE + " bytes");
+        }
         this.delimiter = Arrays.copyOf(delimiter, delimiter.length);
     }
 
     public void setDelimiter(ByteBuf buf) {
-        if (buf.readableBytes() < DEFAULT_SIZE)
+        if (buf.readableBytes() < DEFAULT_SIZE) {
             throw new IllegalArgumentException("Delimiter length must be " + DEFAULT_SIZE + " bytes");
+        }
+
         byte[] b = new byte[DEFAULT_SIZE];
         buf.readBytes(b);
         this.delimiter = b;
