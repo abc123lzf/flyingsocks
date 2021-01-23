@@ -19,7 +19,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.lzf.flyingsocks.client.proxy;
+package com.lzf.flyingsocks.client.proxy.server;
 
 /**
  * 代理服务器连接状态

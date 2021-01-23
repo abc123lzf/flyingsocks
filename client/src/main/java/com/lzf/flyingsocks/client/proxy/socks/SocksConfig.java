@@ -110,7 +110,7 @@ public class SocksConfig extends AbstractConfig {
                 this.username = obj.getString("username");
                 this.password = obj.getString("password");
                 if (username == null) {
-                    throw new ConfigInitializationException("When socks auth is true, the username should not be null");
+                    throw new ConfigInitializationException("username should not be null");
                 }
             }
         } catch (IOException | JSONException | NumberFormatException e) {
@@ -118,7 +118,7 @@ public class SocksConfig extends AbstractConfig {
         }
     }
 
-    private void makeSocksSettingFile(Path path) throws IOException {
+    private static void makeSocksSettingFile(Path path) throws IOException {
         JSONObject socks = new JSONObject();
         socks.put("address", "127.0.0.1");
         socks.put("port", 1080);

@@ -55,22 +55,14 @@ public abstract class Client extends TopLevelComponent
      */
     static final String VERSION = "v3.0";
 
-
+    /**
+     * GUI事件处理循环
+     */
     private Runnable guiTask;
 
 
     Client() {
         super(DEFAULT_COMPONENT_NAME);
-    }
-
-    @Override
-    protected void initInternal() {
-        super.initInternal();
-    }
-
-    @Override
-    protected void startInternal() {
-        super.startInternal();
     }
 
     /**
@@ -83,11 +75,6 @@ public abstract class Client extends TopLevelComponent
 
     @Override
     public void cleanLogFiles() {
-        GlobalConfig gc = getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
-        if (gc == null) {
-            return;
-        }
-
         Enumeration<?> appenders = Logger.getRootLogger().getAllAppenders();
         while (appenders.hasMoreElements()) {
             Appender appender = (Appender) appenders.nextElement();
@@ -106,16 +93,13 @@ public abstract class Client extends TopLevelComponent
 
     @Override
     public void openLogDirectory() {
-        GlobalConfig gc = getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
-        if (gc != null) {
-            Appender appender = Logger.getRootLogger().getAppender(log.getName());
-            if (appender instanceof FileAppender) {
-                File folder = new File(((FileAppender) appender).getFile());
-                try {
-                    Desktop.getDesktop().open(folder);
-                } catch (IOException e) {
-                    log.warn("An error occurred while open log file directory", e);
-                }
+        Appender appender = Logger.getRootLogger().getAppender(log.getName());
+        if (appender instanceof FileAppender) {
+            File folder = new File(((FileAppender) appender).getFile());
+            try {
+                Desktop.getDesktop().open(folder);
+            } catch (IOException e) {
+                log.warn("An error occurred while open log file directory", e);
             }
         }
     }
@@ -159,11 +143,14 @@ public abstract class Client extends TopLevelComponent
     /**
      * 运行GUI任务
      */
-    void runGUITask() {
+    boolean runGUITask() {
         Runnable task = this.guiTask;
         if (task != null) {
             task.run();
+            return true;
         }
+
+        return false;
     }
 
 }

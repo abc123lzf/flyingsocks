@@ -137,10 +137,12 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
      */
     protected synchronized void addComponent(Component<?> component) {
         String name = component.getName();
-        if (name == null)
+        if (name == null) {
             throw new ComponentException(String.format("Component type [%s] name can not be null.", component.getClass().getName()));
-        if (componentMap.get(name) != null)
+        }
+        if (componentMap.get(name) != null) {
             throw new ComponentException(String.format("Component [%s] already has child component [%s].", getName(), name));
+        }
 
         componentMap.put(name, component);
     }
@@ -158,11 +160,13 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
     @SuppressWarnings("unchecked")
     protected <V extends Component<?>> V getComponentByName(String name, Class<V> requireType) {
         Component<?> c = componentMap.get(name);
-        if (c == null)
+        if (c == null) {
             return null;
+        }
 
-        if (!requireType.isInstance(c))
+        if (!requireType.isInstance(c)) {
             throw new ComponentException(new ClassCastException(String.format("Component [%s] is not type of %s.", getName(), requireType.getName())));
+        }
 
         return (V) c;
     }
@@ -240,10 +244,12 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
      */
     void changeModuleComponentName(String oldName, String newName) {
         Module<?> c = moduleMap.get(oldName);
-        if (c == null)
+        if (c == null) {
             throw new ComponentException("Can not find module: " + oldName + " at " + name);
-        if (moduleMap.containsKey(newName))
+        }
+        if (moduleMap.containsKey(newName)) {
             throw new ComponentException("Module name: " + newName + " is already in " + name);
+        }
         moduleMap.remove(oldName);
         moduleMap.put(newName, c);
     }
@@ -256,12 +262,27 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
      */
     private void changeChildComponentName(String oldName, String newName) {
         Component<?> c = componentMap.get(oldName);
-        if (c == null)
+        if (c == null) {
             throw new ComponentException("Can not find component: " + oldName + " at " + name);
-        if (componentMap.containsKey(newName))
+        }
+        if (componentMap.containsKey(newName)) {
             throw new ComponentException("Component name: " + newName + " is already in " + name);
+        }
 
         componentMap.remove(oldName);
         componentMap.put(newName, c);
+    }
+
+
+    /**
+     * @return 配置管理器
+     */
+    protected ConfigManager<?> getConfigManager() {
+        Module<?> module = getModuleByName(DefaultConfigManager.NAME, true);
+        if (module instanceof ConfigManager) {
+            return (ConfigManager<?>) module;
+        } else {
+            return null;
+        }
     }
 }

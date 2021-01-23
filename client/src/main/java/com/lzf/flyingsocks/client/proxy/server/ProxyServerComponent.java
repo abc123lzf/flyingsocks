@@ -19,7 +19,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.lzf.flyingsocks.client.proxy;
+package com.lzf.flyingsocks.client.proxy.server;
 
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.ComponentException;
@@ -29,6 +29,9 @@ import com.lzf.flyingsocks.ConfigEventListener;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.LifecycleState;
 import com.lzf.flyingsocks.client.GlobalConfig;
+import com.lzf.flyingsocks.client.proxy.ProxyComponent;
+import com.lzf.flyingsocks.client.proxy.ProxyRequest;
+import com.lzf.flyingsocks.client.proxy.ProxyRequestSubscriber;
 import com.lzf.flyingsocks.client.proxy.util.MessageReceiver;
 import com.lzf.flyingsocks.encrypt.EncryptProvider;
 import com.lzf.flyingsocks.encrypt.EncryptSupport;
@@ -42,8 +45,8 @@ import com.lzf.flyingsocks.protocol.PongMessage;
 import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
 import com.lzf.flyingsocks.protocol.ProxyResponseMessage;
 import com.lzf.flyingsocks.protocol.SerializationException;
+import com.lzf.flyingsocks.util.DelimiterOutboundHandler;
 import com.lzf.flyingsocks.util.FSMessageChannelOutboundHandler;
-
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -53,9 +56,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
-import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
-import io.netty.channel.ChannelPromise;
 import io.netty.channel.ConnectTimeoutException;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -83,6 +84,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -91,7 +93,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 
-import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.EncryptType;
+import static com.lzf.flyingsocks.client.proxy.server.ProxyServerConfig.EncryptType;
 import static com.lzf.flyingsocks.protocol.AuthMessage.AuthMethod;
 
 /**
@@ -140,7 +142,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
      * @param proxyComponent 父组件引用
      * @param config         该FS服务器的配置对象
      */
-    ProxyServerComponent(ProxyComponent proxyComponent, ProxyServerConfig.Node config) {
+    public ProxyServerComponent(ProxyComponent proxyComponent, ProxyServerConfig.Node config) {
         super(generalName(config.getHost(), config.getPort()), Objects.requireNonNull(proxyComponent));
         this.config = Objects.requireNonNull(config);
         this.use = config.isUse();
@@ -184,7 +186,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         }
 
         public ProxyRequest.Protocol protocol() {
-            return request.protocol;
+            return request.protocol();
         }
     }
 
@@ -196,7 +198,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
      */
     @Override
     protected void initInternal() {
-        ConfigManager<?> cm = parent.getParentComponent().getConfigManager();
+        ConfigManager<?> cm = getConfigManager();
         GlobalConfig cfg = cm.getConfig(GlobalConfig.NAME, GlobalConfig.class);
 
         EncryptProvider provider;
@@ -281,7 +283,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                             }
                             cp.addLast(provider.decodeHandler(params));
                         }
-                        cp.addLast(FSMessageChannelOutboundHandler.INSTANCE);
+
                         cp.addLast(new InitialHandler());
                     }
                 });
@@ -395,8 +397,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             doConnect(true);
         }
 
-        ConfigManager<?> cm = parent.getParentComponent().getConfigManager();
-        cm.registerConfigEventListener(new ConfigRemovedListener());
+        getConfigManager().registerConfigEventListener(new ConfigRemovedListener());
 
         super.startInternal();
 
@@ -454,6 +455,10 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         return false;
     }
 
+    @Override
+    public Set<ProxyRequest.Protocol> requestProtocol() {
+        return ProxyRequestSubscriber.ANY_PROTOCOL;
+    }
 
     private void doConnect(boolean sync) {
         if (active) {
@@ -526,7 +531,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         active = false;
         parent.removeSubscriber(this);
         parent.removeProxyServer(this);
-        parent.getParentComponent().getConfigManager().removeConfig(OpenSSLConfig.generalName(config.getHost(), config.getPort()));
+        getConfigManager().removeConfig(OpenSSLConfig.generalName(config.getHost(), config.getPort()));
 
         if (loopGroup != null) {
             loopGroup.shutdownGracefully().addListener(future -> {
@@ -576,12 +581,11 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
      */
     public long queryDownloadThroughput() {
         TrafficCounter counter = this.trafficCounter;
-        //log.warn("{}", counter != null ? counter.lastReadThroughput() : "null");
         return counter != null ? counter.lastReadThroughput() : 0;
     }
 
 
-    void setUse(boolean use) {
+    public void setUse(boolean use) {
         this.use = use;
     }
 
@@ -720,7 +724,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     private final class InitialHandler extends ChannelInboundHandlerAdapter {
 
         @Override
-        public void channelActive(ChannelHandlerContext ctx) {
+        public void channelActive(ChannelHandlerContext ctx) throws SerializationException {
             log.trace("Start flyingsocks server connection initialize");
             updateConnectionState(ConnectionState.PROXY_CONNECT);
             ProxyServerSession session = new ProxyServerSession((SocketChannel) ctx.channel());
@@ -734,7 +738,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             session.setDelimiter(delimiter);
             ProxyServerComponent.this.proxyServerSession = session;
 
-            ctx.writeAndFlush(msg);
+            ctx.writeAndFlush(msg.serialize(ctx.alloc()));
             ctx.fireChannelActive();
         }
 
@@ -773,7 +777,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
             ctx.pipeline().remove(this)
                     .addLast(new DelimiterBasedFrameDecoder(102400, Unpooled.wrappedBuffer(b)))
-                    .addLast(new DelimiterOutboundHandler())
+                    .addLast(new DelimiterOutboundHandler(proxyServerSession.getDelimiter()))
+                    .addLast(FSMessageChannelOutboundHandler.INSTANCE)
                     .addLast(new AuthHandler());
         }
 
@@ -788,28 +793,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         public void channelInactive(ChannelHandlerContext ctx) {
             updateConnectionState(ConnectionState.PROXY_DISCONNECT);  //在初始化过程中有可能因为网络波动断开连接
             afterChannelInactive();
-        }
-    }
-
-
-    private final class DelimiterOutboundHandler extends ChannelOutboundHandlerAdapter {
-
-        private final byte[] delimiter;
-
-        DelimiterOutboundHandler() {
-            this.delimiter = proxyServerSession.getDelimiter();
-        }
-
-        @Override
-        public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
-            if (msg instanceof ByteBuf) {
-                ChannelPromise vcp = ctx.voidPromise();
-                ByteBuf delimiter = PooledByteBufAllocator.DEFAULT.buffer(this.delimiter.length).writeBytes(this.delimiter);
-                ctx.write(msg, vcp);
-                ctx.write(delimiter, vcp);
-            } else {
-                ctx.write(msg, promise);
-            }
         }
     }
 
@@ -920,7 +903,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 SerialProxyRequest request = activeProxyRequestMap.get(response.serialId());
                 if (request == null) {
                     buf.release();
-                    log.warn("Unable get active request [serialId:{}]", response.serialId());
+                    //log.warn("Unable get active request [serialId:{}]", response.serialId());
                     return;
                 }
 
@@ -1024,7 +1007,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         }
     }
 
-    static String generalName(String host, int port) {
+    public static String generalName(String host, int port) {
         return String.format("ProxyServerComponent-%s:%d", host, port);
     }
 

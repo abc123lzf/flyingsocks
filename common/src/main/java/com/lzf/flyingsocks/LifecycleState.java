@@ -33,7 +33,7 @@ public enum LifecycleState {
 
     private final int step;
 
-    private LifecycleState(int step) {
+    LifecycleState(int step) {
         this.step = step;
     }
 
@@ -43,12 +43,8 @@ public enum LifecycleState {
      */
     public boolean after(LifecycleState state) {
         if (this.step == -1) {
-            if (state.step >= 4)
-                return false;
-            return true;
+            return state.step < 4;
         }
-        if (this.step >= state.step)
-            return true;
-        return false;
+        return this.step >= state.step;
     }
 }

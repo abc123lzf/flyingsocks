@@ -22,12 +22,12 @@
 package com.lzf.flyingsocks.client;
 
 import com.lzf.flyingsocks.ConfigEventListener;
-import com.lzf.flyingsocks.client.proxy.ConnectionStateListener;
+import com.lzf.flyingsocks.client.proxy.server.ConnectionStateListener;
 import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
 
 import java.util.Map;
 
-import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
+import static com.lzf.flyingsocks.client.proxy.server.ProxyServerConfig.Node;
 
 /**
  * GUI操作接口

@@ -23,15 +23,20 @@ package com.lzf.flyingsocks.client.proxy;
 
 
 import com.lzf.flyingsocks.AbstractComponent;
-import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.ConfigEvent;
 import com.lzf.flyingsocks.ConfigEventListener;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.LifecycleState;
 import com.lzf.flyingsocks.client.Client;
+import com.lzf.flyingsocks.client.GlobalConfig;
 import com.lzf.flyingsocks.client.proxy.direct.DatagramForwardComponent;
 import com.lzf.flyingsocks.client.proxy.direct.DirectForwardComponent;
+import com.lzf.flyingsocks.client.proxy.http.HttpProxyConfig;
+import com.lzf.flyingsocks.client.proxy.http.HttpReceiverComponent;
+import com.lzf.flyingsocks.client.proxy.server.ConnectionStateListener;
+import com.lzf.flyingsocks.client.proxy.server.ProxyServerComponent;
+import com.lzf.flyingsocks.client.proxy.server.ProxyServerConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksReceiverComponent;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -47,7 +52,7 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
+import static com.lzf.flyingsocks.client.proxy.server.ProxyServerConfig.Node;
 
 /**
  * 实现代理功能的核心组件
@@ -58,11 +63,6 @@ public class ProxyComponent extends AbstractComponent<Client> implements ProxyRe
 
 
     private final List<ProxyRequestSubscriber> requestSubscribers = new CopyOnWriteArrayList<>();
-
-    /**
-     * 是否开启客户端的负载均衡
-     */
-    private volatile boolean loadBalance = false;
 
     /**
      * 正在启用的服务器节点
@@ -105,7 +105,9 @@ public class ProxyComponent extends AbstractComponent<Client> implements ProxyRe
 
     @Override
     protected void initInternal() {
-        ConfigManager<?> cm = getParentComponent().getConfigManager();
+        ConfigManager<?> cm = getConfigManager();
+        GlobalConfig global = cm.getConfig(GlobalConfig.NAME, GlobalConfig.class);
+
         //加载PAC配置
         ProxyAutoConfig pac = new ProxyAutoConfig(cm);
         cm.registerConfig(pac);
@@ -117,15 +119,18 @@ public class ProxyComponent extends AbstractComponent<Client> implements ProxyRe
         this.proxyServerConfig = psc;
         initProxyServerComponent();
 
-        if (!loadBalance && activeProxyServers.size() > 1) {
-            throw new ComponentException(new IllegalStateException("When load balance is turn off, " +
-                    "the using proxy server number must not be grater than 1"));
+        if (global.isEnableSocksProxy()) {
+            SocksConfig sc = new SocksConfig(cm);
+            cm.registerConfig(sc);
+            addComponent(new SocksReceiverComponent(this));
         }
 
-        SocksConfig sc = new SocksConfig(cm);
-        cm.registerConfig(sc);
+        if (global.isEnableHttpProxy()) {
+            HttpProxyConfig hpc = new HttpProxyConfig(cm);
+            cm.registerConfig(hpc);
+            addComponent(new HttpReceiverComponent(this));
+        }
 
-        addComponent(new SocksReceiverComponent(this));
         addComponent(new DirectForwardComponent(this));
         addComponent(new DatagramForwardComponent(this));
 
@@ -134,7 +139,7 @@ public class ProxyComponent extends AbstractComponent<Client> implements ProxyRe
 
     @Override
     protected void startInternal() {
-        parent.getConfigManager().registerConfigEventListener(new ServerProxyConfigListener());
+        getConfigManager().registerConfigEventListener(new ServerProxyConfigListener());
         super.startInternal();
     }
 
@@ -241,7 +246,7 @@ public class ProxyComponent extends AbstractComponent<Client> implements ProxyRe
      *
      * @param component ProxyServerComponent实例
      */
-    void addActiveProxyServer(ProxyServerComponent component) {
+    public void addActiveProxyServer(ProxyServerComponent component) {
         Objects.requireNonNull(component);
         if (component.getParentComponent() != this) {
             throw new IllegalArgumentException("This ProxyComponent don't have this ProxyServerComponent instance");
@@ -255,7 +260,7 @@ public class ProxyComponent extends AbstractComponent<Client> implements ProxyRe
      *
      * @param component ProxyServerComponent实例
      */
-    void removeProxyServer(ProxyServerComponent component) {
+    public void removeProxyServer(ProxyServerComponent component) {
         Objects.requireNonNull(component);
         boolean success = activeProxyServers.remove(component);
         if (success) {

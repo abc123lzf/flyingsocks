@@ -30,6 +30,7 @@ import com.lzf.flyingsocks.util.BaseUtils;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
@@ -84,7 +85,7 @@ public final class SocksReceiverComponent extends AbstractComponent<ProxyCompone
 
     @Override
     protected void initInternal() {
-        SocksConfig cfg = parent.getParentComponent().getConfigManager().getConfig(SocksConfig.NAME, SocksConfig.class);
+        SocksConfig cfg = getConfigManager().getConfig(SocksConfig.NAME, SocksConfig.class);
 
         this.port = cfg.getPort();
         this.bindAddress = cfg.getAddress();
@@ -198,7 +199,16 @@ public final class SocksReceiverComponent extends AbstractComponent<ProxyCompone
      */
     private class SocksRequestHandler extends SimpleChannelInboundHandler<SocksRequest> {
 
-        private final AuthenticationStrategy authenticationStrategy = SocksReceiverComponent.this.authenticationStrategy;
+        private final AuthenticationStrategy authenticationStrategy;
+
+        private boolean passAuth = false;
+
+        SocksRequestHandler() {
+            this.authenticationStrategy = SocksReceiverComponent.this.authenticationStrategy;
+            if (this.authenticationStrategy == null) {
+                passAuth = true;
+            }
+        }
 
         @Override
         protected void channelRead0(final ChannelHandlerContext ctx, final SocksRequest request) {
@@ -222,6 +232,12 @@ public final class SocksReceiverComponent extends AbstractComponent<ProxyCompone
                     break;
                 }
                 case CMD: {  //如果是Socks5命令请求
+                    if (!passAuth) {
+                        ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.FORBIDDEN, SocksAddressType.IPv4))
+                                .addListener(ChannelFutureListener.CLOSE);
+                        return;
+                    }
+
                     processCommandRequest(ctx, (SocksCmdRequest) request);
                     break;
                 }
@@ -252,11 +268,13 @@ public final class SocksReceiverComponent extends AbstractComponent<ProxyCompone
             log.info("Socks auth, user:{} pass:{}", username, password);
 
             if (authenticationStrategy.grantAuthorization(username, password)) {
+                this.passAuth = true;
                 cp.addFirst(new SocksCmdRequestDecoder());
                 authenticationStrategy.afterAuthorizationSuccess(cp, request.username());
                 ctx.writeAndFlush(new SocksAuthResponse(SocksAuthStatus.SUCCESS));
             } else {
-                ctx.writeAndFlush(new SocksAuthResponse(SocksAuthStatus.FAILURE));
+                ctx.writeAndFlush(new SocksAuthResponse(SocksAuthStatus.FAILURE))
+                        .addListener(ChannelFutureListener.CLOSE);
             }
         }
 
@@ -269,7 +287,8 @@ public final class SocksReceiverComponent extends AbstractComponent<ProxyCompone
 
             if (!vaildateAddress(host)) {  //如果主机名/IP地址格式有误
                 log.info("Illegal proxy host {}", host);
-                ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.ADDRESS_NOT_SUPPORTED, SocksAddressType.IPv4));
+                ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.ADDRESS_NOT_SUPPORTED, SocksAddressType.IPv4))
+                        .addListener(ChannelFutureListener.CLOSE);
                 ctx.close();
                 return;
             }

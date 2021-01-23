@@ -19,7 +19,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.lzf.flyingsocks.client.proxy;
+package com.lzf.flyingsocks.client.proxy.server;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
@@ -54,7 +54,7 @@ public class ProxyServerConfig extends AbstractConfig {
     private final List<Node> nodes = new CopyOnWriteArrayList<>();
 
 
-    ProxyServerConfig(ConfigManager<?> configManager) {
+    public ProxyServerConfig(ConfigManager<?> configManager) {
         super(configManager, DEFAULT_NAME);
     }
 
@@ -128,7 +128,7 @@ public class ProxyServerConfig extends AbstractConfig {
             JSONObject auth = new JSONObject();
             auth.putAll(node.authArgument);
             o.put("auth-arg", auth);
-            if (cfg.isOpenGUI()) {
+            if (cfg.isEnableGUI()) {
                 o.put("state", false);
             } else {  //仅当GUI关闭时才可将自连接设为true
                 o.put("state", node.isUse());

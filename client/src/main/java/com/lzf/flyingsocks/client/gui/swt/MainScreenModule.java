@@ -55,7 +55,7 @@ import static com.lzf.flyingsocks.client.gui.swt.Utils.createShell;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.loadImage;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.refreshCanvas;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.showMessageBox;
-import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
+import static com.lzf.flyingsocks.client.proxy.server.ProxyServerConfig.Node;
 
 /**
  * 主界面

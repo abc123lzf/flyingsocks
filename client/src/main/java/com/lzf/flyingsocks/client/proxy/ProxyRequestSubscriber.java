@@ -37,7 +37,7 @@ public interface ProxyRequestSubscriber {
     /**
      * 包括{@link Protocol#TCP}和{@link Protocol#UDP}协议
      */
-    Set<Protocol> ANY = unmodifiableSet(EnumSet.allOf(Protocol.class));
+    Set<Protocol> ANY_PROTOCOL = unmodifiableSet(EnumSet.allOf(Protocol.class));
 
     /**
      * 仅限{@link Protocol#TCP}协议

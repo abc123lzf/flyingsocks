@@ -35,6 +35,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class DefaultConfigManager<T extends Component<?> & Environment>
         extends AbstractModule<T> implements ConfigManager<T> {
 
+    public static final String NAME = "ConfigManager";
+
     /**
      * Slf4j日志
      */
@@ -56,7 +58,7 @@ public class DefaultConfigManager<T extends Component<?> & Environment>
     }
 
     public DefaultConfigManager(T belongComponent) {
-        this(belongComponent, "ConfigManager");
+        this(belongComponent, NAME);
     }
 
     @Override

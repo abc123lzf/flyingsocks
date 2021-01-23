@@ -47,7 +47,7 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 
-import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.*;
+import static com.lzf.flyingsocks.client.proxy.server.ProxyServerConfig.*;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.*;
 
 /**

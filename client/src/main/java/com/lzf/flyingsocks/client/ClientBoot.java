@@ -23,8 +23,12 @@ package com.lzf.flyingsocks.client;
 
 import com.alibaba.fastjson.JSON;
 import com.lzf.flyingsocks.ComponentException;
+import com.lzf.flyingsocks.LifecycleState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.time.LocalDateTime;
+import java.util.concurrent.locks.LockSupport;
 
 import static com.lzf.flyingsocks.client.Client.VERSION;
 
@@ -43,9 +47,8 @@ public abstract class ClientBoot {
 
         log.info("flyingsocks client {} start...", VERSION);
         long st = System.currentTimeMillis();
-        Client client = null;
+        Client client = new StandardClient();
         try {
-            client = new StandardClient();
             client.init();
             client.start();
             System.gc();
@@ -58,7 +61,19 @@ public abstract class ClientBoot {
         long ed = System.currentTimeMillis();
         log.info("flyingsocks client {} start complete, use {} millisecond", VERSION, ed - st);
 
-        client.runGUITask();
+        boolean running = client.runGUITask();
+        if (!running) {
+            Thread mainThread = Thread.currentThread();
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                if (!client.getState().after(LifecycleState.STOPING)) {
+                    client.stop();
+                }
+                LockSupport.unpark(mainThread);
+            }, "Thread-ShutdownHook"));
+
+            LockSupport.park();
+            log.info("Shutdown client at {}", LocalDateTime.now());
+        }
     }
 
 

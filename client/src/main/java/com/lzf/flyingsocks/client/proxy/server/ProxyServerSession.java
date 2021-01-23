@@ -19,16 +19,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.lzf.flyingsocks.client.proxy;
+package com.lzf.flyingsocks.client.proxy.server;
 
-import java.util.EventListener;
+import com.lzf.flyingsocks.AbstractSession;
+import com.lzf.flyingsocks.protocol.DelimiterMessage;
+import io.netty.channel.socket.SocketChannel;
 
-/**
- * @author lzf abc123lzf@126.com
- * @since 2020/12/23 21:42
- */
-public interface ConnectionStateListener extends EventListener {
+import java.util.Arrays;
 
-    void connectionStateChanged(ProxyServerConfig.Node node, ConnectionState state);
+public class ProxyServerSession extends AbstractSession {
 
+    /**
+     * 协议分隔符
+     */
+    private byte[] delimiter;
+
+    ProxyServerSession(SocketChannel serverChannel) {
+        super(serverChannel);
+    }
+
+    public void setLastActiveTime(long lastActiveTime) {
+        this.lastActiveTime = lastActiveTime;
+    }
+
+    void setDelimiter(byte[] delimiter) {
+        if (delimiter == null || delimiter.length != DelimiterMessage.DEFAULT_SIZE)
+            throw new IllegalArgumentException("Delimiter length must be " + DelimiterMessage.DEFAULT_SIZE + " bytes");
+        this.delimiter = Arrays.copyOf(delimiter, DelimiterMessage.DEFAULT_SIZE);
+    }
+
+    byte[] getDelimiter() {
+        if (delimiter == null) {
+            return null;
+        }
+
+        return Arrays.copyOf(delimiter, delimiter.length);
+    }
 }

@@ -25,17 +25,17 @@ import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.ConfigEvent;
 import com.lzf.flyingsocks.ConfigEventListener;
 import com.lzf.flyingsocks.client.gui.swt.SWTViewComponent;
-import com.lzf.flyingsocks.client.proxy.ConnectionStateListener;
+import com.lzf.flyingsocks.client.proxy.server.ConnectionStateListener;
 import com.lzf.flyingsocks.client.proxy.ProxyAutoConfig;
 import com.lzf.flyingsocks.client.proxy.ProxyComponent;
-import com.lzf.flyingsocks.client.proxy.ProxyServerConfig;
+import com.lzf.flyingsocks.client.proxy.server.ProxyServerConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
 
 import java.io.IOException;
 import java.util.Map;
 import java.util.Properties;
 
-import static com.lzf.flyingsocks.client.proxy.ProxyServerConfig.Node;
+import static com.lzf.flyingsocks.client.proxy.server.ProxyServerConfig.Node;
 
 /**
  * 客户端类
@@ -65,7 +65,7 @@ public final class StandardClient extends Client {
 
         addComponent(new ProxyComponent(this));
 
-        if (cfg.isOpenGUI()) {
+        if (cfg.isEnableGUI()) {
             addComponent(new SWTViewComponent(this));
         }
 

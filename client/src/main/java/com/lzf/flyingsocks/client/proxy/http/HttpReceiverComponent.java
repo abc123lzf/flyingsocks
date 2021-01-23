@@ -22,24 +22,24 @@
 package com.lzf.flyingsocks.client.proxy.http;
 
 import com.lzf.flyingsocks.AbstractComponent;
+import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.client.proxy.ProxyComponent;
 import com.lzf.flyingsocks.client.proxy.ProxyRequest;
 import com.lzf.flyingsocks.client.proxy.util.MessageDelivererCancelledException;
 import com.lzf.flyingsocks.util.BaseUtils;
-
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.http.DefaultFullHttpRequest;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -49,9 +49,7 @@ import io.netty.util.ReferenceCountUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.IntegerValidator;
 
-import java.net.MalformedURLException;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.Objects;
 
 import static com.lzf.flyingsocks.client.proxy.ProxyRequest.Protocol;
@@ -66,12 +64,35 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
 
     private static final HttpResponseStatus CONNECTION_ESTABLISHED = HttpResponseStatus.valueOf(200, "Connection Established");
 
+    private volatile AuthenticationStrategy authenticationStrategy;
+
     public HttpReceiverComponent(ProxyComponent parent) {
         super("HttpRequestReceiver", Objects.requireNonNull(parent));
     }
 
     @Override
     protected void initInternal() {
+        HttpProxyConfig config = getConfigManager().getConfig(HttpProxyConfig.NAME, HttpProxyConfig.class);
+        if (config.isAuth()) {
+            this.authenticationStrategy = new SimpleAuthenticationStrategy(config.getUsername(), config.getPassword());
+        }
+
+        getConfigManager().registerConfigEventListener(event -> {
+            if (!(event.getSource() instanceof HttpProxyConfig) || !Objects.equals(event.getEvent(), Config.UPDATE_EVENT)) {
+                return;
+            }
+
+            HttpProxyConfig cfg = (HttpProxyConfig) event.getSource();
+            if (cfg.isAuth()) {
+                this.authenticationStrategy = new SimpleAuthenticationStrategy(config.getUsername(), config.getPassword());
+            }
+        });
+
+        super.initInternal();
+    }
+
+    @Override
+    protected void startInternal() {
         ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap.group(parent.createNioEventLoopGroup(2))
                 .channel(NioServerSocketChannel.class)
@@ -85,11 +106,18 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
                     }
                 });
 
-        super.initInternal();
-    }
+        HttpProxyConfig config = getConfigManager().getConfig(HttpProxyConfig.NAME, HttpProxyConfig.class);
+        int port = config.getBindPort();
+        String address = config.getBindAddress();
 
-    @Override
-    protected void startInternal() {
+        bootstrap.bind(address, port).addListener((ChannelFuture future) -> {
+            if (!future.isSuccess()) {
+                log.error("HTTP Proxy service bind error", future.cause());
+            } else {
+                log.info("Bind port {} success", port);
+            }
+        }).awaitUninterruptibly();
+
         super.startInternal();
     }
 
@@ -99,16 +127,21 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
     }
 
 
+    private static void writeFailureResponse(ChannelHandlerContext ctx, DefaultFullHttpResponse response) {
+        ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+    }
+
+
     private final class HttpProxyRequestHandler extends ChannelInboundHandlerAdapter {
 
         @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        public void channelRead(ChannelHandlerContext ctx, Object msg) {
             if (msg instanceof FullHttpRequest) {
+                FullHttpRequest request = (FullHttpRequest) msg;
                 try {
-                    channelRead0(ctx, (FullHttpRequest) msg);
+                    channelRead0(ctx, request);
                 } catch (Exception e) {
-                    ctx.channel().writeAndFlush(new DefaultFullHttpResponse(((FullHttpRequest) msg).protocolVersion(),
-                            HttpResponseStatus.BAD_REQUEST));
+                    writeFailureResponse(ctx, new DefaultFullHttpResponse(request.protocolVersion(), HttpResponseStatus.BAD_REQUEST));
                     throw e;
                 } finally {
                     ReferenceCountUtil.release(msg);
@@ -119,14 +152,41 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
             ctx.fireChannelRead(msg);
         }
 
-        private void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) throws Exception {
+        private void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
+            // 处理认证
+            AuthenticationStrategy strategy = HttpReceiverComponent.this.authenticationStrategy;
+            if (strategy != null) {
+                String authorization = request.headers().get(HttpHeaderNames.PROXY_AUTHORIZATION);
+                if (StringUtils.isBlank(authorization)) {
+                    DefaultFullHttpResponse response = new DefaultFullHttpResponse(request.protocolVersion(), HttpResponseStatus.PROXY_AUTHENTICATION_REQUIRED);
+                    response.headers().add(HttpHeaderNames.PROXY_AUTHENTICATE, strategy.proxyAuthenticateHeader());
+                    writeFailureResponse(ctx, response);
+                    return;
+                }
+
+                String[] arr = StringUtils.split(authorization, ' ');
+                if (arr.length != 2) {
+                    writeFailureResponse(ctx, new DefaultFullHttpResponse(request.protocolVersion(), HttpResponseStatus.BAD_REQUEST));
+                    return;
+                }
+
+                if (!strategy.grantAuthorization(arr[0], arr[1])) {
+                    DefaultFullHttpResponse response = new DefaultFullHttpResponse(request.protocolVersion(), HttpResponseStatus.PROXY_AUTHENTICATION_REQUIRED);
+                    response.headers().add(HttpHeaderNames.PROXY_AUTHENTICATE, strategy.proxyAuthenticateHeader());
+                    writeFailureResponse(ctx, response);
+                    return;
+                } else {
+                    strategy.afterAuthorizationSuccess(ctx.pipeline(), arr[0], arr[1]);
+                }
+            }
+
             HttpMethod method = request.method();
             if (method == HttpMethod.CONNECT) {
                 processConnectMethod(ctx, request);
                 return;
             }
 
-            processOtherMethod(ctx, request);
+            writeFailureResponse(ctx, new DefaultFullHttpResponse(request.protocolVersion(), HttpResponseStatus.METHOD_NOT_ALLOWED));
         }
 
         private void processConnectMethod(ChannelHandlerContext ctx, FullHttpRequest request) {
@@ -142,18 +202,18 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
             ChannelPipeline pipeline = ctx.pipeline();
 
             pipeline.remove(this);
+            ctx.write(new DefaultFullHttpResponse(request.protocolVersion(), CONNECTION_ESTABLISHED));
             pipeline.remove(HttpObjectAggregator.class);
             pipeline.remove(HttpServerCodec.class);
             pipeline.addLast(new TunnelProxyHandler(pr));
-            ctx.writeAndFlush(new DefaultFullHttpResponse(request.protocolVersion(), CONNECTION_ESTABLISHED));
+            ctx.flush();
         }
 
 
-        private void processOtherMethod(ChannelHandlerContext ctx, FullHttpRequest request) throws MalformedURLException {
+        /*private void processOtherMethod(ChannelHandlerContext ctx, FullHttpRequest request) throws MalformedURLException {
             URL url = new URL(request.uri());
             ProxyRequest pr = new ProxyRequest(url.getHost(), url.getPort(), ctx.channel(), Protocol.TCP);
-
-        }
+        }*/
 
 
         @Override
@@ -211,7 +271,7 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
     }
 
 
-    private static final class PlaintextProxyHandler extends ChannelInboundHandlerAdapter {
+    /*private static final class PlaintextProxyHandler extends ChannelInboundHandlerAdapter {
 
         private final ProxyRequest proxyRequest;
 
@@ -220,7 +280,7 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
         }
 
         @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        public void channelRead(ChannelHandlerContext ctx, Object msg) {
             if (msg instanceof FullHttpRequest) {
                 try {
                     channelRead0(ctx, (FullHttpRequest) msg);
@@ -246,5 +306,5 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
             proxyRequest.close();
             ctx.fireChannelInactive();
         }
-    }
+    }*/
 }

@@ -19,35 +19,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.lzf.flyingsocks.server.core.client;
+package com.lzf.flyingsocks.client.proxy.server;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelOutboundHandlerAdapter;
-import io.netty.channel.ChannelPromise;
-
-import java.util.Arrays;
+import java.util.EventListener;
 
 /**
  * @author lzf abc123lzf@126.com
- * @since 2021/1/17 20:59
+ * @since 2020/12/23 21:42
  */
-class DelimiterOutboundHandler extends ChannelOutboundHandlerAdapter {
+public interface ConnectionStateListener extends EventListener {
 
-    private final byte[] delimiter;
+    /**
+     * {@link ProxyServerComponent} 组件的{@link ConnectionState} 发生改变时的通知
+     *
+     * @param node 配置对象
+     * @param state 改变后的状态
+     */
+    void connectionStateChanged(ProxyServerConfig.Node node, ConnectionState state);
 
-    public DelimiterOutboundHandler(byte[] delimiter) {
-        this.delimiter = Arrays.copyOf(delimiter, delimiter.length);
-    }
-
-    @Override
-    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
-        if (msg instanceof ByteBuf) {
-            ctx.write(msg, promise);
-            ctx.write(Unpooled.wrappedBuffer(delimiter), promise);
-        } else {
-            ctx.write(msg, promise);
-        }
-    }
 }

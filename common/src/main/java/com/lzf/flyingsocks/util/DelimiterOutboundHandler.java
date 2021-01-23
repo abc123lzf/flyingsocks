@@ -19,40 +19,46 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.lzf.flyingsocks.client.proxy;
+package com.lzf.flyingsocks.util;
 
-import com.lzf.flyingsocks.AbstractSession;
-import com.lzf.flyingsocks.protocol.DelimiterMessage;
-import io.netty.channel.socket.SocketChannel;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelOutboundHandlerAdapter;
+import io.netty.channel.ChannelPromise;
 
 import java.util.Arrays;
+import java.util.Objects;
 
-public class ProxyServerSession extends AbstractSession {
+/**
+ * 在发送消息时自动添加分隔符
+ *
+ * @author lzf abc123lzf@126.com
+ * @since 2021/1/23 23:14
+ */
+public class DelimiterOutboundHandler extends ChannelOutboundHandlerAdapter {
 
     /**
-     * 协议分隔符
+     * 分隔符ByteBuf
      */
-    private byte[] delimiter;
+    private final ByteBuf delimiter;
 
-    ProxyServerSession(SocketChannel serverChannel) {
-        super(serverChannel);
+
+    public DelimiterOutboundHandler(byte[] delimiter) {
+        Objects.requireNonNull(delimiter);
+        byte[] arr = Arrays.copyOf(delimiter, delimiter.length);
+        this.delimiter = Unpooled.wrappedBuffer(arr).asReadOnly();
     }
 
-    public void setLastActiveTime(long lastActiveTime) {
-        this.lastActiveTime = lastActiveTime;
-    }
 
-    void setDelimiter(byte[] delimiter) {
-        if (delimiter == null || delimiter.length != DelimiterMessage.DEFAULT_SIZE)
-            throw new IllegalArgumentException("Delimiter length must be " + DelimiterMessage.DEFAULT_SIZE + " bytes");
-        this.delimiter = Arrays.copyOf(delimiter, DelimiterMessage.DEFAULT_SIZE);
-    }
-
-    byte[] getDelimiter() {
-        if (delimiter == null) {
-            return null;
+    @Override
+    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+        if (msg instanceof ByteBuf) {
+            delimiter.readerIndex(0);
+            ctx.write(msg, promise);
+            ctx.write(delimiter.retain(), promise);
+        } else {
+            ctx.write(msg, promise);
         }
-
-        return Arrays.copyOf(delimiter, delimiter.length);
     }
 }

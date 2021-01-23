@@ -25,36 +25,26 @@ import com.lzf.flyingsocks.AbstractConfig;
 import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
 import org.apache.commons.text.StringSubstitutor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.util.NoSuchElementException;
-import java.util.Scanner;
+import java.util.Properties;
 
 /**
  * 初始配置文件，用于获取用户配置文件路径、GUI设置以及应用程序超时时间
  */
 public class GlobalConfig extends AbstractConfig {
-    private static final Logger log = LoggerFactory.getLogger(GlobalConfig.class);
 
     public static final String NAME = "config.global";
 
     private static final int DEFAULT_CONNECT_TIMEOUT = 8000;
 
-    private static final String CONNECT_TIMEOUT_FILE = "connect-timeout";
-
-    private static final String GUI_OPTION_FILE = "gui-options";
-
+    private static final String FILE_NAME = "global-options";
 
     /**
      * 配置文件所在目录
@@ -64,7 +54,17 @@ public class GlobalConfig extends AbstractConfig {
     /**
      * 是否开启GUI，对于Linux命令行则无需打开GUI
      */
-    private boolean openGUI;
+    private boolean enableGUI;
+
+    /**
+     * 是否开启Socks5代理服务端口
+     */
+    private boolean enableSocksProxy;
+
+    /**
+     * 是否开启HTTP代理服务端口
+     */
+    private boolean enableHttpProxy;
 
     /**
      * 应用程序连接超时时间
@@ -103,53 +103,9 @@ public class GlobalConfig extends AbstractConfig {
         Path path = Paths.get(location);
         this.path = path;
 
-        Path connTimeoutFilePath = path.resolve(CONNECT_TIMEOUT_FILE);
-        if (Files.exists(connTimeoutFilePath)) {
-            if (Files.isDirectory(connTimeoutFilePath)) {
-                throw new ConfigInitializationException("File at " + connTimeoutFilePath + " is a Directory!");
-            }
-
-            try (FileInputStream is = new FileInputStream(connTimeoutFilePath.toFile());
-                 Scanner sc = new Scanner(is)) {
-                this.connectTimeout = Integer.parseInt(sc.next());
-            } catch (IOException e) {
-                throw new ConfigInitializationException("Can not open file at " + connTimeoutFilePath, e);
-            } catch (NumberFormatException e) {
-                this.connectTimeout = DEFAULT_CONNECT_TIMEOUT;
-                log.warn("Illegal file format at {}, use the default value as connect timeout", connTimeoutFilePath);
-            }
-        } else {
-            try {
-                makeTemplateConnectTimeFile(connTimeoutFilePath);
-                this.connectTimeout = DEFAULT_CONNECT_TIMEOUT;
-            } catch (IOException e) {
-                log.warn("Can not create file at {}, use the default value as connect timeout", connTimeoutFilePath, e);
-            }
-        }
-
-        Path guiFilePath = path.resolve(GUI_OPTION_FILE);
-        if (Files.exists(guiFilePath)) {
-            if (Files.isDirectory(guiFilePath)) {
-                throw new ConfigInitializationException("File at " + guiFilePath + " is a Directory!");
-            }
-
-            try (FileInputStream is = new FileInputStream(guiFilePath.toFile());
-                 Scanner sc = new Scanner(is)) {
-                this.openGUI = sc.nextBoolean();
-            } catch (IOException e) {
-                throw new ConfigInitializationException("Can not open file at " + guiFilePath, e);
-            } catch (NoSuchElementException e) {
-                this.openGUI = true;
-                log.warn("Illegal file format at {}, use the default value as gui option", guiFilePath);
-            }
-        } else {
-            try {
-                makeTemplateGUIOptionFile(guiFilePath);
-                this.openGUI = true;
-            } catch (IOException e) {
-                throw new ConfigInitializationException("Can not create file at " + guiFilePath, e);
-            }
-        }
+        Path filePath = path.resolve(FILE_NAME);
+        createFileIfNotExists(filePath);
+        loadFile(filePath);
     }
 
     /**
@@ -162,8 +118,22 @@ public class GlobalConfig extends AbstractConfig {
     /**
      * @return 是否开启GUI
      */
-    public boolean isOpenGUI() {
-        return openGUI;
+    public boolean isEnableGUI() {
+        return enableGUI;
+    }
+
+    /**
+     * @return 是否开启HTTP代理服务端口
+     */
+    public boolean isEnableHttpProxy() {
+        return enableHttpProxy;
+    }
+
+    /**
+     * @return 是否开启Socks5代理服务端口
+     */
+    public boolean isEnableSocksProxy() {
+        return enableSocksProxy;
     }
 
     /**
@@ -173,35 +143,57 @@ public class GlobalConfig extends AbstractConfig {
         return connectTimeout;
     }
 
-    /**
-     * 创建一个默认的记录connectTimeout的文件
-     *
-     * @param path 文件路径
-     */
-    private void makeTemplateConnectTimeFile(Path path) throws IOException {
-        String content = String.valueOf(DEFAULT_CONNECT_TIMEOUT);
-        ByteBuffer buf = ByteBuffer.allocate(content.length());
-        buf.put(content.getBytes(StandardCharsets.US_ASCII));
-        writeFile(path, buf);
+
+    private void createFileIfNotExists(Path path) {
+        if (Files.exists(path)) {
+            return;
+        }
+
+        if (Files.isDirectory(path)) {
+            throw new ConfigInitializationException("Path [" + path + "] is Directory!");
+        }
+
+        Properties properties = new Properties();
+        properties.put("enable-gui", Boolean.toString(configManager.isMacOS() || configManager.isWindows()));
+        properties.put("enable-socks5", Boolean.toString(true));
+        properties.put("enable-http", Boolean.toString(false));
+        properties.put("connect-timeout", String.valueOf(DEFAULT_CONNECT_TIMEOUT));
+        try (FileWriter writer = new FileWriter(path.toFile())) {
+            properties.store(writer, "flyingsocks base configuration");
+        } catch (IOException e) {
+            throw new ConfigInitializationException("Can not initialize global config file", e);
+        }
     }
 
-    /**
-     * 创建默认GUI设置文件
-     *
-     * @param path 文件路径
-     * @throws IOException 当写入失败
-     */
-    private void makeTemplateGUIOptionFile(Path path) throws IOException {
-        String content = "true";
-        ByteBuffer buf = ByteBuffer.allocate(content.length());
-        buf.put(content.getBytes(StandardCharsets.US_ASCII));
-        writeFile(path, buf);
+
+    private void loadFile(Path path) {
+        Properties properties = new Properties();
+        try (FileReader reader = new FileReader(path.toFile())) {
+            properties.load(reader);
+        } catch (IOException e) {
+            throw new ConfigInitializationException("Can not load global config file", e);
+        }
+
+        this.enableGUI = Boolean.parseBoolean(properties.getProperty("enable-gui",
+                Boolean.toString(configManager.isMacOS() || configManager.isWindows())));
+        this.enableSocksProxy = Boolean.parseBoolean(properties.getProperty("enable-socks5"));
+        this.enableHttpProxy = Boolean.parseBoolean(properties.getProperty("enable-http"));
+        this.connectTimeout = Integer.parseInt(properties.getProperty("connect-timeout", Integer.toString(DEFAULT_CONNECT_TIMEOUT)));
     }
 
-    private void writeFile(Path path, ByteBuffer buf) throws IOException {
-        try (FileChannel ch = FileChannel.open(path, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
-            buf.rewind();
-            ch.write(buf);
+
+    @Override
+    public void save() throws Exception {
+        Properties properties = new Properties();
+        properties.put("enable-gui", Boolean.toString(this.enableGUI));
+        properties.put("enable-socks5", Boolean.toString(this.enableSocksProxy));
+        properties.put("enable-http", Boolean.toString(this.enableHttpProxy));
+        properties.put("connect-timeout", Integer.toString(this.connectTimeout));
+
+        try (FileWriter writer = new FileWriter(path.toFile())) {
+            properties.store(writer, "flyingsocks base configuration");
+        } catch (IOException e) {
+            throw new ConfigInitializationException("Can not initialize global config file", e);
         }
     }
 }

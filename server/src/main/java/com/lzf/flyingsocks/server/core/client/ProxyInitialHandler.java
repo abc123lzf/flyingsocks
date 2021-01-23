@@ -24,6 +24,7 @@ package com.lzf.flyingsocks.server.core.client;
 import com.lzf.flyingsocks.protocol.DelimiterMessage;
 import com.lzf.flyingsocks.protocol.SerializationException;
 import com.lzf.flyingsocks.server.core.ClientSession;
+import com.lzf.flyingsocks.util.DelimiterOutboundHandler;
 import com.lzf.flyingsocks.util.FSMessageChannelOutboundHandler;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -100,8 +101,8 @@ class ProxyInitialHandler extends ChannelInboundHandlerAdapter {
     }
 
     private void addOutboundHandler(ChannelPipeline pipeline, byte[] delimiter) {
-        pipeline.addLast(FSMessageChannelOutboundHandler.INSTANCE);
         pipeline.addLast(new DelimiterOutboundHandler(delimiter));
+        pipeline.addLast(FSMessageChannelOutboundHandler.INSTANCE);
     }
 
     private void addInboundHandler(ChannelPipeline pipeline, byte[] delimiter) {

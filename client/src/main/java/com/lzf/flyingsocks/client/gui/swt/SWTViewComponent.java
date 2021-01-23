@@ -56,7 +56,7 @@ public class SWTViewComponent extends AbstractComponent<Client> {
         super("SWTViewComponent", Objects.requireNonNull(parent));
 
         if (Utils.isMacOS()) {
-            getParentComponent().getConfigManager().setSystemProperties("apple.awt.UIElement", "true");
+            getConfigManager().setSystemProperties("apple.awt.UIElement", "true");
         }
 
         try {
