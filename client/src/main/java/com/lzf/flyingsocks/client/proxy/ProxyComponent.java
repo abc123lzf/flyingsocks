@@ -23,6 +23,7 @@ package com.lzf.flyingsocks.client.proxy;
 
 
 import com.lzf.flyingsocks.AbstractComponent;
+import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.ConfigEvent;
 import com.lzf.flyingsocks.ConfigEventListener;
@@ -39,6 +40,8 @@ import com.lzf.flyingsocks.client.proxy.server.ProxyServerComponent;
 import com.lzf.flyingsocks.client.proxy.server.ProxyServerConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksReceiverComponent;
+import com.lzf.flyingsocks.client.proxy.transparent.LinuxTransparentProxyComponent;
+import com.lzf.flyingsocks.client.proxy.transparent.TransparentProxyConfig;
 import io.netty.channel.nio.NioEventLoopGroup;
 
 import java.util.ArrayList;
@@ -129,6 +132,16 @@ public class ProxyComponent extends AbstractComponent<Client> implements ProxyRe
             HttpProxyConfig hpc = new HttpProxyConfig(cm);
             cm.registerConfig(hpc);
             addComponent(new HttpReceiverComponent(this));
+        }
+
+        if (global.isEnableTransparentProxy()) {
+            TransparentProxyConfig tpc = new TransparentProxyConfig(cm);
+            cm.registerConfig(tpc);
+            try {
+                addComponent(new LinuxTransparentProxyComponent(this));
+            } catch (ComponentException e) {
+                log.error("Add component LinuxTransparentProxyComponent failure", e);
+            }
         }
 
         addComponent(new DirectForwardComponent(this));

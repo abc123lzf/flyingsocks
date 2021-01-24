@@ -34,6 +34,11 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
+import io.netty.channel.kqueue.KQueueEventLoopGroup;
+import io.netty.channel.kqueue.KQueueServerSocketChannel;
 import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -79,8 +84,21 @@ class ProxyRequestProcessor extends AbstractComponent<ClientProcessor> {
     @Override
     protected void startInternal() {
         ServerBootstrap bootstrap = new ServerBootstrap();
-        bootstrap.group(parent.getParentComponent().getChildWorker(), parent.getParentComponent().getBossWorker())
-                .channel(NioServerSocketChannel.class)
+        EventLoopGroup bossGroup = parent.getParentComponent().getBossWorker();
+        EventLoopGroup childGroup = parent.getParentComponent().getChildWorker();
+
+        Class<? extends ServerSocketChannel> channelClass;
+        if (bossGroup instanceof EpollEventLoopGroup) {
+            channelClass = EpollServerSocketChannel.class;
+        } else if (bossGroup instanceof KQueueEventLoopGroup) {
+            channelClass = KQueueServerSocketChannel.class;
+        } else {
+            channelClass = NioServerSocketChannel.class;
+        }
+
+
+        bootstrap.group(bossGroup, childGroup)
+                .channel(channelClass)
                 .option(ChannelOption.AUTO_CLOSE, true)
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .childHandler(new ChannelInitializer<SocketChannel>() {

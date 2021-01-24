@@ -191,7 +191,7 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
 
         private void processConnectMethod(ChannelHandlerContext ctx, FullHttpRequest request) {
             String[] str = StringUtils.split(request.uri(), ':');
-            if (str.length != 2 || !BaseUtils.isHostName(str[0]) || !IntegerValidator.getInstance().isValid(str[1])) {
+            if (str.length != 2 || !validateTargetHost(str[0]) || !IntegerValidator.getInstance().isValid(str[1])) {
                 throw new IllegalArgumentException("Illegal domain:" + request.uri());
             }
 
@@ -268,6 +268,11 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
             proxyRequest.close();
             ctx.fireChannelInactive();
         }
+    }
+
+
+    private static boolean validateTargetHost(String host) {
+        return BaseUtils.isHostName(host) || BaseUtils.isIPv4Address(host);
     }
 
 

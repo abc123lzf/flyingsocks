@@ -39,6 +39,12 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.EpollDatagramChannel;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollSocketChannel;
+import io.netty.channel.kqueue.KQueueDatagramChannel;
+import io.netty.channel.kqueue.KQueueEventLoopGroup;
+import io.netty.channel.kqueue.KQueueSocketChannel;
 import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.SocketChannel;
@@ -87,18 +93,27 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
     public DispatchProceessor(ProxyProcessor parent) {
         super("DispatcherProcessor", Objects.requireNonNull(parent));
 
-        EventLoopGroup eventLoopGroup = parent.getChildWorker();
+        EventLoopGroup group = parent.getChildWorker();
+        Class<? extends SocketChannel> socketChannelClass;
+        Class<? extends DatagramChannel> datagramChannelClass;
+        if (group instanceof EpollEventLoopGroup) {
+            socketChannelClass = EpollSocketChannel.class;
+            datagramChannelClass = EpollDatagramChannel.class;
+        } else if (group instanceof KQueueEventLoopGroup) {
+            socketChannelClass = KQueueSocketChannel.class;
+            datagramChannelClass = KQueueDatagramChannel.class;
+        } else {
+            socketChannelClass = NioSocketChannel.class;
+            datagramChannelClass = NioDatagramChannel.class;
+        }
 
         Bootstrap tcpBoot = new Bootstrap()
-                .group(eventLoopGroup)
-                .channel(NioSocketChannel.class)
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 8000)
-                .option(ChannelOption.SO_KEEPALIVE, true);
+                .group(group).channel(socketChannelClass)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000);
         this.tcpBootstrap = new BootstrapTemplate(tcpBoot);
 
         Bootstrap udpBoot = new Bootstrap()
-                .group(eventLoopGroup)
-                .channel(NioDatagramChannel.class);
+                .group(group).channel(datagramChannelClass);
         this.udpBootstrap = new BootstrapTemplate(udpBoot);
     }
 

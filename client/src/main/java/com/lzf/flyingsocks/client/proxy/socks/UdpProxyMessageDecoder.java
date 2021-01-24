@@ -27,6 +27,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.handler.codec.DecoderException;
 import io.netty.handler.codec.MessageToMessageDecoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.Charset;
 import java.util.List;
@@ -55,12 +57,14 @@ import java.util.List;
  */
 class UdpProxyMessageDecoder extends MessageToMessageDecoder<DatagramPacket> {
 
+    private static final Logger log = LoggerFactory.getLogger(UdpProxyMessageDecoder.class);
+
     private static final Charset UNICODE = Charset.forName("Unicode");
 
-    private final ReassemblyQueue reassemblyQueue = new ReassemblyQueue();
+    private final ReassemblyQueue reassemblyQueue = new BaseReassemblyQueue();
 
     @Override
-    protected final void decode(ChannelHandlerContext ctx, DatagramPacket packet, List<Object> out) throws Exception {
+    protected final void decode(ChannelHandlerContext ctx, DatagramPacket packet, List<Object> out) {
         ByteBuf buf = packet.content();
         short rsv = buf.readShort();
         if (rsv != 0) {
@@ -72,9 +76,7 @@ class UdpProxyMessageDecoder extends MessageToMessageDecoder<DatagramPacket> {
 
         String dstAddr = obtainTargetHost(buf, atyp);
         int dstPort = buf.readUnsignedShort();
-
-        ByteBuf data = ctx.alloc().buffer(buf.readableBytes());
-        buf.readBytes(data);
+        ByteBuf data = buf.readRetainedSlice(buf.readableBytes());
 
         if (frag == 0) {
             out.add(new UdpProxyMessage(dstAddr, dstPort, data));
@@ -87,6 +89,17 @@ class UdpProxyMessageDecoder extends MessageToMessageDecoder<DatagramPacket> {
         }
     }
 
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+        if (cause instanceof DecoderException) {
+            log.warn("An Exception occur at UdpProxyMessageDecoder [{}]", cause.getMessage());
+            ctx.close();
+            return;
+        }
+
+        ctx.fireExceptionCaught(cause);
+    }
 
     private String obtainTargetHost(ByteBuf buf, byte atyp) {
         switch (atyp) {

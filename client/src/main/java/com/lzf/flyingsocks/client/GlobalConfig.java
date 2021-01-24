@@ -67,6 +67,12 @@ public class GlobalConfig extends AbstractConfig {
     private boolean enableHttpProxy;
 
     /**
+     * 是否打开透明代理 (目前仅Linux支持)
+     */
+    private boolean enableTransparentProxy;
+
+
+    /**
      * 应用程序连接超时时间
      */
     private int connectTimeout;
@@ -137,6 +143,13 @@ public class GlobalConfig extends AbstractConfig {
     }
 
     /**
+     * @return 是否开启透明代理
+     */
+    public boolean isEnableTransparentProxy() {
+        return enableTransparentProxy;
+    }
+
+    /**
      * @return 应用程序连接超时时间
      */
     public int getConnectTimeout() {
@@ -157,6 +170,7 @@ public class GlobalConfig extends AbstractConfig {
         properties.put("enable-gui", Boolean.toString(configManager.isMacOS() || configManager.isWindows()));
         properties.put("enable-socks5", Boolean.toString(true));
         properties.put("enable-http", Boolean.toString(false));
+        properties.put("enable-transparent", Boolean.toString(false));
         properties.put("connect-timeout", String.valueOf(DEFAULT_CONNECT_TIMEOUT));
         try (FileWriter writer = new FileWriter(path.toFile())) {
             properties.store(writer, "flyingsocks base configuration");
@@ -178,6 +192,7 @@ public class GlobalConfig extends AbstractConfig {
                 Boolean.toString(configManager.isMacOS() || configManager.isWindows())));
         this.enableSocksProxy = Boolean.parseBoolean(properties.getProperty("enable-socks5"));
         this.enableHttpProxy = Boolean.parseBoolean(properties.getProperty("enable-http"));
+        this.enableTransparentProxy = Boolean.parseBoolean(properties.getProperty("enable-transparent"));
         this.connectTimeout = Integer.parseInt(properties.getProperty("connect-timeout", Integer.toString(DEFAULT_CONNECT_TIMEOUT)));
     }
 
@@ -188,6 +203,7 @@ public class GlobalConfig extends AbstractConfig {
         properties.put("enable-gui", Boolean.toString(this.enableGUI));
         properties.put("enable-socks5", Boolean.toString(this.enableSocksProxy));
         properties.put("enable-http", Boolean.toString(this.enableHttpProxy));
+        properties.put("enable-transparent", Boolean.toString(this.enableTransparentProxy));
         properties.put("connect-timeout", Integer.toString(this.connectTimeout));
 
         try (FileWriter writer = new FileWriter(path.toFile())) {

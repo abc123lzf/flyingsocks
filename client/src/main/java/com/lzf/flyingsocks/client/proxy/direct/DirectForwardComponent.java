@@ -53,9 +53,10 @@ public class DirectForwardComponent extends AbstractComponent<ProxyComponent> im
      */
     private final BootstrapTemplate connectBootstrapTemplate;
 
-
+    /**
+     * IO事件处理器
+     */
     private final EventLoopGroup eventLoopGroup;
-
 
 
     public DirectForwardComponent(ProxyComponent component) {
@@ -173,6 +174,7 @@ public class DirectForwardComponent extends AbstractComponent<ProxyComponent> im
                 return;
             } else if (cause instanceof IOException) {
                 log.trace("Direct TCP Connection force to close, from remote server {}:{}", request.getHost(), request.getPort());
+                return;
             }
 
             log.warn("Exception caught in TCP ProxyHandler", cause);

@@ -26,6 +26,7 @@ import com.lzf.flyingsocks.client.proxy.ProxyRequestManager;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.util.ReferenceCountUtil;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -53,7 +54,7 @@ public class UdpProxyMessageHandler extends ChannelInboundHandlerAdapter {
             try {
                 channelRead0(ctx, (UdpProxyMessage) msg);
             } finally {
-                ((UdpProxyMessage) msg).release();
+                ReferenceCountUtil.release(msg);
             }
         } else {
             ctx.fireChannelRead(msg);
@@ -61,10 +62,10 @@ public class UdpProxyMessageHandler extends ChannelInboundHandlerAdapter {
     }
 
 
-    private void channelRead0(ChannelHandlerContext ctx, UdpProxyMessage message) throws IOException {
+    protected void channelRead0(ChannelHandlerContext ctx, UdpProxyMessage message) throws IOException {
         String host = message.getHost();
         int port = message.getPort();
-        ByteBuf data = message.getData().retain();
+        ByteBuf data = message.getData();
 
         InetSocketAddress address = new InetSocketAddress(host, port);
         ProxyRequest request = requestCache.get(address);

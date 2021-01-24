@@ -25,10 +25,11 @@ import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.server.Server;
 import com.lzf.flyingsocks.server.ServerConfig;
 import com.lzf.flyingsocks.server.core.client.ClientProcessor;
-
 import com.lzf.flyingsocks.server.core.dispatch.DispatchProceessor;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.kqueue.KQueue;
 import io.netty.channel.kqueue.KQueueEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 
@@ -67,24 +68,23 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
         EventLoopGroup bossWorker;
         EventLoopGroup childWorker;
         if (linux) {
-            try {
+            if (Epoll.isAvailable()) {
                 bossWorker = new EpollEventLoopGroup(bossWorkerCount);
                 childWorker = new EpollEventLoopGroup(childWorkerCount);
-            } catch (Throwable t) {
-                log.info("Unable to create EpollEventLoopGroup [{}]", t.getMessage());
-                try {
-                    bossWorker = new KQueueEventLoopGroup(bossWorkerCount);
-                    childWorker = new KQueueEventLoopGroup(childWorkerCount);
-                } catch (Throwable t2) {
-                    log.info("Unable to create KQueueEventLoopGroup [{}]", t2.getMessage());
-                    bossWorker = new NioEventLoopGroup(bossWorkerCount);
-                    childWorker = new NioEventLoopGroup(childWorkerCount);
-                }
+            } else if (KQueue.isAvailable()) {
+                bossWorker = new KQueueEventLoopGroup(bossWorkerCount);
+                childWorker = new KQueueEventLoopGroup(childWorkerCount);
+            } else {
+                bossWorker = new NioEventLoopGroup(bossWorkerCount);
+                childWorker = new NioEventLoopGroup(childWorkerCount);
             }
         } else {
             bossWorker = new NioEventLoopGroup(bossWorkerCount);
             childWorker = new NioEventLoopGroup(childWorkerCount);
         }
+
+        log.info("EventLoopGroup type: {}, BossWorkerCount: {}, ChildWorkerCount: {}",
+                bossWorker.getClass().getSimpleName(), bossWorkerCount, childWorkerCount);
 
         this.bossWorker = bossWorker;
         this.childWorker = childWorker;

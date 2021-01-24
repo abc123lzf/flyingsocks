@@ -22,6 +22,7 @@
 package com.lzf.flyingsocks.client.proxy.socks;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.util.ReferenceCounted;
 
 import java.util.Objects;
 
@@ -29,13 +30,13 @@ import java.util.Objects;
  * @author lzf abc123lzf@126.com
  * @since 2021/1/12 5:38
  */
-class UdpProxyMessage {
+class UdpProxyMessage implements ReferenceCounted {
 
     private final String host;
 
     private final int port;
 
-    private ByteBuf data;
+    private final ByteBuf data;
 
     public UdpProxyMessage(String host, int port, ByteBuf data) {
         if (port <= 0 || port > 65535) {
@@ -56,6 +57,9 @@ class UdpProxyMessage {
     }
 
     public ByteBuf getData() {
+        if (data.refCnt() <= 0) {
+            return null;
+        }
         return data;
     }
 
@@ -63,13 +67,43 @@ class UdpProxyMessage {
         return host.equals(message.host) && port == message.port;
     }
 
+    @Override
+    public int refCnt() {
+        return data.refCnt();
+    }
 
-    public void release() {
-        ByteBuf buf = this.data;
-        if (buf != null) {
-            data.release();
-            this.data = null;
-        }
+    @Override
+    public UdpProxyMessage retain() {
+        data.retain();
+        return this;
+    }
+
+    @Override
+    public UdpProxyMessage retain(int increment) {
+        data.retain(increment);
+        return this;
+    }
+
+    @Override
+    public UdpProxyMessage touch() {
+        data.touch();
+        return this;
+    }
+
+    @Override
+    public UdpProxyMessage touch(Object hint) {
+        data.touch(hint);
+        return this;
+    }
+
+    @Override
+    public boolean release(int decrement) {
+        return data.release(decrement);
+    }
+
+    @Override
+    public boolean release() {
+        return data.release();
     }
 
 }
