@@ -101,7 +101,7 @@ class ProxyInitialHandler extends ChannelInboundHandlerAdapter {
     }
 
     private void addOutboundHandler(ChannelPipeline pipeline, byte[] delimiter) {
-        pipeline.addLast(new DelimiterOutboundHandler(delimiter));
+        pipeline.addLast(new DelimiterOutboundHandler(delimiter, true));
         pipeline.addLast(FSMessageChannelOutboundHandler.INSTANCE);
     }
 

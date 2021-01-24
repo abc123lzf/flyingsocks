@@ -68,7 +68,7 @@ class TcpDispatchHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof ByteBuf) {
             try {
                 channelRead0(ctx, (ByteBuf) msg);
@@ -80,14 +80,14 @@ class TcpDispatchHandler extends ChannelInboundHandlerAdapter {
         }
     }
 
-    protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
+    protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) {
         log.trace("Receive from {}:{} response.", host(), port());
 
         ProxyResponseMessage prm = new ProxyResponseMessage(proxyTask.getRequestMessage().serialId());
         prm.setState(ProxyResponseMessage.State.SUCCESS);
         prm.setMessage(msg.retain());
         try {
-            proxyTask.session().writeAndFlushMessage(prm.serialize(ctx.alloc()));
+            proxyTask.session().writeAndFlushMessage(prm);
         } catch (IllegalStateException e) {
             msg.release();
             ctx.close();

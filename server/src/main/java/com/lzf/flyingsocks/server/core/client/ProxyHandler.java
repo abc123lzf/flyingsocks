@@ -84,7 +84,6 @@ class ProxyHandler extends ChannelInboundHandlerAdapter {
                 if (head == ProxyRequestMessage.HEAD) {
                     channelRead0(ctx, buf);
                 } else if (head == PingMessage.HEAD) {
-                    log.info("Receive ping message");
                     PingMessage ping = new PingMessage();
                     ping.serialize(ctx.alloc());
                     PongMessage pong = new PongMessage();

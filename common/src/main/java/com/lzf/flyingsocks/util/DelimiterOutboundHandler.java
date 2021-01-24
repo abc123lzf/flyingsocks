@@ -43,11 +43,22 @@ public class DelimiterOutboundHandler extends ChannelOutboundHandlerAdapter {
      */
     private final ByteBuf delimiter;
 
+    /**
+     * 强制使用VoidPromise
+     */
+    private final boolean enforceVoidPromise;
+
 
     public DelimiterOutboundHandler(byte[] delimiter) {
+        this(delimiter, false);
+    }
+
+
+    public DelimiterOutboundHandler(byte[] delimiter, boolean enforceVoidPromise) {
         Objects.requireNonNull(delimiter);
         byte[] arr = Arrays.copyOf(delimiter, delimiter.length);
         this.delimiter = Unpooled.wrappedBuffer(arr).asReadOnly();
+        this.enforceVoidPromise = enforceVoidPromise;
     }
 
 
@@ -55,6 +66,9 @@ public class DelimiterOutboundHandler extends ChannelOutboundHandlerAdapter {
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
         if (msg instanceof ByteBuf) {
             delimiter.readerIndex(0);
+            if (enforceVoidPromise) {
+                promise = ctx.voidPromise();
+            }
             ctx.write(msg, promise);
             ctx.write(delimiter.retain(), promise);
         } else {

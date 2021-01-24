@@ -24,7 +24,6 @@ package com.lzf.flyingsocks.server.core;
 import com.lzf.flyingsocks.AbstractSession;
 import com.lzf.flyingsocks.Session;
 import com.lzf.flyingsocks.protocol.DelimiterMessage;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.socket.SocketChannel;
 
@@ -68,12 +67,12 @@ public class ClientSession extends AbstractSession implements Session {
         return Arrays.copyOf(b, b.length);
     }
 
-    public void writeMessage(ByteBuf msg) {
+    public void writeMessage(Object msg) {
         checkChannelState();
         socketChannel.write(msg, socketChannel.voidPromise());
     }
 
-    public void writeAndFlushMessage(ByteBuf msg) {
+    public void writeAndFlushMessage(Object msg) {
         checkChannelState();
         socketChannel.writeAndFlush(msg, socketChannel.voidPromise());
     }

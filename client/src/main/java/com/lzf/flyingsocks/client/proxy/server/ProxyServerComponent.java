@@ -817,7 +817,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 msg.putContent(key, config.getAuthArgument(key));
             }
 
-            ctx.writeAndFlush(msg);
+            ctx.writeAndFlush(msg, ctx.voidPromise());
             ctx.pipeline().remove(this).addLast(new ProxyHandler());
         }
 
@@ -970,13 +970,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             prm.setPort(request.getPort());
             prm.setMessage(buf);
 
-            try {
-                proxyServerSession.socketChannel().writeAndFlush(prm.serialize(buf.alloc()));
-            } catch (SerializationException e) {
-                log.warn("Serialize ProxyRequestMessage occur a exception");
-                buf.release();
-                request.close();
-            }
+            SocketChannel channel = proxyServerSession.socketChannel();
+            channel.writeAndFlush(prm, channel.voidPromise());
         }
 
         @Override

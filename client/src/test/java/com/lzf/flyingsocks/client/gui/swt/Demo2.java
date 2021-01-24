@@ -1,14 +1,21 @@
 package com.lzf.flyingsocks.client.gui.swt;
 
-import org.apache.commons.lang3.StringUtils;
-
-import java.util.Arrays;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.CompositeByteBuf;
+import io.netty.buffer.Unpooled;
 
 public class Demo2 {
 
     public static void main(String[] args) throws Exception {
-        String str = "Basic sadadasda";
-        System.out.println(Arrays.toString(StringUtils.split(str, ' ')));
-        //Inet6Address.getByAddress();
+        ByteBuf buf = Unpooled.buffer(100);
+        ByteBuf buf2 = Unpooled.buffer(20);
+
+        CompositeByteBuf res = Unpooled.compositeBuffer(2);
+        res.addComponent(true, buf);
+        res.addComponent(true, buf2);
+
+        System.out.println(buf.refCnt() + " " + buf2.refCnt() + " " + res.refCnt());
+        res.release();
+        System.out.println(buf.refCnt() + " " + buf2.refCnt() + " " + res.refCnt());
     }
 }

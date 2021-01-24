@@ -100,6 +100,10 @@ public class SWTViewComponent extends AbstractComponent<Client> {
         });
     }
 
+    public final Display getDisplay() {
+        return display;
+    }
+
     void openSocksSettingUI() {
         socksSettingModule.setVisiable(true);
     }
