@@ -179,7 +179,6 @@ public final class SocksReceiverComponent extends AbstractComponent<ProxyCompone
 
         return boot.bind(0).addListener((ChannelFuture bindFuture) -> {
             if (bindFuture.isSuccess()) {
-
                 //log.trace("Bind proxy UDP receive port has done");
                 closeFuture.addListener((ChannelFuture future) -> {
                     //log.trace("Close UDP Proxy port");

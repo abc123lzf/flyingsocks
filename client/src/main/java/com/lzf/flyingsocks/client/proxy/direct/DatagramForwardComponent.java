@@ -74,9 +74,7 @@ public class DatagramForwardComponent extends AbstractComponent<ProxyComponent> 
 
     @Override
     public void receive(ProxyRequest request) {
-        bootstrapTemplate.doBind(0, channel -> {
-            channel.pipeline().addLast(new ForwardHandler(request));
-        }, future -> {
+        bootstrapTemplate.doBind(0, new ForwardHandler(request), future -> {
             if (!future.isSuccess()) {
                 request.close();
             }

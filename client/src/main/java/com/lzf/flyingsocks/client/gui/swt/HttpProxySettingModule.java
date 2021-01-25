@@ -26,13 +26,18 @@ import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Text;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
 
+import static com.lzf.flyingsocks.client.gui.swt.Utils.addButtonSelectionListener;
+import static com.lzf.flyingsocks.client.gui.swt.Utils.createButton;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createLabel;
+import static com.lzf.flyingsocks.client.gui.swt.Utils.createRadio;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createShell;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.loadImage;
 
@@ -59,12 +64,40 @@ public class HttpProxySettingModule extends AbstractModule<SWTViewComponent> {
             throw new Error(e);
         }
 
-        this.shell = createShell(component.getDisplay(), "Socks5本地代理设置", icon, 600, 250);
+        this.shell = createShell(component.getDisplay(), "HTTP本地代理设置", icon, 600, 250);
+        initial();
     }
 
     private void initial() {
         createLabel(shell, "开关", 20, 5, 80, 30, SWT.CENTER);
-        //createLabel(shell, "", );
+        createLabel(shell, "代理端口", 20, 40, 80, 30, SWT.CENTER);
+        createLabel(shell, "认证", 20, 75, 80, 30, SWT.CENTER);
+        createLabel(shell, "用户名", 20, 110, 80, 30, SWT.CENTER);
+        createLabel(shell, "密码", 20, 135, 80, 30, SWT.CENTER);
+
+        Button open = createRadio(shell, "开启", 160, 5, 80, 30);
+        Button close = createRadio(shell, "关闭", 250, 5, 80, 30);
+
+        Text portText = new Text(shell, SWT.BORDER);
+        portText.setBounds(160, 40, 380, 30);
+
+        Button authOpen = createRadio(shell, "开启", 160, 75, 80, 30);
+        Button authClose = createRadio(shell, "关闭", 250, 75, 80, 30);
+
+        Text userText = new Text(shell, SWT.BORDER);
+        userText.setBounds(160, 110, 380, 30);
+
+        Text passText = new Text(shell, SWT.CENTER);
+        passText.setBounds(160, 135, 380, 30);
+
+        Button enter = createButton(shell, "确认", 170, 170, 150, 30);
+        Button cancel = createButton(shell, "取消", 360, 170, 150, 30);
+
+        addButtonSelectionListener(enter, e -> {
+
+        });
+
+        addButtonSelectionListener(cancel, e -> setVisiable(false));
     }
 
     void setVisiable(boolean visiable) {

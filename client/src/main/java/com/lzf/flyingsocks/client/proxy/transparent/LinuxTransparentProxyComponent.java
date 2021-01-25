@@ -33,11 +33,14 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelPipeline;
 import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollChannelOption;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.epoll.EpollSocketChannel;
+import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.ReferenceCountUtil;
 
 import java.io.IOException;
@@ -104,11 +107,15 @@ public class LinuxTransparentProxyComponent extends AbstractComponent<ProxyCompo
                         if (address == null) {
                             log.warn("Could not get target address, client address: {}", ch.remoteAddress());
                             ch.close();
+                            return;
                         }
 
                         log.debug("Proxy target address: {}, from client: {}", address, ch.remoteAddress());
+                        ChannelPipeline pipeline = ch.pipeline();
+
                         ProxyRequest request = new ProxyRequest(address.getHostName(), address.getPort(), ch, ProxyRequest.Protocol.TCP);
-                        ch.pipeline().addLast(new ProxyHandler(request));
+                        pipeline.addLast(new IdleStateHandler(0, 20, 0));
+                        pipeline.addLast(new ProxyHandler(request));
                     }
                 });
 
@@ -135,6 +142,17 @@ public class LinuxTransparentProxyComponent extends AbstractComponent<ProxyCompo
 
         ProxyHandler(ProxyRequest request) {
             this.proxyRequest = Objects.requireNonNull(request);
+        }
+
+        @Override
+        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
+            if (evt instanceof IdleStateEvent) {
+                if (proxyRequest.isClose()) {
+                    ctx.close();
+                }
+                return;
+            }
+            ctx.fireUserEventTriggered(evt);
         }
 
         @Override

@@ -46,8 +46,6 @@ public class TransparentProxyConfig extends AbstractConfig {
 
     private final Path configPath;
 
-    private boolean enable;
-
     private int port;
 
     public TransparentProxyConfig(ConfigManager<?> configManager) {
@@ -68,16 +66,10 @@ public class TransparentProxyConfig extends AbstractConfig {
     }
 
 
-    public boolean isEnable() {
-        return enable;
-    }
-
-
     private void loadFile() {
         try (FileReader reader = new FileReader(configPath.toFile())) {
             Properties properties = new Properties();
             properties.load(reader);
-            this.enable = Boolean.parseBoolean(properties.getProperty("enable", "false"));
             this.port = Integer.parseInt(properties.getProperty("port", Integer.toString(DEFAULT_PORT)));
         } catch (IOException e) {
             throw new ConfigInitializationException(e);
@@ -95,7 +87,6 @@ public class TransparentProxyConfig extends AbstractConfig {
         }
 
         Properties properties = new Properties();
-        properties.put("enable", Boolean.toString(false));
         properties.put("port", Integer.toString(DEFAULT_PORT));
 
         try (FileWriter writer = new FileWriter(configPath.toFile())) {
@@ -109,7 +100,6 @@ public class TransparentProxyConfig extends AbstractConfig {
     @Override
     public void save() throws Exception {
         Properties properties = new Properties();
-        properties.put("enable", Boolean.toString(this.enable));
         properties.put("port", Integer.toString(this.port));
         try (FileWriter writer = new FileWriter(configPath.toFile())) {
             properties.store(writer, "flyingsocks transparent configuration (ONLY LINUX)");
