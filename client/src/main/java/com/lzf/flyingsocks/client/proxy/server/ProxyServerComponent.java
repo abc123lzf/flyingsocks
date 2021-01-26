@@ -36,17 +36,16 @@ import com.lzf.flyingsocks.client.proxy.util.MessageReceiver;
 import com.lzf.flyingsocks.encrypt.EncryptProvider;
 import com.lzf.flyingsocks.encrypt.EncryptSupport;
 import com.lzf.flyingsocks.encrypt.OpenSSLEncryptProvider;
-import com.lzf.flyingsocks.protocol.AuthMessage;
+import com.lzf.flyingsocks.protocol.AuthRequestMessage;
+import com.lzf.flyingsocks.protocol.AuthResponseMessage;
 import com.lzf.flyingsocks.protocol.CertRequestMessage;
 import com.lzf.flyingsocks.protocol.CertResponseMessage;
-import com.lzf.flyingsocks.protocol.DelimiterMessage;
-import com.lzf.flyingsocks.protocol.PingMessage;
-import com.lzf.flyingsocks.protocol.PongMessage;
 import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
 import com.lzf.flyingsocks.protocol.ProxyResponseMessage;
 import com.lzf.flyingsocks.protocol.SerializationException;
-import com.lzf.flyingsocks.util.DelimiterOutboundHandler;
-import com.lzf.flyingsocks.util.FSMessageChannelOutboundHandler;
+import com.lzf.flyingsocks.util.FSMessageOutboundEncoder;
+import com.lzf.flyingsocks.util.HeartbeatMessageHandler;
+import com.lzf.flyingsocks.util.MessageHeaderCheckHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -63,7 +62,7 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
-import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.handler.traffic.ChannelTrafficShapingHandler;
 import io.netty.handler.traffic.TrafficCounter;
@@ -83,7 +82,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -94,13 +92,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 
 import static com.lzf.flyingsocks.client.proxy.server.ProxyServerConfig.EncryptType;
-import static com.lzf.flyingsocks.protocol.AuthMessage.AuthMethod;
 
 /**
  * flyingsocks服务器的连接管理组件，每个ProxyServerComponent对象代表一个服务器节点
  * 例如：若需要连接多个flyingsocks服务器实现负载均衡，则需要多个ProxyServerComponent对象
  */
 public class ProxyServerComponent extends AbstractComponent<ProxyComponent> implements ProxyRequestSubscriber {
+
+    private static final MessageHeaderCheckHandler AUTH_RESPONSE_HEADER_CHECKER = new MessageHeaderCheckHandler(AuthResponseMessage.getMessageHeader());
 
     //该服务器节点配置信息
     private final ProxyServerConfig.Node config;
@@ -274,7 +273,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                         ChannelPipeline cp = ch.pipeline();
                         ChannelTrafficShapingHandler trafficHandler = new ChannelTrafficShapingHandler(1000L);
                         cp.addLast(trafficHandler);
-                        ProxyServerComponent.this.trafficCounter = trafficHandler.trafficCounter();;
+                        ProxyServerComponent.this.trafficCounter = trafficHandler.trafficCounter();
 
                         cp.addLast(new ChannelTrafficShapingHandler(1000L));
                         if (provider != null) {
@@ -284,7 +283,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                             cp.addLast(provider.decodeHandler(params));
                         }
 
-                        cp.addLast(new InitialHandler());
+                        cp.addLast(FSMessageOutboundEncoder.HANDLER_NAME, FSMessageOutboundEncoder.INSTANCE);
+                        cp.addLast(AuthHandler.HANDLER_NAME, new AuthHandler());
                     }
                 });
 
@@ -317,7 +317,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             @Override
             protected void initChannel(SocketChannel ch) {
                 ChannelPipeline cp = ch.pipeline();
-                cp.addLast(FSMessageChannelOutboundHandler.INSTANCE);
+                cp.addLast(FSMessageOutboundEncoder.INSTANCE);
                 cp.addLast(new DelimiterBasedFrameDecoder(1024 * 100,
                         Unpooled.copiedBuffer(CertResponseMessage.END_MARK)));
 
@@ -328,22 +328,17 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                         CertRequestMessage msg;
                         switch (config.getAuthType()) {
                             case SIMPLE:
-                                msg = new CertRequestMessage(AuthMethod.SIMPLE, md5);
+                                msg = new CertRequestMessage((byte) 0x0, md5);
                                 break;
                             case USER:
-                                msg = new CertRequestMessage(AuthMethod.USER, md5);
+                                msg = new CertRequestMessage((byte) 0x1, md5);
                                 break;
                             default:
                                 throw new IllegalArgumentException("Auth method: " + config.getAuthType() + " Not support.");
                         }
 
-                        List<String> keys = msg.getAuthMethod().getContainsKey();
-                        for (String key : keys) {
-                            msg.putContent(key, config.getAuthArgument(key));
-                        }
-
+                        config.allAuthArgument().forEach(msg::putContent);
                         log.trace("Ready to send CertRequest to remote server {}:{}", host, certPort);
-
                         ctx.writeAndFlush(msg);
                     }
                 });
@@ -721,104 +716,68 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
     }
 
 
-    private final class InitialHandler extends ChannelInboundHandlerAdapter {
-
-        @Override
-        public void channelActive(ChannelHandlerContext ctx) throws SerializationException {
-            log.trace("Start flyingsocks server connection initialize");
-            updateConnectionState(ConnectionState.PROXY_CONNECT);
-            ProxyServerSession session = new ProxyServerSession((SocketChannel) ctx.channel());
-
-            Random random = new Random();
-            byte[] delimiter = new byte[DelimiterMessage.DEFAULT_SIZE];
-            random.nextBytes(delimiter);
-
-            DelimiterMessage msg = new DelimiterMessage(delimiter);
-
-            session.setDelimiter(delimiter);
-            ProxyServerComponent.this.proxyServerSession = session;
-
-            ctx.writeAndFlush(msg.serialize(ctx.alloc()));
-            ctx.fireChannelActive();
-        }
-
-        @Override
-        public void channelRead(ChannelHandlerContext ctx, Object buf) throws Exception {
-            if (buf instanceof ByteBuf) {
-                try {
-                    channelRead0(ctx, (ByteBuf) buf);
-                } finally {
-                    ReferenceCountUtil.release(buf);
-                }
-            } else {
-                ctx.fireChannelRead(buf);
-            }
-        }
-
-
-        private void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws SerializationException {
-            DelimiterMessage dmsg = new DelimiterMessage(msg);
-            byte[] b = dmsg.getDelimiter();
-            byte[] rb = proxyServerSession.getDelimiter();
-
-            if (rb == null) {
-                log.info("Delimiter message magic number is not correct");
-                ctx.close();
-                return;
-            }
-
-            for (int i = 0; i < DelimiterMessage.DEFAULT_SIZE; i++) {
-                if (b[i] != rb[i]) {
-                    log.debug("Channel close because of delimiter is difference");
-                    ctx.close();
-                    return;
-                }
-            }
-
-            ctx.pipeline().remove(this)
-                    .addLast(new DelimiterBasedFrameDecoder(102400, Unpooled.wrappedBuffer(b)))
-                    .addLast(new DelimiterOutboundHandler(proxyServerSession.getDelimiter()))
-                    .addLast(FSMessageChannelOutboundHandler.INSTANCE)
-                    .addLast(new AuthHandler());
-        }
-
-        @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            updateConnectionState(ConnectionState.PROXY_CONNECT_ERROR);
-            log.warn("ProxyServerComponent occur a error", cause);
-            ctx.close();
-        }
-
-        @Override
-        public void channelInactive(ChannelHandlerContext ctx) {
-            updateConnectionState(ConnectionState.PROXY_DISCONNECT);  //在初始化过程中有可能因为网络波动断开连接
-            afterChannelInactive();
-        }
-    }
-
-
     private final class AuthHandler extends ChannelInboundHandlerAdapter {
+
+        static final String HANDLER_NAME = "AuthHandler";
+
+        private static final String RESPONSE_HEADER_CHECKER_NAME = "AuthResponseMessageHeaderChecker";
+
+        private static final String RESPONSE_FRAME_DECODER_NAME = "AuthResponseMessageFrameDecoder";
+
         @Override
         public void handlerAdded(ChannelHandlerContext ctx) {
-            AuthMessage msg;
+            ChannelPipeline cp = ctx.pipeline();
+            cp.addBefore(HANDLER_NAME, RESPONSE_FRAME_DECODER_NAME,
+                    new LengthFieldBasedFrameDecoder(Short.MAX_VALUE, AuthResponseMessage.LENGTH_OFFSET,
+                            AuthResponseMessage.LENGTH_SIZE, AuthResponseMessage.LENGTH_ADJUSTMENT, 0));
+            cp.addBefore(RESPONSE_FRAME_DECODER_NAME, RESPONSE_HEADER_CHECKER_NAME, AUTH_RESPONSE_HEADER_CHECKER);
+        }
+
+        @Override
+        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+            updateConnectionState(ConnectionState.PROXY_CONNECT);
+            ProxyServerComponent.this.proxyServerSession = new ProxyServerSession((SocketChannel) ctx.channel());
+
+            AuthRequestMessage msg;
             switch (config.getAuthType()) {
                 case SIMPLE:
-                    msg = new AuthMessage(AuthMethod.SIMPLE);
+                    msg = new AuthRequestMessage((byte) 0x00);
                     break;
                 case USER:
-                    msg = new AuthMessage(AuthMethod.USER);
+                    msg = new AuthRequestMessage((byte) 0x01);
                     break;
                 default:
                     throw new IllegalArgumentException("Auth method: " + config.getAuthType() + " Not support.");
             }
 
-            List<String> keys = msg.getAuthMethod().getContainsKey();
-            for (String key : keys) {
-                msg.putContent(key, config.getAuthArgument(key));
-            }
-
+            config.allAuthArgument().forEach(msg::putContent);
             ctx.writeAndFlush(msg, ctx.voidPromise());
-            ctx.pipeline().remove(this).addLast(new ProxyHandler());
+            super.channelActive(ctx);
+        }
+
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            if (msg instanceof ByteBuf) {
+                try {
+                    AuthResponseMessage response = new AuthResponseMessage((ByteBuf) msg);
+                    if (!response.isSuccess()) {
+                        log.trace("Auth failure, from server {}:{}", config.getHost(), config.getPort());
+                        updateConnectionState(ConnectionState.PROXY_CONNECT_AUTH_FAILURE);
+                    }
+
+                    log.trace("Auth success");
+
+                    ChannelPipeline cp = ctx.pipeline();
+                    cp.remove(this);
+                    cp.remove(RESPONSE_HEADER_CHECKER_NAME);
+                    cp.remove(RESPONSE_FRAME_DECODER_NAME);
+                    cp.addLast(ProxyHandler.HANDLER_NAME, new ProxyHandler());
+                } finally {
+                    ReferenceCountUtil.release(msg);
+                }
+            } else {
+                ctx.fireChannelRead(msg);
+            }
         }
 
         @Override
@@ -834,9 +793,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
-            log.trace("Auth failure, from server {}:{}", config.getHost(), config.getPort());
-
-            updateConnectionState(ConnectionState.PROXY_CONNECT_AUTH_FAILURE);  //多半是认证失败
+            log.trace("Remote server force to close, server [{}:{}]", config.getHost(), config.getPort());
             afterChannelInactive();
         }
     }
@@ -844,24 +801,25 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
     private final class ProxyHandler extends ChannelInboundHandlerAdapter {
 
-        @Override
-        public void handlerAdded(ChannelHandlerContext ctx) {
-            ctx.pipeline().addFirst(new IdleStateHandler(15, 0, 0));
-        }
+        static final String HANDLER_NAME = "ProxyHandler";
+
+        private static final String RESPONSE_FRAME_DECODER_NAME = "ProxyResponseMessageFrameDecoder";
+
+        private static final int MAX_FRAME_SIZE = 1024 * 1024 * 20; //20MB
 
         @Override
-        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
-            if (evt instanceof IdleStateEvent) {
-                ctx.writeAndFlush(new PingMessage(), ctx.voidPromise());
-                return;
-            }
-            ctx.fireUserEventTriggered(evt);
+        public void handlerAdded(ChannelHandlerContext ctx) {
+            ChannelPipeline cp = ctx.pipeline();
+            cp.addBefore(HANDLER_NAME, RESPONSE_FRAME_DECODER_NAME, new LengthFieldBasedFrameDecoder(MAX_FRAME_SIZE,
+                    ProxyResponseMessage.LENGTH_OFFSET, ProxyResponseMessage.LENGTH_SIZE, ProxyResponseMessage.LENGTH_ADJUSTMENT, 0));
+            cp.addBefore(RESPONSE_FRAME_DECODER_NAME, HeartbeatMessageHandler.NAME, HeartbeatMessageHandler.INSTANCE);
+            cp.addFirst(new IdleStateHandler(15, 0, 0));
+            ProxyServerComponent.this.proxyServerSession.setReady(true);
         }
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             if (cause instanceof IOException && log.isInfoEnabled()) {
-                updateConnectionState(ConnectionState.PROXY_DISCONNECT);
                 log.info("flyingsocks server {}:{} force closure of connections", config.getHost(), config.getPort());
             } else if (log.isWarnEnabled()) {
                 updateConnectionState(ConnectionState.PROXY_CONNECT_ERROR);
@@ -874,13 +832,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
             if (msg instanceof ByteBuf) {
                 try {
-                    ByteBuf buf = (ByteBuf) msg;
-                    byte head = buf.getByte(0);
-                    if (head == ProxyResponseMessage.HEAD) {
-                        processProxyResponseMessage(ctx, buf);
-                    } else if (head == PingMessage.HEAD) {
-                        processPingMessage(ctx, buf);
-                    }
+                    processProxyResponseMessage(ctx, (ByteBuf) msg);
                 } finally {
                     ReferenceCountUtil.release(msg);
                 }
@@ -903,7 +855,6 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 SerialProxyRequest request = activeProxyRequestMap.get(response.serialId());
                 if (request == null) {
                     buf.release();
-                    //log.warn("Unable get active request [serialId:{}]", response.serialId());
                     return;
                 }
 
@@ -911,22 +862,9 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             }
         }
 
-
-        protected void processPingMessage(ChannelHandlerContext ctx, ByteBuf buf) {
-            try {
-                PingMessage msg = new PingMessage();
-                msg.deserialize(buf);
-                PongMessage pong = new PongMessage();
-                ctx.writeAndFlush(pong, ctx.voidPromise());
-            } catch (SerializationException e) {
-                log.warn("Illegal PingMessage", e);
-                ctx.close();
-            }
-        }
-
-
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
+            updateConnectionState(ConnectionState.PROXY_DISCONNECT);
             afterChannelInactive();
         }
     }
@@ -957,7 +895,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
         @Override
         public void receive(ByteBuf buf) {
-            if (proxyServerSession == null) {
+            ProxyServerSession session = ProxyServerComponent.this.proxyServerSession;
+            if (session == null || !session.isReady() || !session.isActive()) {
                 buf.release();
                 request.close();
                 return;

@@ -89,6 +89,7 @@ class TcpDispatchHandler extends ChannelInboundHandlerAdapter {
         try {
             proxyTask.session().writeAndFlushMessage(prm);
         } catch (IllegalStateException e) {
+            log.debug("Remote client connection closed", e);
             msg.release();
             ctx.close();
         }

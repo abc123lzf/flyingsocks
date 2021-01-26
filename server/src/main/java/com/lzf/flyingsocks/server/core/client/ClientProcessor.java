@@ -28,7 +28,7 @@ import com.lzf.flyingsocks.encrypt.EncryptProvider;
 import com.lzf.flyingsocks.encrypt.EncryptSupport;
 import com.lzf.flyingsocks.encrypt.JksSSLEncryptProvider;
 import com.lzf.flyingsocks.encrypt.OpenSSLEncryptProvider;
-import com.lzf.flyingsocks.protocol.AuthMessage;
+import com.lzf.flyingsocks.protocol.AuthRequestMessage;
 import com.lzf.flyingsocks.server.ServerConfig;
 import com.lzf.flyingsocks.server.core.OpenSSLConfig;
 import com.lzf.flyingsocks.server.core.ProxyProcessor;
@@ -38,7 +38,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -137,24 +136,21 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
      * @param msg 客户端认证报文
      * @return 是否通过认证
      */
-    boolean doAuth(AuthMessage msg) {
+    boolean doAuth(AuthRequestMessage msg) {
         ServerConfig.Node n = parent.getServerConfig();
-        if (n.authType.authMethod != msg.getAuthMethod()) { //如果认证方式不匹配
+        if (n.authType.typeFieldValue != msg.getAuthType()) { //如果认证方式不匹配
             return false;
         }
 
+        Map<String, String> parameters = msg.getParameters();
+
         if (n.authType == ServerConfig.AuthType.SIMPLE) {
-            List<String> keys = msg.getAuthMethod().getContainsKey();
-            for (String key : keys) {
-                if (!n.getArgument(key).equals(msg.getContent(key)))
-                    return false;
-            }
-            return true;
+            String password = parameters.get("password");
+            return Objects.equals(n.getArgument("password"), password);
         } else if (n.authType == ServerConfig.AuthType.USER) {
             String group = n.getArgument("group");
             UserDatabase db = parent.getParentComponent().getUserDatabase();
-
-            return db.doAuth(group, msg.getContent("user"), msg.getContent("pass"));
+            return db.doAuth(group, msg.getParameter("user"), msg.getParameter("pass"));
         }
 
         return false;

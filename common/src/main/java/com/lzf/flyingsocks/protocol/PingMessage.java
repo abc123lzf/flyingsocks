@@ -32,7 +32,7 @@ import java.util.Arrays;
  * @author lzf abc123lzf@126.com
  * @since 2021/1/20 21:04
  */
-public class PingMessage implements Message {
+public class PingMessage extends Message {
 
     public static final byte HEAD = 0x01;
 
@@ -47,13 +47,21 @@ public class PingMessage implements Message {
         BODY = body.asReadOnly();
     }
 
+    public PingMessage() {
+        super();
+    }
+
+    public PingMessage(ByteBuf buf) throws SerializationException {
+        super(buf);
+    }
+
     @Override
     public ByteBuf serialize(ByteBufAllocator allocator) throws SerializationException {
         return BODY.retainedSlice();
     }
 
     @Override
-    public void deserialize(ByteBuf buf) throws SerializationException {
+    protected void deserialize(ByteBuf buf) throws SerializationException {
         try {
             byte header = buf.readByte();
             if (header != HEAD) {

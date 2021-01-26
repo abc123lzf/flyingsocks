@@ -24,8 +24,8 @@ package com.lzf.flyingsocks.server.core.client;
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.encrypt.EncryptProvider;
-import com.lzf.flyingsocks.protocol.DelimiterMessage;
 import com.lzf.flyingsocks.server.core.ClientSession;
+import com.lzf.flyingsocks.util.FSMessageOutboundEncoder;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
@@ -42,7 +42,6 @@ import io.netty.channel.kqueue.KQueueServerSocketChannel;
 import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.FixedLengthFrameDecoder;
 
 import javax.net.ssl.SSLException;
 import java.io.IOException;
@@ -114,9 +113,9 @@ class ProxyRequestProcessor extends AbstractComponent<ClientProcessor> {
                             cp.addLast(encryptProvider.decodeHandler(params));
                         }
 
+                        cp.addLast(FSMessageOutboundEncoder.INSTANCE);
                         cp.addLast(clientSessionHandler);
-                        cp.addLast(new FixedLengthFrameDecoder(DelimiterMessage.LENGTH));
-                        cp.addLast(new ProxyInitialHandler());
+                        cp.addLast(ProxyAuthenticationHandler.HANDLER_NAME, new ProxyAuthenticationHandler());
                     }
                 });
 

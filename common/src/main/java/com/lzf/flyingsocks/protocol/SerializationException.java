@@ -28,28 +28,40 @@ public class SerializationException extends Exception {
 
     private static final StackTraceElement[] NONE_STACK = new StackTraceElement[0];
 
+    private final Class<? extends Message> messageClass;
+
     public SerializationException(String msg) {
         super(msg);
-
+        this.messageClass = null;
     }
 
     public SerializationException(String msg, Throwable t) {
         super(msg, t);
+        this.messageClass = null;
     }
 
     public SerializationException(Throwable t) {
         super(t);
+        this.messageClass = null;
     }
 
     public SerializationException(Class<? extends Message> messageClass, String msg) {
         super(toMessage(messageClass, msg));
+        this.messageClass = messageClass;
     }
 
+    public SerializationException(Class<? extends Message> messageClass, Throwable t) {
+        super("[" + messageClass.getName() + "]", t);
+        this.messageClass = messageClass;
+    }
 
     private static String toMessage(Class<? extends Message> messageClass, String msg) {
         return "[" + messageClass.getName() + "]" + msg;
     }
 
+    public Class<? extends Message> getMessageClass() {
+        return messageClass;
+    }
     /**
      * 不爬栈
      */

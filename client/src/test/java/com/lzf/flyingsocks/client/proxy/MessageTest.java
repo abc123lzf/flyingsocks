@@ -19,29 +19,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.lzf.flyingsocks.client.proxy.server;
+package com.lzf.flyingsocks.client.proxy;
 
-import com.lzf.flyingsocks.AbstractSession;
-import io.netty.channel.socket.SocketChannel;
+import com.lzf.flyingsocks.protocol.ProxyResponseMessage;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.Unpooled;
+import io.netty.buffer.UnpooledByteBufAllocator;
 
-public class ProxyServerSession extends AbstractSession {
+/**
+ * @author lzf abc123lzf@126.com
+ * @since 2021/1/27 0:38
+ */
+public class MessageTest {
 
-    private boolean ready = false;
+    public static void main(String[] args) throws Exception {
+        ByteBufAllocator allocator = UnpooledByteBufAllocator.DEFAULT;
 
-    ProxyServerSession(SocketChannel serverChannel) {
-        super(serverChannel);
+        ProxyResponseMessage message = new ProxyResponseMessage(0);
+        message.setState(ProxyResponseMessage.State.FAILURE);
+        message.setMessage(Unpooled.wrappedBuffer(new byte[0]));
+
+        ByteBuf buf = message.serialize(allocator);
+        System.out.println(buf.readableBytes());
+
+        ProxyResponseMessage result = new ProxyResponseMessage(buf);
+        System.out.println(result.getState());
+        System.out.println(result.serialId());
+        System.out.println(result.getMessage().readableBytes());
+
+
     }
 
-    void setReady(boolean ready) {
-        this.ready = ready;
-    }
-
-    public boolean isReady() {
-        return ready;
-    }
-
-    @Override
-    public boolean isActive() {
-        return socketChannel.isActive();
-    }
 }

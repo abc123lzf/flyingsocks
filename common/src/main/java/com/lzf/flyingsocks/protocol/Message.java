@@ -24,10 +24,35 @@ package com.lzf.flyingsocks.protocol;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 
+import java.util.Objects;
+
 /**
  * 统一报文接口，用于客户端与服务端之间的通信
  */
-public interface Message {
+public abstract class Message {
+
+    /**
+     * 用于发送方构建消息
+     */
+    protected Message() {
+        super();
+    }
+
+    /**
+     * 用于接收方实例化消息
+     *
+     * @param src 完整消息数据
+     * @throws SerializationException 反序列化发生异常
+     */
+    protected Message(ByteBuf src) throws SerializationException {
+        try {
+            Objects.requireNonNull(src, "ByteBuf source is null!");
+            deserialize(src);
+        } catch (RuntimeException e) {
+            throw new SerializationException(getClass(), e);
+        }
+    }
+
 
     /**
      * 将报文对象序列化为{@link ByteBuf}
@@ -36,14 +61,14 @@ public interface Message {
      * @return 序列化后的 {@link ByteBuf}
      * @throws SerializationException 序列化异常
      */
-    ByteBuf serialize(ByteBufAllocator allocator) throws SerializationException;
+    public abstract ByteBuf serialize(ByteBufAllocator allocator) throws SerializationException;
 
 
     /**
-     * 反序列化
+     * 反序列化逻辑
      *
      * @param buf Netty的{@link ByteBuf}对象
      * @throws SerializationException 反序列化异常
      */
-    void deserialize(ByteBuf buf) throws SerializationException;
+    protected abstract void deserialize(ByteBuf buf) throws SerializationException;
 }

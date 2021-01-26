@@ -29,7 +29,6 @@ import com.lzf.flyingsocks.AbstractConfig;
 import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.client.GlobalConfig;
-import com.lzf.flyingsocks.protocol.AuthMessage;
 
 import java.io.FileInputStream;
 import java.io.FileWriter;
@@ -37,6 +36,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,20 +82,11 @@ public class ProxyServerConfig extends AbstractConfig {
                 String host = o.getString("host");
                 int port = o.getIntValue("port");
                 int certPort = o.getIntValue("cert-port");
-                String t;
-                AuthType type = AuthType.valueOf(t = o.getString("auth").toUpperCase());
-
-                List<String> keys = AuthMessage.AuthMethod.valueOf(t).getContainsKey();
+                AuthType type = AuthType.valueOf(o.getString("auth").toUpperCase());
 
                 Map<String, String> authArg = new HashMap<>(4);
                 JSONObject auth = o.getJSONObject("auth-arg");
-                for (String key : keys) {
-                    String v = auth.getString(key);
-                    if (v == null)
-                        throw new ConfigInitializationException(String.format("config.json: node %s:%d auth-arg need key %s",
-                                host, port, key));
-                    authArg.put(key, v);
-                }
+                auth.forEach((k, v) -> authArg.put(k, v.toString()));
 
                 boolean use = o.getBooleanValue("state");
                 EncryptType etype = EncryptType.valueOf(o.getString("encrypt").toUpperCase());
@@ -262,6 +253,10 @@ public class ProxyServerConfig extends AbstractConfig {
 
         public String getAuthArgument(String key) {
             return authArgument.get(key);
+        }
+
+        public Map<String, String> allAuthArgument() {
+            return Collections.unmodifiableMap(authArgument);
         }
 
         public void putAuthArgument(String key, String val) {

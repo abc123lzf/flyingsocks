@@ -28,7 +28,6 @@ import com.lzf.flyingsocks.AbstractConfig;
 import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
-import com.lzf.flyingsocks.protocol.AuthMessage;
 import com.lzf.flyingsocks.util.BaseUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -168,13 +167,13 @@ public class ServerConfig extends AbstractConfig implements Config {
      * 服务器指定的认证类型
      */
     public enum AuthType {
-        SIMPLE(AuthMessage.AuthMethod.SIMPLE),
-        USER(AuthMessage.AuthMethod.USER);
+        SIMPLE((byte)0x00),
+        USER((byte) 0x01);
 
-        public final AuthMessage.AuthMethod authMethod;
+        public final byte typeFieldValue;
 
-        AuthType(AuthMessage.AuthMethod authMethod) {
-            this.authMethod = authMethod;
+        AuthType(byte val) {
+            this.typeFieldValue = val;
         }
     }
 

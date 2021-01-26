@@ -21,16 +21,21 @@
  */
 package com.lzf.flyingsocks.server.core.client;
 
-import com.lzf.flyingsocks.protocol.AuthMessage;
+import com.lzf.flyingsocks.protocol.AuthRequestMessage;
+import com.lzf.flyingsocks.protocol.AuthResponseMessage;
 import com.lzf.flyingsocks.protocol.SerializationException;
 import com.lzf.flyingsocks.server.core.ClientSession;
+import com.lzf.flyingsocks.util.MessageHeaderCheckHandler;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.handler.codec.DelimiterBasedFrameDecoder;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +48,39 @@ import java.util.function.Predicate;
  */
 public class ProxyAuthenticationHandler extends ChannelInboundHandlerAdapter {
 
+    public static final String HANDLER_NAME = "ProxyAuthenticationHandler";
+
+    private static final String AUTH_REQUEST_FRAME_DECODER_NAME = "AuthRequestMessageFrameDecoder";
+
+    private static final String IDLE_HANDLER_NAME = "AuthRequestIdleHandler";
+
+    private static final String AUTH_REQUEST_HEADER_CHECKER_NAME = "AuthRequestHeaderChecker";
+
+    private static final MessageHeaderCheckHandler AUTH_REQUEST_HEADER_CHECKER = new MessageHeaderCheckHandler(AuthRequestMessage.getMessageHeader());
+
     private static final Logger log = LoggerFactory.getLogger(ProxyAuthenticationHandler.class);
+
+    private ClientSession clientSession;
+
+    ProxyAuthenticationHandler() {
+        super();
+    }
+
+    /**
+     * IdleStateHandler -> [SslHandler] -> ClientSessionHandler -> FSMessageOutboundEncoder -> AuthRequestMessageFrameDecoder -> ProxyAuthenticationHandler
+     */
+    @Override
+    public void handlerAdded(ChannelHandlerContext ctx) {
+        Channel channel = ctx.channel();
+        this.clientSession = ConnectionContext.clientSession(channel);
+
+        ChannelPipeline cp = ctx.pipeline();
+        cp.addFirst(IDLE_HANDLER_NAME, new IdleStateHandler(10, 0, 0));
+        cp.addBefore(HANDLER_NAME, AUTH_REQUEST_FRAME_DECODER_NAME,
+                new LengthFieldBasedFrameDecoder(Short.MAX_VALUE, AuthRequestMessage.LENGTH_OFFSET,
+                        AuthRequestMessage.LENGTH_SIZE, AuthRequestMessage.LENGTH_ADJUSTMENT, 0));
+        cp.addBefore(AUTH_REQUEST_FRAME_DECODER_NAME, AUTH_REQUEST_HEADER_CHECKER_NAME, AUTH_REQUEST_HEADER_CHECKER);
+    }
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -58,38 +95,63 @@ public class ProxyAuthenticationHandler extends ChannelInboundHandlerAdapter {
         }
     }
 
-    protected void channelRead0(ChannelHandlerContext ctx, ByteBuf buf) throws SerializationException {
-        ClientSession session = ConnectionContext.clientSession(ctx.channel());
-        Predicate<AuthMessage> authPredicate = ConnectionContext.authPredicate(ctx.channel());
-
-        AuthMessage msg = new AuthMessage(buf);
-        boolean auth = authPredicate.test(msg);
-        if (!auth) {
-            if (log.isTraceEnabled())
-                log.trace("Auth failure, from client {}", ((SocketChannel) ctx.channel()).remoteAddress().getHostName());
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
+        if (evt instanceof IdleStateEvent) {
             ctx.close();
             return;
-        } else {
+        }
+
+        ctx.fireUserEventTriggered(evt);
+    }
+
+    protected void channelRead0(ChannelHandlerContext ctx, ByteBuf buf) throws SerializationException {
+        ClientSession session = this.clientSession;
+        Predicate<AuthRequestMessage> authPredicate = ConnectionContext.authPredicate(ctx.channel());
+
+        AuthRequestMessage msg = new AuthRequestMessage(buf);
+        boolean auth = authPredicate.test(msg);
+        if (!auth) {
             if (log.isTraceEnabled()) {
-                log.trace("Auth success, from client {}", ((SocketChannel) ctx.channel()).remoteAddress().getHostName());
+                log.trace("Auth failure, from client {}", ((SocketChannel) ctx.channel()).remoteAddress().getHostName());
             }
+
+            AuthResponseMessage response = new AuthResponseMessage(false);
+            ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+            return;
+        }
+
+        if (log.isTraceEnabled()) {
+            log.trace("Auth success, from client {}", ((SocketChannel) ctx.channel()).remoteAddress().getHostName());
         }
 
         session.passAuth();
 
-        ChannelPipeline cp = ctx.pipeline();
-        cp.remove(this).remove(DelimiterBasedFrameDecoder.class);
+        ctx.write(new AuthResponseMessage(true), ctx.voidPromise());
 
-        byte[] delimiter = session.getDelimiterKey();
-        cp.addLast(new DelimiterBasedFrameDecoder(1024 * 1000 * 50, Unpooled.wrappedBuffer(delimiter)));
-        cp.addLast(new ProxyHandler());
+        ChannelPipeline cp = ctx.pipeline();
+        cp.remove(this);
+        cp.addLast(ProxyHandler.HANDLER_NAME, new ProxyHandler());
+        ctx.flush();
+    }
+
+
+    @Override
+    public void handlerRemoved(ChannelHandlerContext ctx) {
+        ChannelPipeline cp = ctx.pipeline();
+        cp.remove(AUTH_REQUEST_HEADER_CHECKER_NAME);
+        cp.remove(IDLE_HANDLER_NAME);
+        cp.remove(AUTH_REQUEST_FRAME_DECODER_NAME);
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         if (cause instanceof SerializationException) {
-            log.info("Deserialize occur a exception", cause);
+            log.info("An exception occur when deserialize AuthRequestMessage", cause);
             ctx.close();
+            return;
         }
+
+        log.warn("An exception occur in ProxyAuthenticationHandler", cause);
     }
 }

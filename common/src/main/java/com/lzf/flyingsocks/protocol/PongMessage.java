@@ -31,7 +31,7 @@ import java.nio.charset.StandardCharsets;
  * @author lzf abc123lzf@126.com
  * @since 2021/1/21 14:20
  */
-public class PongMessage implements Message {
+public class PongMessage extends Message {
 
     public static final byte HEAD = 0x02;
 
@@ -46,13 +46,21 @@ public class PongMessage implements Message {
         BODY = body.asReadOnly();
     }
 
+    public PongMessage() {
+        super();
+    }
+
+    public PongMessage(ByteBuf buf) throws SerializationException {
+        super(buf);
+    }
+
     @Override
     public ByteBuf serialize(ByteBufAllocator allocator) throws SerializationException {
         return BODY.retainedSlice();
     }
 
     @Override
-    public void deserialize(ByteBuf buf) throws SerializationException {
+    protected void deserialize(ByteBuf buf) throws SerializationException {
         try {
             byte header = buf.readByte();
             if (header != HEAD) {

@@ -21,17 +21,17 @@
  */
 package com.lzf.flyingsocks.server.core.client;
 
-import com.lzf.flyingsocks.protocol.PingMessage;
-import com.lzf.flyingsocks.protocol.PongMessage;
 import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
 import com.lzf.flyingsocks.protocol.SerializationException;
 import com.lzf.flyingsocks.server.core.ClientSession;
 import com.lzf.flyingsocks.server.core.ProxyTask;
 import com.lzf.flyingsocks.server.core.ProxyTaskManager;
+import com.lzf.flyingsocks.util.HeartbeatMessageHandler;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.channel.ChannelPipeline;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
@@ -43,12 +43,21 @@ import org.slf4j.LoggerFactory;
  */
 class ProxyHandler extends ChannelInboundHandlerAdapter {
 
+    public static final String HANDLER_NAME = "ProxyHandler";
+
+    private static final String PROXY_REQUEST_FRAME_DECODER_NAME = "ProxyRequestFrameDecoder";
+
+    private static final int REQUEST_MAX_FRAME = 1024 * 1024 * 20;
+
     private static final Logger log = LoggerFactory.getLogger(ProxyHandler.class);
 
     private ClientSession clientSession;
 
     private ProxyTaskManager proxyTaskManager;
 
+    /**
+     * IdleStateHandler -> [SslHandler] -> ClientSessionHandler -> FSMessageOutboundEncoder -> HeartbeatMessageHandler -> ProxyRequestFrameDecoder -> ProxyHandler
+     */
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) {
         ClientSession session = ConnectionContext.clientSession(ctx.channel());
@@ -60,35 +69,20 @@ class ProxyHandler extends ChannelInboundHandlerAdapter {
         this.clientSession = session;
         this.proxyTaskManager = manager;
 
-        ctx.pipeline().addFirst(new IdleStateHandler(20, 0, 0));
+        ChannelPipeline cp = ctx.pipeline();
+        cp.addFirst(new IdleStateHandler(20, 0, 0));
+        cp.addBefore(HANDLER_NAME, PROXY_REQUEST_FRAME_DECODER_NAME, new LengthFieldBasedFrameDecoder(REQUEST_MAX_FRAME,
+                ProxyRequestMessage.LENGTH_OFFSET, ProxyRequestMessage.LENGTH_SIZE, ProxyRequestMessage.LENGTH_ADJUSTMENT, 0));
+        cp.addBefore(PROXY_REQUEST_FRAME_DECODER_NAME, HeartbeatMessageHandler.NAME, HeartbeatMessageHandler.INSTANCE);
     }
 
-
-    @Override
-    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
-        if (evt instanceof IdleStateEvent) {
-            PingMessage ping = new PingMessage();
-            ctx.writeAndFlush(ping, ctx.voidPromise());
-            return;
-        }
-
-        ctx.fireUserEventTriggered(evt);
-    }
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof ByteBuf) {
             ByteBuf buf = (ByteBuf) msg;
             try {
-                byte head = buf.getByte(0);
-                if (head == ProxyRequestMessage.HEAD) {
-                    channelRead0(ctx, buf);
-                } else if (head == PingMessage.HEAD) {
-                    PingMessage ping = new PingMessage();
-                    ping.serialize(ctx.alloc());
-                    PongMessage pong = new PongMessage();
-                    ctx.writeAndFlush(pong);
-                }
+                channelRead0(ctx, buf);
             } finally {
                 ReferenceCountUtil.release(msg);
             }
@@ -100,6 +94,10 @@ class ProxyHandler extends ChannelInboundHandlerAdapter {
 
     protected void channelRead0(ChannelHandlerContext ctx, ByteBuf buf) throws SerializationException {
         ProxyRequestMessage msg = new ProxyRequestMessage(buf);
+        if (log.isDebugEnabled()) {
+            log.debug("ProxyRequestMessage [{}:{}]", msg.getHost(), msg.getPort());
+        }
+
         ProxyTask task = new ProxyTask(msg, clientSession);
         proxyTaskManager.publish(task);
     }
@@ -109,6 +107,8 @@ class ProxyHandler extends ChannelInboundHandlerAdapter {
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         if (cause instanceof SerializationException) {
             log.warn("Serialize request occur a exception", cause);
+        } else {
+            log.error("An error occur in ProxyHandler", cause);
         }
 
         ctx.close();

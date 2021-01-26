@@ -24,19 +24,26 @@ package com.lzf.flyingsocks.protocol;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
+import io.netty.buffer.Unpooled;
 
 /**
  * 服务器代理响应报文
  * 0
- * +-------------+-------+---------------+
- * |  Serial ID  |status |Message Length |
- * |  (2 Bytes)  |(1Byte)|   (4 Bytes)   |
- * +-------------+-------+---+-----------+
- * |               Message               |
- * |               Content               |
- * +-------------------------------------+
+ * +----+-------+-------+---------------+
+ * |HEAD|  SID  |status |Message Length |
+ * | 1B |   4B  |(1Byte)|   (4 Bytes)   |
+ * +----+-------+-------+---------------+
+ * |               Message              |
+ * |               Content              |
+ * +------------------------------------+
  */
-public class ProxyResponseMessage extends ProxyMessage implements Message {
+public class ProxyResponseMessage extends ProxyMessage {
+
+    public static final int LENGTH_OFFSET = 1 + 4 + 1;  // HEAD + SID + status
+
+    public static final int LENGTH_SIZE = 4;  // sizeof(int)
+
+    public static final int LENGTH_ADJUSTMENT = 0;
 
     /**
      * HEAD，用于区分不同类型的消息
@@ -90,13 +97,14 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
 
         byte h = state.head;
         ByteBuf message = getMessage();
+        int sid = this.serialId;
 
         if (state == State.SUCCESS) {
             assertTrue(message != null, "When ProxyResponseMessage's state is SUCCESS, message must not be null");
             CompositeByteBuf result = allocator.compositeBuffer(2);
             ByteBuf header = allocator.buffer(1 + 4 + 1 + 4);
             header.writeByte(HEAD);
-            header.writeInt(serialId);
+            header.writeInt(sid);
             header.writeByte(h);
             header.writeInt(message.readableBytes());
 
@@ -106,7 +114,7 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
         } else {
             ByteBuf header = allocator.buffer(1 + 4 + 1 + 4);
             header.writeByte(HEAD);
-            header.writeInt(serialId);
+            header.writeInt(sid);
             header.writeByte(h);
 
             if (message == null) {
@@ -124,7 +132,7 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
     }
 
     @Override
-    public void deserialize(ByteBuf buf) throws SerializationException {
+    protected void deserialize(ByteBuf buf) throws SerializationException {
         try {
             checkoutHeadField(buf);
             int sid = buf.readInt();
@@ -139,7 +147,7 @@ public class ProxyResponseMessage extends ProxyMessage implements Message {
                 if (len > 0) {
                     msg = buf.readRetainedSlice(len);
                 } else {
-                    msg = null;
+                    msg = Unpooled.wrappedBuffer(new byte[0]);
                 }
             } else {
                 throw new SerializationException("Unknown ProxyResponseMessage type " + h);

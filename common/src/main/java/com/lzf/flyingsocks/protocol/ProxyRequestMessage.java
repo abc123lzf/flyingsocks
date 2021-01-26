@@ -31,24 +31,31 @@ import java.util.Objects;
 
 /**
  * 客户端向服务器发起的代理请求报文，其报文格式如下：
- * 0              4        5        5+clen   6+clen     8+clen
- * +--------------+--------+--------+--------+----------+-----------+
- * |  Serial ID   |Host Len|  Host  |  Type  |   Port   |Message Len|
- * |  (4 Bytes)   |(1 Byte)|        |(1 Byte)| (2 Bytes)| (4 Bytes) |
- * +--------------+--------+--------+--------+----------+-----------+
- * |                              Message                           |
- * |                              Content                           |
- * +----------------------------------------------------------------+
  *
- * Serial ID：客户端消息序列号，用于识别代理消息从哪个应用程序发送
- * Host Len：目标主机名/IP地址长度
- * Host：目标主机名
- * Type：附加字段，当第7位为1时表示为UDP报文
- * Port：目标端口号
- * Message Len：消息长度
- * Message Content：消息体
+ * 0    1       5        9
+ * +----+-------+--------+----+---------------+
+ * |HEAD|  SID  |  TLEN  |HLEN|     HOST      |
+ * | 1B |  4B   |   4B   | 1B |               |
+ * +----+----+--+---+-----+----+--------------+
+ * |TYPE|PORT| MLEN |        MESSAGE          |
+ * | 1B | 2B |  4B  |        CONTENT          |
+ * +---------+------+-------------------------+
+ * SID：客户端消息序列号，用于识别代理消息从哪个应用程序发送
+ * TLEN: 后续字段加消息总和
+ * HLEN：目标主机名/IP地址长度
+ * HOST：目标主机名
+ * TYPE：附加字段，当第7位为1时表示为UDP报文
+ * PORT：目标端口号
+ * MLEN：消息长度
+ * MESSAGE CONTENT：消息体
  */
-public class ProxyRequestMessage extends ProxyMessage implements Message {
+public class ProxyRequestMessage extends ProxyMessage {
+
+    public static final int LENGTH_OFFSET = 1 + 4;  //HEADER.length + sizeof(type)
+
+    public static final int LENGTH_SIZE = 4;  //sizeof(int)
+
+    public static final int LENGTH_ADJUSTMENT = 0;
 
     /**
      * 目标主机名编码
@@ -126,15 +133,22 @@ public class ProxyRequestMessage extends ProxyMessage implements Message {
         assertTrue(host != null && port > 0 && port <= 65535 && message != null,
                 "ProxyRequestMessage is not complete, or port is illegal, message detail: \n" + toString());
 
+        int sid = super.serialId;
+
         byte[] h = host.getBytes(HOST_ENCODING);
 
-        int size = 1 + 4 + 1 + h.length + 1 + 2 + 4;
-        ByteBuf header = allocator.directBuffer(size);
+        int hlen = h.length;
+        int mlen = message.readableBytes();
+        int tlen = 1 + hlen + 1 + 2 + 4 + mlen;
+
+        int headerSize = 1 + 4 + 4 + 1 + hlen + 1 + 2 + 4;
+
+        ByteBuf header = allocator.directBuffer(headerSize);
 
         header.writeByte(HEAD);
-        header.writeInt(serialId);
-
-        header.writeByte(h.length);
+        header.writeInt(sid);
+        header.writeInt(tlen);
+        header.writeByte(hlen);
         header.writeBytes(h);
 
         if (protocol == Protocol.UDP) {
@@ -156,7 +170,7 @@ public class ProxyRequestMessage extends ProxyMessage implements Message {
 
 
     @Override
-    public void deserialize(ByteBuf buf) throws SerializationException {
+    protected void deserialize(ByteBuf buf) throws SerializationException {
         try {
             byte head = buf.readByte();
             if (head != HEAD) {
@@ -164,8 +178,14 @@ public class ProxyRequestMessage extends ProxyMessage implements Message {
             }
 
             int sid = buf.readInt();
-            int hostlen = BaseUtils.parseByteToInteger(buf.readByte());
-            byte[] hb = new byte[hostlen];
+
+            int tlen = buf.readInt();
+            if (tlen != buf.readableBytes()) {
+                throw new SerializationException(ProxyRequestMessage.class, "Total Length field");
+            }
+
+            int hlen = BaseUtils.parseByteToInteger(buf.readByte());
+            byte[] hb = new byte[hlen];
 
             buf.readBytes(hb);
             String host = new String(hb, HOST_ENCODING);
@@ -200,7 +220,8 @@ public class ProxyRequestMessage extends ProxyMessage implements Message {
     @Override
     public String toString() {
         return "ProxyRequestMessage{" +
-                "host='" + host + '\'' +
+                "serialId=" + serialId +
+                ", host='" + host + '\'' +
                 ", port=" + port +
                 ", protocol=" + protocol +
                 '}';

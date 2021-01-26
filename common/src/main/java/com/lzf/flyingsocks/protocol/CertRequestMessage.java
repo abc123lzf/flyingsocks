@@ -36,7 +36,7 @@ import java.util.Arrays;
  * |             (16 bytes)          | 0x00FF00FF|
  * +---------------------------------+-----------+
  */
-public class CertRequestMessage extends AuthMessage implements Message {
+public class CertRequestMessage extends AuthRequestMessage {
 
     public static final byte[] END_MARK;
 
@@ -50,13 +50,13 @@ public class CertRequestMessage extends AuthMessage implements Message {
 
     private byte[] certMD5;
 
-    public CertRequestMessage(AuthMethod method, byte[] certMD5) {
+    public CertRequestMessage(byte method, byte[] certMD5) {
         super(method);
         this.certMD5 = certMD5 != null ? Arrays.copyOf(certMD5, certMD5.length) : new byte[16];
     }
 
     public CertRequestMessage(ByteBuf buf) throws SerializationException {
-        deserialize(buf);
+        super(buf);
     }
 
     @Override
@@ -74,7 +74,7 @@ public class CertRequestMessage extends AuthMessage implements Message {
     }
 
     @Override
-    public void deserialize(ByteBuf buf) throws SerializationException {
+    protected void deserialize(ByteBuf buf) throws SerializationException {
         super.deserialize(buf);
         if (buf.readableBytes() != 16) {
             throw new SerializationException("MD5 Infomation must be 16 bytes long");

@@ -24,7 +24,7 @@ package com.lzf.flyingsocks.server.core.client;
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.protocol.CertRequestMessage;
-import com.lzf.flyingsocks.util.FSMessageChannelOutboundHandler;
+import com.lzf.flyingsocks.util.FSMessageOutboundEncoder;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -110,7 +110,7 @@ class CertRequestProcessor extends AbstractComponent<ClientProcessor> {
 
                         cp.addLast(new IdleStateHandler(15, 0, 0));
                         cp.addLast(IdleStateEventHandler.INSTANCE);
-                        cp.addLast(FSMessageChannelOutboundHandler.INSTANCE);
+                        cp.addLast(FSMessageOutboundEncoder.INSTANCE);
                         cp.addLast(new DelimiterBasedFrameDecoder(512 + l, buf));
                         cp.addLast(certRequestHandler);
                     }

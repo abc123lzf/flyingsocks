@@ -23,20 +23,13 @@ package com.lzf.flyingsocks.server.core;
 
 import com.lzf.flyingsocks.AbstractSession;
 import com.lzf.flyingsocks.Session;
-import com.lzf.flyingsocks.protocol.DelimiterMessage;
 import io.netty.channel.Channel;
 import io.netty.channel.socket.SocketChannel;
-
-import java.util.Arrays;
 
 /**
  * 客户端会话对象
  */
 public class ClientSession extends AbstractSession implements Session {
-    /**
-     * 协商的协议分隔符
-     */
-    private byte[] delimiterKey;
 
     /**
      * 该客户端是否通过认证
@@ -48,24 +41,6 @@ public class ClientSession extends AbstractSession implements Session {
         super((SocketChannel) channel);
     }
 
-
-    public void setDelimiterKey(byte[] key) {
-        if (delimiterKey == null) {
-            if (key.length == DelimiterMessage.DEFAULT_SIZE) {
-                delimiterKey = Arrays.copyOf(key, DelimiterMessage.DEFAULT_SIZE);
-            } else {
-                throw new IllegalArgumentException(String.format("delimiter key only can set %d bytes",
-                        DelimiterMessage.DEFAULT_SIZE));
-            }
-        } else {
-            throw new IllegalStateException("can not set double time delimiter key at same client.");
-        }
-    }
-
-    public byte[] getDelimiterKey() {
-        byte[] b = this.delimiterKey;
-        return Arrays.copyOf(b, b.length);
-    }
 
     public void writeMessage(Object msg) {
         checkChannelState();

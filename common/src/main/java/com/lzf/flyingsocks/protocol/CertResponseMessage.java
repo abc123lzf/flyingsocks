@@ -36,7 +36,7 @@ import java.util.Objects;
  * |P|        31 bit          |                                  |
  * +-+------------------------+----------------------------------+
  */
-public class CertResponseMessage implements Message {
+public class CertResponseMessage extends Message {
 
     public static final byte[] END_MARK = CertRequestMessage.END_MARK;
 
@@ -64,7 +64,7 @@ public class CertResponseMessage implements Message {
     }
 
     public CertResponseMessage(ByteBuf buf) throws SerializationException {
-        deserialize(buf);
+        super(buf);
     }
 
     @Override
@@ -89,7 +89,7 @@ public class CertResponseMessage implements Message {
     }
 
     @Override
-    public void deserialize(ByteBuf buf) throws SerializationException {
+    protected void deserialize(ByteBuf buf) throws SerializationException {
         try {
             int val = buf.readInt();
             this.update = val < 0; //判断首位是否为1

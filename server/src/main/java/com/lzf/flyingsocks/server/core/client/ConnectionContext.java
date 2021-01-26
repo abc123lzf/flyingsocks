@@ -21,7 +21,7 @@
  */
 package com.lzf.flyingsocks.server.core.client;
 
-import com.lzf.flyingsocks.protocol.AuthMessage;
+import com.lzf.flyingsocks.protocol.AuthRequestMessage;
 import com.lzf.flyingsocks.server.core.ClientSession;
 import com.lzf.flyingsocks.server.core.ProxyTaskManager;
 import io.netty.channel.Channel;
@@ -60,7 +60,7 @@ final class ConnectionContext {
     /**
      * 认证逻辑
      */
-    private Predicate<AuthMessage> authPredicate;
+    private Predicate<AuthRequestMessage> authPredicate;
 
 
     private ConnectionContext() {
@@ -71,9 +71,9 @@ final class ConnectionContext {
      *
      * @param channel 客户端与服务端连接的 {@link io.netty.channel.socket.SocketChannel}
      * @param proxyTaskManager 发布代理任务 {@link com.lzf.flyingsocks.server.core.ProxyProcessor}
-     * @param authPredicate 认证逻辑 {@link com.lzf.flyingsocks.server.core.client.ClientProcessor#doAuth(AuthMessage)}
+     * @param authPredicate 认证逻辑 {@link com.lzf.flyingsocks.server.core.client.ClientProcessor#doAuth(AuthRequestMessage)}
      */
-    static void initial(Channel channel, ProxyTaskManager proxyTaskManager, Predicate<AuthMessage> authPredicate) {
+    static void initial(Channel channel, ProxyTaskManager proxyTaskManager, Predicate<AuthRequestMessage> authPredicate) {
         accessCheckout(channel);
         ConnectionContext ctx = new ConnectionContext();
         ctx.proxyTaskManager = Objects.requireNonNull(proxyTaskManager);
@@ -122,7 +122,7 @@ final class ConnectionContext {
         return ctx.proxyTaskManager;
     }
 
-    static Predicate<AuthMessage> authPredicate(Channel channel) {
+    static Predicate<AuthRequestMessage> authPredicate(Channel channel) {
         accessCheckout(channel);
         Map<Channel, ConnectionContext> map = CONTEXT.get();
         ConnectionContext ctx = map.get(channel);
