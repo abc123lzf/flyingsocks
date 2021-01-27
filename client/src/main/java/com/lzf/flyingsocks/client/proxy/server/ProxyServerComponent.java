@@ -40,11 +40,13 @@ import com.lzf.flyingsocks.protocol.AuthRequestMessage;
 import com.lzf.flyingsocks.protocol.AuthResponseMessage;
 import com.lzf.flyingsocks.protocol.CertRequestMessage;
 import com.lzf.flyingsocks.protocol.CertResponseMessage;
+import com.lzf.flyingsocks.protocol.PingMessage;
+import com.lzf.flyingsocks.protocol.PongMessage;
 import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
 import com.lzf.flyingsocks.protocol.ProxyResponseMessage;
 import com.lzf.flyingsocks.protocol.SerializationException;
+import com.lzf.flyingsocks.protocol.ServiceStageMessage;
 import com.lzf.flyingsocks.util.FSMessageOutboundEncoder;
-import com.lzf.flyingsocks.util.HeartbeatMessageHandler;
 import com.lzf.flyingsocks.util.MessageHeaderCheckHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
@@ -63,6 +65,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.handler.traffic.ChannelTrafficShapingHandler;
 import io.netty.handler.traffic.TrafficCounter;
@@ -811,8 +814,8 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         public void handlerAdded(ChannelHandlerContext ctx) {
             ChannelPipeline cp = ctx.pipeline();
             cp.addBefore(HANDLER_NAME, RESPONSE_FRAME_DECODER_NAME, new LengthFieldBasedFrameDecoder(MAX_FRAME_SIZE,
-                    ProxyResponseMessage.LENGTH_OFFSET, ProxyResponseMessage.LENGTH_SIZE, ProxyResponseMessage.LENGTH_ADJUSTMENT, 0));
-            cp.addBefore(RESPONSE_FRAME_DECODER_NAME, HeartbeatMessageHandler.NAME, HeartbeatMessageHandler.INSTANCE);
+                    ServiceStageMessage.LENGTH_FIELD_OFFSET, ProxyResponseMessage.LENGTH_FIELD_SIZE, 0, 0));
+            //cp.addBefore(RESPONSE_FRAME_DECODER_NAME, HeartbeatMessageHandler.NAME, HeartbeatMessageHandler.INSTANCE);
             cp.addFirst(new IdleStateHandler(15, 0, 0));
             ProxyServerComponent.this.proxyServerSession.setReady(true);
         }
@@ -829,16 +832,37 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         }
 
         @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) {
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws SerializationException {
             if (msg instanceof ByteBuf) {
+                ByteBuf buf = (ByteBuf) msg;
                 try {
-                    processProxyResponseMessage(ctx, (ByteBuf) msg);
+                    byte serviceId = buf.getByte(buf.readerIndex());
+                    if (serviceId == 0) {
+                        processProxyResponseMessage(ctx, buf);
+                    } else if (serviceId == PingMessage.SERVICE_ID) {
+                        new PingMessage(buf);
+                        PongMessage pong = new PongMessage();
+                        ctx.writeAndFlush(pong, ctx.voidPromise());
+                    } else if (serviceId == PongMessage.SERVICE_ID) {
+                        new PongMessage(buf);
+                    }
                 } finally {
                     ReferenceCountUtil.release(msg);
                 }
             } else {
                 ctx.fireChannelRead(msg);
             }
+        }
+
+        @Override
+        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+            if (evt instanceof IdleStateEvent) {
+                PingMessage ping = new PingMessage();
+                ctx.writeAndFlush(ping, ctx.voidPromise());
+                return;
+            }
+
+            ctx.fireUserEventTriggered(evt);
         }
 
         private void processProxyResponseMessage(ChannelHandlerContext ctx, ByteBuf buf) {

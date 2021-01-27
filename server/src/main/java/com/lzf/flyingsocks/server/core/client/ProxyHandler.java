@@ -21,17 +21,20 @@
  */
 package com.lzf.flyingsocks.server.core.client;
 
+import com.lzf.flyingsocks.protocol.PingMessage;
+import com.lzf.flyingsocks.protocol.PongMessage;
 import com.lzf.flyingsocks.protocol.ProxyRequestMessage;
 import com.lzf.flyingsocks.protocol.SerializationException;
+import com.lzf.flyingsocks.protocol.ServiceStageMessage;
 import com.lzf.flyingsocks.server.core.ClientSession;
 import com.lzf.flyingsocks.server.core.ProxyTask;
 import com.lzf.flyingsocks.server.core.ProxyTaskManager;
-import com.lzf.flyingsocks.util.HeartbeatMessageHandler;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
@@ -72,8 +75,7 @@ class ProxyHandler extends ChannelInboundHandlerAdapter {
         ChannelPipeline cp = ctx.pipeline();
         cp.addFirst(new IdleStateHandler(20, 0, 0));
         cp.addBefore(HANDLER_NAME, PROXY_REQUEST_FRAME_DECODER_NAME, new LengthFieldBasedFrameDecoder(REQUEST_MAX_FRAME,
-                ProxyRequestMessage.LENGTH_OFFSET, ProxyRequestMessage.LENGTH_SIZE, ProxyRequestMessage.LENGTH_ADJUSTMENT, 0));
-        cp.addBefore(PROXY_REQUEST_FRAME_DECODER_NAME, HeartbeatMessageHandler.NAME, HeartbeatMessageHandler.INSTANCE);
+                ServiceStageMessage.LENGTH_FIELD_OFFSET, ServiceStageMessage.LENGTH_FIELD_SIZE, 0, 0));
     }
 
 
@@ -82,7 +84,16 @@ class ProxyHandler extends ChannelInboundHandlerAdapter {
         if (msg instanceof ByteBuf) {
             ByteBuf buf = (ByteBuf) msg;
             try {
-                channelRead0(ctx, buf);
+                byte serviceId = buf.getByte(buf.readerIndex());
+                if (serviceId == 0) {
+                    processProxyRequestMessage(buf);
+                } else if (serviceId == PingMessage.SERVICE_ID) {
+                    new PingMessage(buf);
+                    PongMessage pong = new PongMessage();
+                    ctx.writeAndFlush(pong, ctx.voidPromise());
+                } else if (serviceId == PongMessage.SERVICE_ID) {
+                    new PongMessage(buf);
+                }
             } finally {
                 ReferenceCountUtil.release(msg);
             }
@@ -91,8 +102,18 @@ class ProxyHandler extends ChannelInboundHandlerAdapter {
         }
     }
 
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
+        if (evt instanceof IdleStateEvent) {
+            PingMessage ping = new PingMessage();
+            ctx.writeAndFlush(ping, ctx.voidPromise());
+            return;
+        }
 
-    protected void channelRead0(ChannelHandlerContext ctx, ByteBuf buf) throws SerializationException {
+        ctx.fireUserEventTriggered(evt);
+    }
+
+    protected void processProxyRequestMessage(ByteBuf buf) throws SerializationException {
         ProxyRequestMessage msg = new ProxyRequestMessage(buf);
         if (log.isDebugEnabled()) {
             log.debug("ProxyRequestMessage [{}:{}]", msg.getHost(), msg.getPort());

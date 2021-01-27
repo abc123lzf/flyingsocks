@@ -32,11 +32,11 @@ import java.util.Objects;
 /**
  * 客户端向服务器发起的代理请求报文，其报文格式如下：
  *
- * 0    1       5        9
- * +----+-------+--------+----+---------------+
- * |HEAD|  SID  |  TLEN  |HLEN|     HOST      |
- * | 1B |  4B   |   4B   | 1B |               |
- * +----+----+--+---+-----+----+--------------+
+ * 0       4    5
+ * +-------+----+-----------------------------+
+ * |  SID  |HLEN|          HOST               |
+ * |  4B   | 1B |                             |
+ * +----+--+-+--+---+-----+----+--------------+
  * |TYPE|PORT| MLEN |        MESSAGE          |
  * | 1B | 2B |  4B  |        CONTENT          |
  * +---------+------+-------------------------+
@@ -51,21 +51,10 @@ import java.util.Objects;
  */
 public class ProxyRequestMessage extends ProxyMessage {
 
-    public static final int LENGTH_OFFSET = 1 + 4;  //HEADER.length + sizeof(type)
-
-    public static final int LENGTH_SIZE = 4;  //sizeof(int)
-
-    public static final int LENGTH_ADJUSTMENT = 0;
-
     /**
      * 目标主机名编码
      */
     private static final Charset HOST_ENCODING = Charset.forName("Unicode");
-
-    /**
-     * HEAD，用于区分不同类型的消息
-     */
-    public static final byte HEAD = 0x00;
 
     /**
      * 代理主机名，例如www.google.com
@@ -128,28 +117,23 @@ public class ProxyRequestMessage extends ProxyMessage {
     }
 
     @Override
-    public ByteBuf serialize(ByteBufAllocator allocator) throws SerializationException {
+    public ByteBuf serialize0(ByteBufAllocator allocator) throws SerializationException {
         ByteBuf message = getMessage();
+        String host = this.host;
+        int port = this.port;
+
         assertTrue(host != null && port > 0 && port <= 65535 && message != null,
                 "ProxyRequestMessage is not complete, or port is illegal, message detail: \n" + toString());
 
+        byte[] hostBytes = host.getBytes(HOST_ENCODING);
+        int length = 4 + 1 + hostBytes.length + 1 + 2 + 4;
+        ByteBuf header = allocator.directBuffer(length);
+
         int sid = super.serialId;
-
-        byte[] h = host.getBytes(HOST_ENCODING);
-
-        int hlen = h.length;
-        int mlen = message.readableBytes();
-        int tlen = 1 + hlen + 1 + 2 + 4 + mlen;
-
-        int headerSize = 1 + 4 + 4 + 1 + hlen + 1 + 2 + 4;
-
-        ByteBuf header = allocator.directBuffer(headerSize);
-
-        header.writeByte(HEAD);
+        int hlen = hostBytes.length;
         header.writeInt(sid);
-        header.writeInt(tlen);
         header.writeByte(hlen);
-        header.writeBytes(h);
+        header.writeBytes(hostBytes);
 
         if (protocol == Protocol.UDP) {
             header.writeByte(1 << 7);
@@ -170,20 +154,9 @@ public class ProxyRequestMessage extends ProxyMessage {
 
 
     @Override
-    protected void deserialize(ByteBuf buf) throws SerializationException {
+    protected void deserialize0(ByteBuf buf) throws SerializationException {
         try {
-            byte head = buf.readByte();
-            if (head != HEAD) {
-                throw new SerializationException(ProxyRequestMessage.class, "Illegal head value:" + head);
-            }
-
             int sid = buf.readInt();
-
-            int tlen = buf.readInt();
-            if (tlen != buf.readableBytes()) {
-                throw new SerializationException(ProxyRequestMessage.class, "Total Length field");
-            }
-
             int hlen = BaseUtils.parseByteToInteger(buf.readByte());
             byte[] hb = new byte[hlen];
 

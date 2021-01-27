@@ -29,27 +29,15 @@ import io.netty.buffer.Unpooled;
 /**
  * 服务器代理响应报文
  * 0
- * +----+-------+-------+---------------+
- * |HEAD|  SID  |status |Message Length |
- * | 1B |   4B  |(1Byte)|   (4 Bytes)   |
- * +----+-------+-------+---------------+
- * |               Message              |
- * |               Content              |
- * +------------------------------------+
+ * +---------+-------+---------------+
+ * |   SID   |status |Message Length |
+ * |   4B    |   1B  |   (4 Bytes)   |
+ * +---------+-------+---------------+
+ * |               Message           |
+ * |               Content           |
+ * +---------------------------------+
  */
 public class ProxyResponseMessage extends ProxyMessage {
-
-    public static final int LENGTH_OFFSET = 1 + 4 + 1;  // HEAD + SID + status
-
-    public static final int LENGTH_SIZE = 4;  // sizeof(int)
-
-    public static final int LENGTH_ADJUSTMENT = 0;
-
-    /**
-     * HEAD，用于区分不同类型的消息
-     */
-    public static final byte HEAD = 0x00;
-
     /**
      * 连接状态
      */
@@ -91,7 +79,7 @@ public class ProxyResponseMessage extends ProxyMessage {
     }
 
     @Override
-    public ByteBuf serialize(ByteBufAllocator allocator) throws SerializationException {
+    public ByteBuf serialize0(ByteBufAllocator allocator) throws SerializationException {
         State state = this.state;
         assertTrue(state != null, "ProxyResponseMessage is not complete, message detail: \n" + toString());
 
@@ -103,7 +91,6 @@ public class ProxyResponseMessage extends ProxyMessage {
             assertTrue(message != null, "When ProxyResponseMessage's state is SUCCESS, message must not be null");
             CompositeByteBuf result = allocator.compositeBuffer(2);
             ByteBuf header = allocator.buffer(1 + 4 + 1 + 4);
-            header.writeByte(HEAD);
             header.writeInt(sid);
             header.writeByte(h);
             header.writeInt(message.readableBytes());
@@ -113,7 +100,6 @@ public class ProxyResponseMessage extends ProxyMessage {
             return result;
         } else {
             ByteBuf header = allocator.buffer(1 + 4 + 1 + 4);
-            header.writeByte(HEAD);
             header.writeInt(sid);
             header.writeByte(h);
 
@@ -132,9 +118,8 @@ public class ProxyResponseMessage extends ProxyMessage {
     }
 
     @Override
-    protected void deserialize(ByteBuf buf) throws SerializationException {
+    protected void deserialize0(ByteBuf buf) throws SerializationException {
         try {
-            checkoutHeadField(buf);
             int sid = buf.readInt();
             byte h = buf.readByte();
             State state = State.getStateByHead(h);
@@ -158,14 +143,6 @@ public class ProxyResponseMessage extends ProxyMessage {
             this.state = state;
         } catch (IndexOutOfBoundsException e) {
             throw new SerializationException("Illegal ProxyResponseMessage", e);
-        }
-    }
-
-
-    private void checkoutHeadField(ByteBuf buf) throws SerializationException {
-        byte head = buf.readByte();
-        if (head != HEAD) {
-            throw new SerializationException(ProxyResponseMessage.class, "Illegal head value:" + head);
         }
     }
 

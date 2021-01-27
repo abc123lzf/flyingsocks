@@ -31,9 +31,9 @@ import java.nio.charset.StandardCharsets;
  * @author lzf abc123lzf@126.com
  * @since 2021/1/21 14:20
  */
-public class PongMessage extends Message {
+public class PongMessage extends ServiceStageMessage {
 
-    public static final byte HEAD = 0x02;
+    public static final byte SERVICE_ID = 0x7E;
 
     private static final byte[] CONTENT = "PONG".getBytes(StandardCharsets.US_ASCII);
 
@@ -41,13 +41,12 @@ public class PongMessage extends Message {
 
     static {
         ByteBuf body = Unpooled.directBuffer(1 + CONTENT.length);
-        body.writeByte(HEAD);
         body.writeBytes(CONTENT);
         BODY = body.asReadOnly();
     }
 
     public PongMessage() {
-        super();
+        super(SERVICE_ID);
     }
 
     public PongMessage(ByteBuf buf) throws SerializationException {
@@ -55,18 +54,13 @@ public class PongMessage extends Message {
     }
 
     @Override
-    public ByteBuf serialize(ByteBufAllocator allocator) throws SerializationException {
+    public ByteBuf serialize0(ByteBufAllocator allocator) throws SerializationException {
         return BODY.retainedSlice();
     }
 
     @Override
-    protected void deserialize(ByteBuf buf) throws SerializationException {
+    protected void deserialize0(ByteBuf buf) throws SerializationException {
         try {
-            byte header = buf.readByte();
-            if (header != HEAD) {
-                throw new SerializationException(PongMessage.class, "Illegal header: " + header);
-            }
-
             if (buf.readableBytes() != CONTENT.length) {
                 throw new SerializationException(PongMessage.class, "Illegal content: Wrong length");
             }
@@ -76,7 +70,6 @@ public class PongMessage extends Message {
                     throw new SerializationException(PongMessage.class, "Illegal content: Wrong data");
                 }
             }
-
         } catch (IndexOutOfBoundsException e) {
             throw new SerializationException("Unable to read pong message", e);
         }

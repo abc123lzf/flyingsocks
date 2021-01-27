@@ -26,15 +26,14 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 
 /**
  * @author lzf abc123lzf@126.com
  * @since 2021/1/20 21:04
  */
-public class PingMessage extends Message {
+public class PingMessage extends ServiceStageMessage {
 
-    public static final byte HEAD = 0x01;
+    public static final byte SERVICE_ID = 0x7F;
 
     private static final byte[] CONTENT = "PING".getBytes(StandardCharsets.US_ASCII);
 
@@ -42,13 +41,12 @@ public class PingMessage extends Message {
 
     static {
         ByteBuf body = Unpooled.directBuffer(1 + CONTENT.length);
-        body.writeByte(HEAD);
         body.writeBytes(CONTENT);
         BODY = body.asReadOnly();
     }
 
     public PingMessage() {
-        super();
+        super(SERVICE_ID);
     }
 
     public PingMessage(ByteBuf buf) throws SerializationException {
@@ -56,22 +54,21 @@ public class PingMessage extends Message {
     }
 
     @Override
-    public ByteBuf serialize(ByteBufAllocator allocator) throws SerializationException {
+    public ByteBuf serialize0(ByteBufAllocator allocator) throws SerializationException {
         return BODY.retainedSlice();
     }
 
     @Override
-    protected void deserialize(ByteBuf buf) throws SerializationException {
+    protected void deserialize0(ByteBuf buf) throws SerializationException {
         try {
-            byte header = buf.readByte();
-            if (header != HEAD) {
-                throw new SerializationException(PingMessage.class, "Illegal header: " + header);
+            if (buf.readableBytes() != CONTENT.length) {
+                throw new SerializationException(PongMessage.class, "Illegal content: Wrong length");
             }
 
-            byte[] content = new byte[CONTENT.length];
-            buf.readBytes(content);
-            if (!Arrays.equals(content, CONTENT)) {
-                throw new SerializationException(PingMessage.class, "Illegal content: " + Arrays.toString(content));
+            for (byte b : CONTENT) {
+                if (buf.readableBytes() == 0 || buf.readByte() != b) {
+                    throw new SerializationException(PongMessage.class, "Illegal content: Wrong data");
+                }
             }
         } catch (IndexOutOfBoundsException e) {
             throw new SerializationException("Unable to read ping message", e);

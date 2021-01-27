@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# 安装目录
+if [ -z "$FS_HOME" ]; then
+  export FS_HOME=/opt/flyingsocks-server
+fi
+
 # 系统位数
 SYSTEM_BIT=`getconf LONG_BIT`
 
@@ -68,7 +73,7 @@ function main() {
     exit 1
   fi
 
-  unzip server/target/flyingsocks-server-bin.zip -d ..
+  unzip server/target/flyingsocks-server-bin.zip -d $FS_HOME/..
   echo "Server install success"
 }
 

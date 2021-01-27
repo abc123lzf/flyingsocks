@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 
+# 文件目录
+if [ -z "$FS_HOME" ]; then
+  export FS_HOME=/opt/flyingsocks-server
+fi
+
 function backupConfig() {
   rm -rf /tmp/flyingsocks-backup
   mkdir /tmp/flyingsocks-backup
-  cp ../flyingsocks-server/config /tmp/flyingsocks-backup || return 1
+  cp $FS_HOME/config /tmp/flyingsocks-backup || return 1
   return 0
 }
 
@@ -15,7 +20,7 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-mvn clean install
+mvn clean install -Dmaven.test.skip=true
 if [ $? -ne 0 ]; then
   echo "Clean and install failure"
   exit 1
@@ -29,6 +34,8 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+rm -rf $FS_HOME
+
 cd ..
 cp server/target/flyingsocks-server-bin.zip ..
-unzip ../flyingsocks-server-bin.zip -d ..
+unzip ../flyingsocks-server-bin.zip -d $FS_HOME/..

@@ -26,7 +26,9 @@ import io.netty.buffer.ByteBuf;
 /**
  * 代理消息抽象类
  */
-abstract class ProxyMessage extends Message {
+abstract class ProxyMessage extends ServiceStageMessage {
+
+    private static final byte SERVICE_ID = 0;
 
     /**
      * 客户端发起代理请求的序列ID
@@ -40,8 +42,10 @@ abstract class ProxyMessage extends Message {
 
 
     ProxyMessage(int serialId) {
+        super(SERVICE_ID);
         this.serialId = serialId;
     }
+
 
     ProxyMessage(ByteBuf serialBuf) throws SerializationException {
         super(serialBuf);

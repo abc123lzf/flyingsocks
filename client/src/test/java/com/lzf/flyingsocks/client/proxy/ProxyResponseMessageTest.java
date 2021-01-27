@@ -31,14 +31,14 @@ import io.netty.buffer.UnpooledByteBufAllocator;
  * @author lzf abc123lzf@126.com
  * @since 2021/1/27 0:38
  */
-public class MessageTest {
+public class ProxyResponseMessageTest {
 
     public static void main(String[] args) throws Exception {
         ByteBufAllocator allocator = UnpooledByteBufAllocator.DEFAULT;
 
         ProxyResponseMessage message = new ProxyResponseMessage(0);
-        message.setState(ProxyResponseMessage.State.FAILURE);
-        message.setMessage(Unpooled.wrappedBuffer(new byte[0]));
+        message.setState(ProxyResponseMessage.State.SUCCESS);
+        message.setMessage(Unpooled.wrappedBuffer(new byte[] {1, 3, 4, 5, 7}));
 
         ByteBuf buf = message.serialize(allocator);
         System.out.println(buf.readableBytes());
@@ -47,8 +47,6 @@ public class MessageTest {
         System.out.println(result.getState());
         System.out.println(result.serialId());
         System.out.println(result.getMessage().readableBytes());
-
-
     }
 
 }
