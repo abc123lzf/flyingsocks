@@ -3,6 +3,7 @@
 # 安装目录
 if [ -z "$FS_HOME" ]; then
   export FS_HOME=/opt/flyingsocks-server
+  echo "export FS_HOME=$FS_HOME" >> ~/.bash_profile
 fi
 
 # 系统位数

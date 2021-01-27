@@ -20,7 +20,7 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-mvn clean install -Dmaven.test.skip=true
+mvn clean install -pl server -am -Dmaven.test.skip=true
 if [ $? -ne 0 ]; then
   echo "Clean and install failure"
   exit 1
@@ -38,4 +38,4 @@ rm -rf $FS_HOME
 
 cd ..
 cp server/target/flyingsocks-server-bin.zip ..
-unzip ../flyingsocks-server-bin.zip -d $FS_HOME/..
+unzip ../flyingsocks-server-bin.zip -d $FS_HOME

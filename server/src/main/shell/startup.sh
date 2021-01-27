@@ -13,7 +13,7 @@ if [ $? == 0 ]; then
     rm -f FS_PID_FILE
 fi
 
-FS_CONFIG_DIR=$FS_HOME/conf
+FS_CONFIG_DIR=$FS_HOME/config
 FS_LIB_DIR=$FS_HOME/lib
 
 if [ "$1" == "-t" ]; then
