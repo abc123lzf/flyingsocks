@@ -236,6 +236,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                         if ((sconn = set.getIfContains(conn)) != null) {
                             conn = sconn;
                         }
+
                         if (sconn != null) {
                             if (prm.getProtocol() == ProxyRequestMessage.Protocol.CLOSE) {
                                 conn.future.channel().close();
@@ -271,6 +272,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                                                     log.trace("Connect to {}:{} success", host, port);
                                                 }
                                             });
+                                    set.add(conn);
                                 }
                                 break;
 
@@ -284,11 +286,12 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                                                     log.trace("Bind UDP Port success, ready to send packet to {}:{}", host, port);
                                                 }
                                             });
+                                    set.add(conn);
                                 }
                                 break;
-                            }
 
-                            set.add(conn);
+                                case CLOSE: break;
+                            }
                         }
 
                         checkoutConnection();
@@ -354,7 +357,8 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
             long now = System.currentTimeMillis();
             Iterator<ActiveConnection> it = connectionSet.iterator();
-            it.forEachRemaining(ac -> {
+            while (it.hasNext()) {
+                ActiveConnection ac = it.next();
                 if (ac.future.isDone()) {
                     //如果已经建立过连接但是该连接已经不活跃了，那么清除这个ActiveConnection
                     if (!ac.future.channel().isActive()) {
@@ -388,7 +392,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                         }
                     }
                 }
-            });
+            }
 
             return false;
         }

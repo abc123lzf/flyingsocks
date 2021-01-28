@@ -34,8 +34,8 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-rm -rf $FS_HOME
+rm -rf ${FS_HOME:?}/*
 
 cd ..
 cp server/target/flyingsocks-server-bin.zip ..
-unzip ../flyingsocks-server-bin.zip -d $FS_HOME
+unzip ../flyingsocks-server-bin.zip -d $FS_HOME/..

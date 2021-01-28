@@ -19,11 +19,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.lzf.flyingsocks.client.gui.swt;
 
 /**
- * HTTP代理模块，主要功能：
- * 1、CONNECT方法隧道代理
- * 2、常规HTTP代理
- * 3、Windows系统代理自动设置
+ * @author lzf abc123lzf@126.com
+ * @since 2021/1/28 20:31
  */
-package com.lzf.flyingsocks.client.proxy.http;
+public class Demo {
+
+    public static void main(String[] args) throws Exception {
+        byte b = (byte) 0xA;
+        System.out.println(Integer.toHexString(b & 0xFF).toUpperCase());
+    }
+
+}

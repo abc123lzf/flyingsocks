@@ -190,6 +190,10 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         public ProxyRequest.Protocol protocol() {
             return request.protocol();
         }
+
+        public ProxyRequest unwrap() {
+            return request;
+        }
     }
 
 
@@ -322,7 +326,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                 ChannelPipeline cp = ch.pipeline();
                 cp.addLast(FSMessageOutboundEncoder.INSTANCE);
                 cp.addLast(new DelimiterBasedFrameDecoder(1024 * 100,
-                        Unpooled.copiedBuffer(CertResponseMessage.END_MARK)));
+                        Unpooled.wrappedBuffer(CertResponseMessage.END_MARK)));
 
                 cp.addLast(new ChannelInboundHandlerAdapter() {
                     @Override
@@ -933,8 +937,18 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
             prm.setPort(request.getPort());
             prm.setMessage(buf);
 
-            SocketChannel channel = proxyServerSession.socketChannel();
+            SocketChannel channel = session.socketChannel();
             channel.writeAndFlush(prm, channel.voidPromise());
+
+            request.unwrap().addClientChannelCloseListener(future -> {
+                if (channel.isActive()) {
+                    ProxyRequestMessage msg = new ProxyRequestMessage(request.serialId, ProxyRequestMessage.Protocol.CLOSE);
+                    msg.setHost(request.getHost());
+                    msg.setPort(request.getPort());
+                    msg.setMessage(Unpooled.EMPTY_BUFFER);
+                    channel.writeAndFlush(msg, channel.voidPromise());
+                }
+            });
         }
 
         @Override

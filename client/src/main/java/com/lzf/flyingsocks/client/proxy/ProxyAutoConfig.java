@@ -27,6 +27,7 @@ import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.client.GlobalConfig;
 import com.lzf.flyingsocks.util.BaseUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -177,7 +178,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
                 if (BaseUtils.isIPAddress(host)) {
                     set.add(host);
                 } else if (BaseUtils.isHostName(host)) {
-                    set.add(BaseUtils.reverseString(host));
+                    set.add(StringUtils.reverse(host));
                 }
             }
         }
@@ -321,6 +322,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
 
         @Override
         public boolean needProxy(String host) {
+            int proxyMode = this.proxyMode;
             if (proxyMode == PROXY_NO) {
                 return false;
             }
@@ -334,7 +336,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
                     return gfwList.contains(host);
                 }
 
-                String rh = BaseUtils.reverseString(host);
+                String rh = StringUtils.reverse(host);
                 String fl = gfwList.floor(rh);
                 return fl != null && rh.startsWith(fl);
             }

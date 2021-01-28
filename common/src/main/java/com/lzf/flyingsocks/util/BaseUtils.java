@@ -177,10 +177,6 @@ public final class BaseUtils {
         return val & 0x0FF;
     }
 
-    public static String reverseString(String str) {
-        return new StringBuilder(str).reverse().toString();
-    }
-
     private BaseUtils() {
         throw new UnsupportedOperationException();
     }

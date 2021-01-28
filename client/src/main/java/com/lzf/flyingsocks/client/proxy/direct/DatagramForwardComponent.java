@@ -78,6 +78,7 @@ public class DatagramForwardComponent extends AbstractComponent<ProxyComponent> 
             if (!future.isSuccess()) {
                 request.close();
             }
+            request.addClientChannelCloseListener(f -> future.channel().close());
         });
     }
 

@@ -28,6 +28,8 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
 
 import java.io.IOException;
 
@@ -112,6 +114,12 @@ public class ProxyRequest implements Comparable<ProxyRequest>, Cloneable {
     public Channel clientChannel() {
         return clientChannel;
     }
+
+
+    public void addClientChannelCloseListener(GenericFutureListener<? extends Future<? super Void>> listener) {
+        clientChannel.closeFuture().addListener(listener);
+    }
+
 
     public void closeClientChannel() {
         if (clientChannel.isActive()) {

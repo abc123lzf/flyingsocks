@@ -81,6 +81,11 @@ public class HttpProxyConfig extends AbstractConfig {
      */
     private String password;
 
+    /**
+     * 是否打开系统代理
+     */
+    private boolean enableWindowsSystemProxy;
+
 
     public HttpProxyConfig(ConfigManager<?> configManager) {
         super(Objects.requireNonNull(configManager), NAME);
@@ -155,6 +160,8 @@ public class HttpProxyConfig extends AbstractConfig {
                 this.auth = false;
             }
         }
+
+        this.enableWindowsSystemProxy = configManager.isWindows() && json.getBooleanValue("windowsSystemProxy");
     }
 
 
@@ -175,6 +182,7 @@ public class HttpProxyConfig extends AbstractConfig {
         json.put("address", "127.0.0.1");
         json.put("port", 8080);
         json.put("auth", false);
+        json.put("windowsSystemProxy", false);
 
         String content = json.toJSONString();
         ByteBuffer buf = ByteBuffer.allocate(content.length());
@@ -196,6 +204,7 @@ public class HttpProxyConfig extends AbstractConfig {
         json.put("auth", this.auth);
         json.put("username", this.username);
         json.put("password", this.password);
+        json.put("windowsSystemProxy", this.enableWindowsSystemProxy);
 
         String content = json.toJSONString();
         ByteBuffer buf = ByteBuffer.allocate(content.length());

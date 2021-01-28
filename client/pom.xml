@@ -145,7 +145,7 @@
                 </executions>
             </plugin>
 
-            <plugin>
+            <!--<plugin>
                 <groupId>org.graalvm.nativeimage</groupId>
                 <artifactId>native-image-maven-plugin</artifactId>
                 <version>${graalvm.version}</version>
@@ -162,10 +162,10 @@
                     <imageName>flyingsocks</imageName>
                     <mainClass>${main.class}</mainClass>
                     <buildArgs>
-                        --no-fallback
+                        &#45;&#45;no-fallback
                     </buildArgs>
                 </configuration>
-            </plugin>
+            </plugin>-->
 
         </plugins>
     </build>

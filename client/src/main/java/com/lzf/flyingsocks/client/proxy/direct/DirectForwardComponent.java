@@ -100,6 +100,7 @@ public class DirectForwardComponent extends AbstractComponent<ProxyComponent> im
                         request.close();
                     }
 
+                    request.addClientChannelCloseListener(_f -> f.channel().close());
                     log.trace("connect establish success, target server {}:{}", host, port);
                 });
     }
