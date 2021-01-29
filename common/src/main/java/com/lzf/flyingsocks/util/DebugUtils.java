@@ -38,6 +38,17 @@ import static java.lang.System.out;
 @SuppressWarnings("unused")
 public final class DebugUtils {
 
+    private static final String[] HexStringMap;
+
+    static {
+        HexStringMap = new String[256];
+        for (int i = 0; i < 255; i++) {
+            String str = Integer.toHexString(i).toUpperCase();
+            HexStringMap[i] = str.length() == 1 ? "0" + str : str;
+        }
+    }
+
+
     public static void printByteBuf(ByteBuf buf) {
         out.println("--------------------------Debug Util----------------------------");
         out.printf("ReadableBytes: %d", buf.readableBytes());
@@ -56,15 +67,8 @@ public final class DebugUtils {
             arr[k++] = (char) (b & 0xFF);
             if (k == 16) {
                 for (char c : arr) {
-                    String str = Integer.toHexString(c);
-                    if (str.length() == 1) {
-                        out.print('0');
-                        out.print(str.toUpperCase());
-                        out.print(' ');
-                    } else {
-                        out.print(str.toUpperCase());
-                        out.print(' ');
-                    }
+                    out.print(HexStringMap[c]);
+                    out.print(' ');
                 }
 
                 for (char c : arr) {
@@ -84,15 +88,8 @@ public final class DebugUtils {
         if (k > 0) {
             for (int i = 0; i < k; i++) {
                 char c = arr[i];
-                String str = Integer.toHexString(c);
-                if (str.length() == 1) {
-                    out.print('0');
-                    out.print(str.toUpperCase());
-                    out.print(' ');
-                } else {
-                    out.print(str.toUpperCase());
-                    out.print(' ');
-                }
+                out.print(HexStringMap[c]);
+                out.print(' ');
             }
 
             for (int i = k; i < 16; i++) {

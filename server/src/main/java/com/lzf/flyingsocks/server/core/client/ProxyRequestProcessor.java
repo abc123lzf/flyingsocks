@@ -23,6 +23,7 @@ package com.lzf.flyingsocks.server.core.client;
 
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.ComponentException;
+import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.encrypt.EncryptProvider;
 import com.lzf.flyingsocks.server.core.ClientSession;
 import com.lzf.flyingsocks.util.FSMessageOutboundEncoder;
@@ -35,6 +36,7 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.WriteBufferWaterMark;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.kqueue.KQueueEventLoopGroup;
@@ -42,6 +44,8 @@ import io.netty.channel.kqueue.KQueueServerSocketChannel;
 import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.validator.routines.IntegerValidator;
 
 import javax.net.ssl.SSLException;
 import java.io.IOException;
@@ -56,15 +60,29 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 class ProxyRequestProcessor extends AbstractComponent<ClientProcessor> {
 
+    /**
+     * 最大客户端数量
+     */
     private final int maxClient;
 
+    /**
+     * 端口
+     */
     private final int port;
 
+    /**
+     * 连接加密支持
+     */
     private final EncryptProvider encryptProvider;
 
+    /**
+     * 客户Session管理器
+     */
     private final ClientSessionHandler clientSessionHandler;
 
+
     private volatile ServerSocketChannel serverSocketChannel;
+
 
     ProxyRequestProcessor(ClientProcessor processor, EncryptProvider encryptProvider) {
         super("ProxyRequestProcessor [" + processor.getName() + "]", Objects.requireNonNull(processor));
@@ -95,11 +113,25 @@ class ProxyRequestProcessor extends AbstractComponent<ClientProcessor> {
             channelClass = NioServerSocketChannel.class;
         }
 
+        ConfigManager<?> configManager = getConfigManager();
+        String lowMarkStr = configManager.getSystemProperties("flyingsocks.client.watermark.low");
+        String highMarkStr = configManager.getSystemProperties("flyingsocks.client.watermark.high");
+
+        if (StringUtils.isBlank(lowMarkStr) || !IntegerValidator.getInstance().isValid(lowMarkStr)) {
+            lowMarkStr = "8388608";
+        }
+
+        if (StringUtils.isBlank(highMarkStr) || !IntegerValidator.getInstance().isValid(highMarkStr)) {
+            highMarkStr = "10485760";
+        }
+
+        WriteBufferWaterMark waterMark = new WriteBufferWaterMark(Integer.parseInt(lowMarkStr), Integer.parseInt(highMarkStr));
 
         bootstrap.group(bossGroup, childGroup)
                 .channel(channelClass)
                 .option(ChannelOption.AUTO_CLOSE, true)
                 .option(ChannelOption.SO_KEEPALIVE, true)
+                .childOption(ChannelOption.WRITE_BUFFER_WATER_MARK, waterMark)
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) throws Exception {

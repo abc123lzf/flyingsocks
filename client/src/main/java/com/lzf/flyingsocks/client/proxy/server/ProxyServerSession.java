@@ -39,9 +39,4 @@ public class ProxyServerSession extends AbstractSession {
     public boolean isReady() {
         return ready;
     }
-
-    @Override
-    public boolean isActive() {
-        return socketChannel.isActive();
-    }
 }

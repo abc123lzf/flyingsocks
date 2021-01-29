@@ -28,6 +28,7 @@ import com.lzf.flyingsocks.AbstractConfig;
 import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
+import com.lzf.flyingsocks.Named;
 import com.lzf.flyingsocks.util.BaseUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +49,10 @@ import java.util.Objects;
 import java.util.UUID;
 
 public class ServerConfig extends AbstractConfig implements Config {
+
     private static final Logger log = LoggerFactory.getLogger(ServerConfig.class);
+
+    private static final String SERVER_CONFIG_NAME = "server.json";
 
     public static final String NAME = "config.server";
 
@@ -81,7 +85,7 @@ public class ServerConfig extends AbstractConfig implements Config {
 
         this.location = folder;
 
-        Path file = location.resolve("config.json");
+        Path file = location.resolve(SERVER_CONFIG_NAME);
         if (Files.notExists(file)) {
             try {
                 makeTemplateConfigFile(file);
@@ -185,7 +189,7 @@ public class ServerConfig extends AbstractConfig implements Config {
      * 服务器配置节点类
      * 每个节点需要绑定不同的端口，并拥有各自的配置方案
      */
-    public static class Node {
+    public static class Node implements Named {
         public final String name;   //节点名称
         public final int port;      //绑定端口
         public final int certPort;  //收发CA证书端口
@@ -203,6 +207,11 @@ public class ServerConfig extends AbstractConfig implements Config {
             this.maxClient = maxClient;
             this.authType = Objects.requireNonNull(authType);
             this.encryptType = Objects.requireNonNull(encryptType);
+        }
+
+        @Override
+        public String getName() {
+            return name;
         }
 
         private void putArgument(String key, String value) {

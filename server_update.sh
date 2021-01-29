@@ -5,6 +5,16 @@ if [ -z "$FS_HOME" ]; then
   export FS_HOME=/opt/flyingsocks-server
 fi
 
+FS_PID_FILE=/var/run/fs-server.pid
+if [ -f $FS_PID_FILE ]; then
+  RUNNING_PID=`cat $FS_PID_FILE`
+  if [ $? == 0 ]; then
+      echo "停止运行中的服务PID: $RUNNING_PID"
+      kill -15 $RUNNING_PID
+      rm -f $FS_PID_FILE
+  fi
+fi
+
 function backupConfig() {
   rm -rf /tmp/flyingsocks-backup
   mkdir /tmp/flyingsocks-backup
@@ -34,7 +44,8 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-rm -rf ${FS_HOME:?}/*
+rm -rf ${FS_HOME:?}
+mkdir -p $FS_HOME
 
 cd ..
 cp server/target/flyingsocks-server-bin.zip ..

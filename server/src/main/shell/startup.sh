@@ -6,11 +6,13 @@ fi
 
 
 FS_PID_FILE=/var/run/fs-server.pid
-RUNNING_PID=`cat $FS_PID_FILE`
-if [ $? == 0 ]; then
-    echo "停止运行中的服务PID: $RUNNING_PID"
-    kill -15 $RUNNING_PID
-    rm -f FS_PID_FILE
+if [ -f $FS_PID_FILE ]; then
+  RUNNING_PID=`cat $FS_PID_FILE`
+  if [ $? == 0 ]; then
+      echo "Stop flyingsocks server process [ PID: $RUNNING_PID ]"
+      kill -15 $RUNNING_PID
+      rm -f $FS_PID_FILE
+  fi
 fi
 
 FS_CONFIG_DIR=$FS_HOME/config

@@ -108,12 +108,15 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
         }
 
         Bootstrap tcpBoot = new Bootstrap()
-                .group(group).channel(socketChannelClass)
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000);
+                .group(group)
+                .channel(socketChannelClass)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)
+                .option(ChannelOption.AUTO_READ, false);  // 防止服务端上传速度小于下载速度导致内存溢出
         this.tcpBootstrap = new BootstrapTemplate(tcpBoot);
 
         Bootstrap udpBoot = new Bootstrap()
-                .group(group).channel(datagramChannelClass);
+                .group(group)
+                .channel(datagramChannelClass);
         this.udpBootstrap = new BootstrapTemplate(udpBoot);
     }
 
@@ -209,7 +212,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
             try {
                 final Thread thread = Thread.currentThread();
                 while (!thread.isInterrupted()) {
-                    final ProxyTask task = taskQueue.poll(5, TimeUnit.MILLISECONDS);
+                    final ProxyTask task = taskQueue.poll(1, TimeUnit.MILLISECONDS);
                     if (task == null) {
                         checkoutConnection();
                         continue;
@@ -378,6 +381,9 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                                     ch.write(buf);
                                 }
                                 ch.flush();
+                                if (session.isWriteable()) {
+                                    ch.read();
+                                }
                                 ac.lastActiveTime = now;
                             } else if (ch instanceof DatagramChannel) {
                                 InetSocketAddress addr = new InetSocketAddress(ac.host, ac.port);

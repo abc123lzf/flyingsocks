@@ -36,11 +36,13 @@ public class ClientSession extends AbstractSession implements Session {
      */
     private boolean auth = false;
 
-
     public ClientSession(Channel channel) {
         super((SocketChannel) channel);
     }
 
+    public boolean isWriteable() {
+        return socketChannel.isWritable();
+    }
 
     public void writeMessage(Object msg) {
         checkChannelState();

@@ -23,6 +23,7 @@ package com.lzf.flyingsocks.client.proxy.http;
 
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.Config;
+import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.client.proxy.ProxyComponent;
 import com.lzf.flyingsocks.client.proxy.ProxyRequest;
 import com.lzf.flyingsocks.client.proxy.util.MessageDelivererCancelledException;
@@ -36,6 +37,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -47,8 +49,8 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpRequestEncoder;
+import io.netty.handler.codec.http.HttpResponseEncoder;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.timeout.IdleStateEvent;
@@ -65,14 +67,16 @@ import java.util.Objects;
 import static com.lzf.flyingsocks.client.proxy.ProxyRequest.Protocol;
 
 /**
- * HTTP/HTTPS代理协议处理
+ * HTTP代理组件
  *
  * @author lzf abc123lzf@126.com
  * @since 2020/12/25 18:51
  */
 public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
 
-    private static final String HTTP_CODEC_NAME = "HttpServerCodec";
+    private static final String FIRST_HTTP_DECODER = "FirstHttpRequestDecoder";
+
+    private static final String FIRST_HTTP_ENCODER = "FirstHttpResponseEncoder";
 
     private static final String FIRST_HTTP_REQUEST_HANDLER = "FirstHttpRequestHandler";
 
@@ -82,19 +86,22 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
 
     private volatile AuthenticationStrategy authenticationStrategy;
 
+    private volatile EventLoopGroup eventLoopGroup;
+
     public HttpReceiverComponent(ProxyComponent parent) {
         super("HttpRequestReceiver", Objects.requireNonNull(parent));
     }
 
     @Override
     protected void initInternal() {
-        HttpProxyConfig config = getConfigManager().getConfig(HttpProxyConfig.NAME, HttpProxyConfig.class);
+        ConfigManager<?> configManager = getConfigManager();
+        HttpProxyConfig config = configManager.getConfig(HttpProxyConfig.NAME, HttpProxyConfig.class);
         if (config.isAuth()) {
             this.authenticationStrategy = new SimpleAuthenticationStrategy(
                     config.getUsername(), config.getPassword());
         }
 
-        getConfigManager().registerConfigEventListener(event -> {
+        configManager.registerConfigEventListener(event -> {
             if (!(event.getSource() instanceof HttpProxyConfig) ||
                     !Objects.equals(event.getEvent(), Config.UPDATE_EVENT)) {
                 return;
@@ -107,20 +114,30 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
             }
         });
 
+        int threadCount;
+        int cpus = configManager.availableProcessors();
+        if (cpus <= 4) {
+            threadCount = 2;
+        } else if (cpus <= 16) {
+            threadCount = 4;
+        } else {
+            threadCount = 6;
+        }
+        this.eventLoopGroup = parent.createNioEventLoopGroup(threadCount);
         super.initInternal();
     }
 
     @Override
     protected void startInternal() {
         ServerBootstrap bootstrap = new ServerBootstrap();
-        bootstrap.group(parent.createNioEventLoopGroup(2))
+        bootstrap.group(this.eventLoopGroup)
                 .channel(NioServerSocketChannel.class)
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) {
                         ChannelPipeline pipeline = ch.pipeline();
-                        pipeline.addLast(HTTP_CODEC_NAME, new HttpServerCodec());
-                        //pipeline.addLast(new HttpObjectAggregator(512 * 1024));
+                        pipeline.addLast(FIRST_HTTP_DECODER, new HttpRequestDecoder());
+                        pipeline.addLast(FIRST_HTTP_ENCODER, new HttpResponseEncoder());
                         pipeline.addLast(FIRST_HTTP_REQUEST_HANDLER, new HttpProxyRequestHandler());
                     }
                 });
@@ -142,6 +159,10 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
 
     @Override
     protected void stopInternal() {
+        EventLoopGroup eventLoopGroup = this.eventLoopGroup;
+        if (eventLoopGroup != null) {
+            eventLoopGroup.shutdownGracefully();
+        }
         super.stopInternal();
     }
 
@@ -255,6 +276,7 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
 
     /**
      * 实现HTTP隧道代理
+     * 主要用于HTTPS协议的网站
      */
     private static final class TunnelProxyHandler extends ChannelInboundHandlerAdapter {
 
@@ -268,7 +290,8 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
         public void handlerAdded(ChannelHandlerContext ctx) {
             ChannelPipeline cp = ctx.pipeline();
             cp.remove(FIRST_HTTP_REQUEST_HANDLER);
-            cp.remove(HTTP_CODEC_NAME);
+            cp.remove(FIRST_HTTP_DECODER);
+            cp.remove(FIRST_HTTP_ENCODER);
         }
 
         @Override
@@ -309,7 +332,10 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
         return BaseUtils.isHostName(host) || BaseUtils.isIPv4Address(host);
     }
 
-
+    /**
+     * 实现常规代理
+     * 主要用于非HTTPS网站代理
+     */
     private final class PlaintextProxyHandler extends ChannelInboundHandlerAdapter {
 
         private final EmbeddedChannel requestEncoder;
@@ -339,7 +365,7 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
         @Override
         public void handlerAdded(ChannelHandlerContext ctx) {
             ChannelPipeline pipeline = ctx.pipeline();
-            pipeline.remove(HTTP_CODEC_NAME);
+            pipeline.remove(FIRST_HTTP_ENCODER);
             pipeline.remove(FIRST_HTTP_REQUEST_HANDLER);
             pipeline.addFirst(new IdleStateHandler(0, 0, 8));
             pipeline.addFirst(new HttpRequestDecoder());
@@ -355,7 +381,7 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
         }
 
         @Override
-        @SuppressWarnings("all")
+        @SuppressWarnings("deprecation")
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
             if (msg == LastHttpContent.EMPTY_LAST_CONTENT) {
                 return;

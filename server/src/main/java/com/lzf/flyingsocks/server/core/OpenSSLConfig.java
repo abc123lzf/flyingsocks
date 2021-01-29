@@ -31,29 +31,25 @@ import java.net.URL;
 
 public class OpenSSLConfig extends AbstractConfig {
     /**
-     * 默认配置名
+     * 默认配置名前缀
      */
-    static final String NAME = "config.OpenSSL";
+    private static final String NAME_PREFIX = "config.OpenSSL";
 
     /**
      * 证书文件URL,如果是PEM格式直接重命名为CRT格式
      */
-    private URL rootCertURL;
+    private final URL rootCertURL;
 
     /**
      * PCKS8编码的私钥文件
      */
-    private URL privateKeyURL;
+    private final URL privateKeyURL;
 
-    public OpenSSLConfig(ConfigManager<?> configManager) {
-        super(configManager, NAME);
-    }
-
-    @Override
-    protected void initInternal() throws ConfigInitializationException {
+    public OpenSSLConfig(ConfigManager<?> configManager, String nodeName) {
+        super(configManager, configName(nodeName));
         try {
-            this.rootCertURL = new URL("classpath://encrypt/ca.crt");
-            this.privateKeyURL = new URL("classpath://encrypt/private.key");
+            this.rootCertURL = new URL(String.format("classpath://encrypt/%s/ca.crt", nodeName));
+            this.privateKeyURL = new URL(String.format("classpath://encrypt/%s/private.key", nodeName));
         } catch (Exception e) {
             throw new ConfigInitializationException(e);
         }
@@ -71,5 +67,9 @@ public class OpenSSLConfig extends AbstractConfig {
      */
     public InputStream openRootCertStream() throws IOException {
         return rootCertURL.openStream();
+    }
+
+    public static String configName(String nodeName) {
+        return NAME_PREFIX + "." + nodeName;
     }
 }

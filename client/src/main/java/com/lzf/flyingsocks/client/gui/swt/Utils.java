@@ -91,7 +91,7 @@ abstract class Utils {
 
         DPI_SCALE = result;
         Locale locale = Locale.getDefault();
-        RESOURCE_BUNDLE = ResourceBundle.getBundle("i18n/swtui", locale);
+        RESOURCE_BUNDLE = ResourceBundle.getBundle("META-INF/i18n/swtui", locale);
     }
 
     /**

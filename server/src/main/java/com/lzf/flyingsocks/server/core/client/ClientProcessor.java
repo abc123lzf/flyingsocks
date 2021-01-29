@@ -74,7 +74,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
         if (provider != null) {
             if (provider instanceof OpenSSLEncryptProvider) {
                 ConfigManager<?> manager = parent.getParentComponent().getConfigManager();
-                OpenSSLConfig cfg = new OpenSSLConfig(manager);
+                OpenSSLConfig cfg = new OpenSSLConfig(manager, node.getName());
                 manager.registerConfig(cfg);
 
                 Map<String, Object> params = new HashMap<>(8);

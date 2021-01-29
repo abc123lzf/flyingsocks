@@ -21,11 +21,15 @@
  */
 package com.lzf.flyingsocks.server;
 
+import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.TopLevelComponent;
 import com.lzf.flyingsocks.server.core.ProxyProcessor;
 import com.lzf.flyingsocks.server.db.TextUserDatabase;
 import com.lzf.flyingsocks.server.db.UserDatabase;
+
+import java.io.IOException;
+import java.util.Properties;
 
 
 public class StandardServer extends TopLevelComponent implements Server {
@@ -48,7 +52,17 @@ public class StandardServer extends TopLevelComponent implements Server {
 
     @Override
     protected void initInternal() {
-        serverConfig = new ServerConfig(getConfigManager());
+        ConfigManager<?> configManager = getConfigManager();
+
+        try {
+            Properties properties = new Properties();
+            properties.load(configManager.loadResource("classpath://config.properties"));
+            properties.forEach((k, v) -> setSystemProperties(k.toString(), v.toString()));
+        } catch (IOException e) {
+            throw new ComponentException(e);
+        }
+
+        this.serverConfig = new ServerConfig(configManager);
         getConfigManager().registerConfig(serverConfig);
 
         ServerConfig.Node[] nodes = serverConfig.getServerNode();
@@ -57,7 +71,7 @@ public class StandardServer extends TopLevelComponent implements Server {
         }
 
         TextUserDatabase db = new TextUserDatabase(getConfigManager());
-        getConfigManager().registerConfig(db);
+        configManager.registerConfig(db);
 
         this.userDatabase = db;
         super.initInternal();

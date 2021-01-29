@@ -44,23 +44,23 @@ public final class ResourceManager {
     }
 
     public static InputStream openIconImageStream() throws IOException {
-        return new URL("classpath://ui-resource/icon.png").openStream();
+        return new URL("classpath://META-INF/ui-resource/icon.png").openStream();
     }
 
     public static InputStream openSystemTrayImageStream() throws IOException {
         if (PlatformDependent.isOsx()) {
-            return new URL("classpath://ui-resource/icon-tray-mac.png").openStream();
+            return new URL("classpath://META-INF/ui-resource/icon-tray-mac.png").openStream();
         }
 
-        return new URL("classpath://ui-resource/icon-tray.png").openStream();
+        return new URL("classpath://META-INF/ui-resource/icon-tray.png").openStream();
     }
 
     public static InputStream openSaveIconImageStream() throws IOException {
-        return new URL("classpath://ui-resource/save-icon.png").openStream();
+        return new URL("classpath://META-INF/ui-resource/save-icon.png").openStream();
     }
 
     public static InputStream openDeleteIconImageStream() throws IOException {
-        return new URL("classpath://ui-resource/delete-icon.png").openStream();
+        return new URL("classpath://META-INF/ui-resource/delete-icon.png").openStream();
     }
 
     private ResourceManager() {

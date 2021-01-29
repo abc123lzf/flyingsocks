@@ -68,6 +68,9 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
 
     private static final Charset DEFAULT_CONFIG_ENCODING = StandardCharsets.UTF_8;
 
+    private static final String GFWLIST_TEMPLATE_URL = "classpath://META-INF/pac-template/pac.txt";
+    private static final String CNIPV4_TEMPLATE_URL = "classpath://META-INF/pac-template/cnipv4.txt";
+
     private static final String PAC_CONFIG_FILE = "pac-setting";
     private static final String GFWLIST_FILE = "pac.txt";
     private static final String CNIPV4_FILE = "cnipv4.txt";
@@ -92,6 +95,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     @Override
     protected void initInternal() throws ConfigInitializationException {
         configManager.setSystemProperties("sun.net.spi.nameservice.provider.1", "dns,sun"); //解决部分情况IPV6解析失败的场景
+        configManager.setSystemProperties("sun.net.spi.nameservice.nameservers", "223.5.5.5");
         GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
 
         Path gfwFile = cfg.configPath().resolve(GFWLIST_FILE);
@@ -279,7 +283,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
         log.info("Can not found GFWList file on User DIR, ready to copy default file to User DIR.");
 
         byte[] b = new byte[1024000];
-        try (InputStream is = configManager.loadResource(configManager.getSystemProperties("pac.gfwlist.config.url"))) {
+        try (InputStream is = configManager.loadResource(GFWLIST_TEMPLATE_URL)) {
             int r = is.read(b);
             String str = new String(b, 0, r, DEFAULT_CONFIG_ENCODING);
             GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
@@ -296,7 +300,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     private void copyCNIPv4Config() {
         log.info("Can not found China IPv4 Address file on User DIR, ready to copy default file to User DIR.");
         byte[] b = new byte[1024000];
-        try (InputStream is = configManager.loadResource(configManager.getSystemProperties("pac.cnipv4.config.url"))) {
+        try (InputStream is = configManager.loadResource(CNIPV4_TEMPLATE_URL)) {
             int r = is.read(b);
             String str = new String(b, 0, r, StandardCharsets.US_ASCII);
             GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);

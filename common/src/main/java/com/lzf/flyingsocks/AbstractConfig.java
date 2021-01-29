@@ -74,7 +74,7 @@ public abstract class AbstractConfig implements Config {
         }
     }
 
-    protected abstract void initInternal() throws ConfigInitializationException;
+    protected void initInternal() throws ConfigInitializationException { }
 
     @Override
     public String toString() {
