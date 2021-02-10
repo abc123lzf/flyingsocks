@@ -31,7 +31,6 @@
         <module>server</module>
         <module>client</module>
         <module>common</module>
-        <module>management</module>
     </modules>
 
     <dependencyManagement>

@@ -27,17 +27,33 @@ package com.lzf.flyingsocks.server;
  * @author lzf abc123lzf@126.com
  * @since 2021/1/26 19:58
  */
-public enum ClientAuthenticationType {
+public enum ClientAuthType {
 
-    SIMPLE(0), USER(1);
+    SIMPLE(0, "simple"), USER(1, "user");
 
     private final byte messageHeader;
 
-    ClientAuthenticationType(int messageHeader) {
+    private final String configValue;
+
+    ClientAuthType(int messageHeader, String configValue) {
         this.messageHeader = (byte) messageHeader;
+        this.configValue = configValue;
     }
 
     public byte getMessageHeader() {
         return messageHeader;
+    }
+
+    public String configValue() {
+        return configValue;
+    }
+
+    public static ClientAuthType configValueOf(String value) {
+        for (ClientAuthType type : values()) {
+            if (type.configValue().equals(value)) {
+                return type;
+            }
+        }
+        return null;
     }
 }

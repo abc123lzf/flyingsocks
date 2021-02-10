@@ -92,7 +92,7 @@ public class DirectForwardComponent extends AbstractComponent<ProxyComponent> im
         log.trace("connect to server {}:{} established...", host, port);
 
         connectBootstrapTemplate.doConnect(host, port,
-                ch -> ch.pipeline().addFirst(new TCPConnectHandler(request)),
+                ch -> ch.pipeline().addFirst(new ConnectHandler(request)),
                 f -> {
                     if (!f.isSuccess()) {
                         handleConnectException(request, f.cause());
@@ -136,10 +136,10 @@ public class DirectForwardComponent extends AbstractComponent<ProxyComponent> im
     /**
      * 与目标服务器直连的进站处理器，一般用于无需代理的网站
      */
-    private final class TCPConnectHandler extends ChannelInboundHandlerAdapter {
+    private final class ConnectHandler extends ChannelInboundHandlerAdapter {
         final ProxyRequest request;
 
-        private TCPConnectHandler(ProxyRequest request) {
+        private ConnectHandler(ProxyRequest request) {
             this.request = request;
         }
 

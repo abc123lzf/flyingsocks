@@ -36,13 +36,8 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.epoll.EpollEventLoopGroup;
-import io.netty.channel.epoll.EpollServerSocketChannel;
-import io.netty.channel.kqueue.KQueueEventLoopGroup;
-import io.netty.channel.kqueue.KQueueServerSocketChannel;
 import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
@@ -88,17 +83,12 @@ class CertRequestProcessor extends AbstractComponent<ClientProcessor> {
         final CertRequestHandler certRequestHandler = this.certRequestHandler;
         ServerBootstrap certBoot = new ServerBootstrap();
 
-        EventLoopGroup group = parent.getParentComponent().getChildWorker();
-        Class<? extends ServerSocketChannel> channelClass;
-        if (group instanceof EpollEventLoopGroup) {
-            channelClass = EpollServerSocketChannel.class;
-        } else if (group instanceof KQueueEventLoopGroup) {
-            channelClass = KQueueServerSocketChannel.class;
-        } else {
-            channelClass = NioServerSocketChannel.class;
-        }
+        EventLoopGroup bossWorker = parent.getParentComponent().getBossWorker();
+        EventLoopGroup childWorker = parent.getParentComponent().getChildWorker();
+        Class<? extends ServerSocketChannel> channelClass = parent.getParentComponent().getServerSocketChannelClass();
 
-        certBoot.group(group).channel(channelClass)
+        certBoot.group(bossWorker, childWorker)
+                .channel(channelClass)
                 .option(ChannelOption.AUTO_CLOSE, true)
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override

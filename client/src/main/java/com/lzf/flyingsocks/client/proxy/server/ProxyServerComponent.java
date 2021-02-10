@@ -81,6 +81,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -208,10 +209,11 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
         GlobalConfig cfg = cm.getConfig(GlobalConfig.NAME, GlobalConfig.class);
 
         EncryptProvider provider;
+        EncryptType encryptType = config.getEncryptType();
         //目前仅支持OpenSSL加密和不加密(测试性质)
-        if (config.getEncryptType() == EncryptType.NONE) {
+        if (encryptType == EncryptType.NONE) {
             provider = null;
-        } else if (config.getEncryptType() == EncryptType.SSL) {
+        } else if (encryptType == EncryptType.SSL) {
             updateConnectionState(ConnectionState.SSL_INITIAL);
             final Thread thread = Thread.currentThread();
             final String host = config.getHost();
@@ -259,6 +261,13 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
 
             try {
                 provider.initialize(params);
+            } catch (Exception e) {
+                throw new ComponentException(e);
+            }
+        } else if (encryptType == EncryptType.SSL_CA) {
+            provider = EncryptSupport.lookupProvider("OpenSSL", OpenSSLEncryptProvider.class);
+            try {
+                provider.initialize(Collections.singletonMap("client", true));
             } catch (Exception e) {
                 throw new ComponentException(e);
             }

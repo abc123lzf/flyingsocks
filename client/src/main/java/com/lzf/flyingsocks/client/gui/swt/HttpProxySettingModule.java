@@ -64,7 +64,7 @@ public class HttpProxySettingModule extends AbstractModule<SWTViewComponent> {
             throw new Error(e);
         }
 
-        this.shell = createShell(component.getDisplay(), "HTTP本地代理设置", icon, 600, 250);
+        this.shell = createShell(component.getDisplay(), "HTTP本地代理设置", icon, 600, 280);
         initial();
     }
 
@@ -73,7 +73,7 @@ public class HttpProxySettingModule extends AbstractModule<SWTViewComponent> {
         createLabel(shell, "代理端口", 20, 40, 80, 30, SWT.CENTER);
         createLabel(shell, "认证", 20, 75, 80, 30, SWT.CENTER);
         createLabel(shell, "用户名", 20, 110, 80, 30, SWT.CENTER);
-        createLabel(shell, "密码", 20, 135, 80, 30, SWT.CENTER);
+        createLabel(shell, "密码", 20, 145, 80, 30, SWT.CENTER);
 
         Button open = createRadio(shell, "开启", 160, 5, 80, 30);
         Button close = createRadio(shell, "关闭", 250, 5, 80, 30);
@@ -87,17 +87,22 @@ public class HttpProxySettingModule extends AbstractModule<SWTViewComponent> {
         Text userText = new Text(shell, SWT.BORDER);
         userText.setBounds(160, 110, 380, 30);
 
-        Text passText = new Text(shell, SWT.CENTER);
-        passText.setBounds(160, 135, 380, 30);
+        Text passText = new Text(shell, SWT.BORDER);
+        passText.setBounds(160, 145, 380, 30);
 
-        Button enter = createButton(shell, "确认", 170, 170, 150, 30);
-        Button cancel = createButton(shell, "取消", 360, 170, 150, 30);
+        Button enter = createButton(shell, "确认", 170, 180, 150, 30);
+        Button cancel = createButton(shell, "取消", 360, 180, 150, 30);
 
         addButtonSelectionListener(enter, e -> {
-
+            
         });
 
         addButtonSelectionListener(cancel, e -> setVisiable(false));
+
+        addButtonSelectionListener(open, e -> close.setSelection(false));
+        addButtonSelectionListener(close, e -> open.setSelection(false));
+        addButtonSelectionListener(authClose, e -> authOpen.setSelection(false));
+        addButtonSelectionListener(authOpen, e -> authClose.setSelection(false));
     }
 
     void setVisiable(boolean visiable) {

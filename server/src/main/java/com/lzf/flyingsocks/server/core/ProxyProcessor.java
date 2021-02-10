@@ -28,10 +28,22 @@ import com.lzf.flyingsocks.server.core.client.ClientProcessor;
 import com.lzf.flyingsocks.server.core.dispatch.DispatchProceessor;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.Epoll;
+import io.netty.channel.epoll.EpollDatagramChannel;
 import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
+import io.netty.channel.epoll.EpollSocketChannel;
 import io.netty.channel.kqueue.KQueue;
+import io.netty.channel.kqueue.KQueueDatagramChannel;
 import io.netty.channel.kqueue.KQueueEventLoopGroup;
+import io.netty.channel.kqueue.KQueueServerSocketChannel;
+import io.netty.channel.kqueue.KQueueSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.DatagramChannel;
+import io.netty.channel.socket.ServerSocketChannel;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioDatagramChannel;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
 
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -49,6 +61,15 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
     //Worker线程池
     private final EventLoopGroup childWorker;
 
+    // ServerSocketChannel类型
+    private final Class<? extends ServerSocketChannel> serverSocketChannelClass;
+
+    // SocketChannel类型
+    private final Class<? extends SocketChannel> socketChannelClass;
+
+    // DatagramChannel类型
+    private final Class<? extends DatagramChannel> datagramChannelClass;
+
     //配置信息
     private final ServerConfig.Node serverConfig;
 
@@ -64,23 +85,35 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
         int cpus = parent.availableProcessors();
         int bossWorkerCount = cpus <= 4 ? 1 : 2;
         int childWorkerCount = cpus * 2;
-        boolean linux = !parent.isMacOS() && !parent.isWindows();
-        EventLoopGroup bossWorker;
-        EventLoopGroup childWorker;
-        if (linux) {
-            if (Epoll.isAvailable()) {
-                bossWorker = new EpollEventLoopGroup(bossWorkerCount);
-                childWorker = new EpollEventLoopGroup(childWorkerCount);
-            } else if (KQueue.isAvailable()) {
-                bossWorker = new KQueueEventLoopGroup(bossWorkerCount);
-                childWorker = new KQueueEventLoopGroup(childWorkerCount);
-            } else {
-                bossWorker = new NioEventLoopGroup(bossWorkerCount);
-                childWorker = new NioEventLoopGroup(childWorkerCount);
-            }
+
+        EventLoopGroup bossWorker, childWorker;
+        Class<? extends ServerSocketChannel> serverChannel;
+        Class<? extends SocketChannel> socketChannel;
+        Class<? extends DatagramChannel> datagramChannel;
+        if (parent.isWindows()) {
+            bossWorker = new NioEventLoopGroup(bossWorkerCount);
+            childWorker = new NioEventLoopGroup(childWorkerCount);
+            serverChannel = NioServerSocketChannel.class;
+            socketChannel = NioSocketChannel.class;
+            datagramChannel = NioDatagramChannel.class;
+        } else if (parent.isMacOS() && KQueue.isAvailable()) {
+            bossWorker = new KQueueEventLoopGroup(bossWorkerCount);
+            childWorker = new KQueueEventLoopGroup(childWorkerCount);
+            serverChannel = KQueueServerSocketChannel.class;
+            socketChannel = KQueueSocketChannel.class;
+            datagramChannel = KQueueDatagramChannel.class;
+        } else if (Epoll.isAvailable()) {
+            bossWorker = new EpollEventLoopGroup(bossWorkerCount);
+            childWorker = new EpollEventLoopGroup(childWorkerCount);
+            serverChannel = EpollServerSocketChannel.class;
+            socketChannel = EpollSocketChannel.class;
+            datagramChannel = EpollDatagramChannel.class;
         } else {
             bossWorker = new NioEventLoopGroup(bossWorkerCount);
             childWorker = new NioEventLoopGroup(childWorkerCount);
+            serverChannel = NioServerSocketChannel.class;
+            socketChannel = NioSocketChannel.class;
+            datagramChannel = NioDatagramChannel.class;
         }
 
         log.info("EventLoopGroup type: {}, BossWorkerCount: {}, ChildWorkerCount: {}",
@@ -88,6 +121,9 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
 
         this.bossWorker = bossWorker;
         this.childWorker = childWorker;
+        this.serverSocketChannelClass = serverChannel;
+        this.socketChannelClass = socketChannel;
+        this.datagramChannelClass = datagramChannel;
     }
 
     @Override
@@ -187,4 +223,15 @@ public class ProxyProcessor extends AbstractComponent<Server> implements ProxyTa
         return serverConfig;
     }
 
+    public Class<? extends ServerSocketChannel> getServerSocketChannelClass() {
+        return serverSocketChannelClass;
+    }
+
+    public Class<? extends SocketChannel> getSocketChannelClass() {
+        return socketChannelClass;
+    }
+
+    public Class<? extends DatagramChannel> getDatagramChannelClass() {
+        return datagramChannelClass;
+    }
 }

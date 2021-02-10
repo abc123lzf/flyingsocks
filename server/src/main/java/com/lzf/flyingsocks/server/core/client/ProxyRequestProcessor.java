@@ -37,13 +37,8 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.WriteBufferWaterMark;
-import io.netty.channel.epoll.EpollEventLoopGroup;
-import io.netty.channel.epoll.EpollServerSocketChannel;
-import io.netty.channel.kqueue.KQueueEventLoopGroup;
-import io.netty.channel.kqueue.KQueueServerSocketChannel;
 import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.IntegerValidator;
 
@@ -104,15 +99,7 @@ class ProxyRequestProcessor extends AbstractComponent<ClientProcessor> {
         EventLoopGroup bossGroup = parent.getParentComponent().getBossWorker();
         EventLoopGroup childGroup = parent.getParentComponent().getChildWorker();
 
-        Class<? extends ServerSocketChannel> channelClass;
-        if (bossGroup instanceof EpollEventLoopGroup) {
-            channelClass = EpollServerSocketChannel.class;
-        } else if (bossGroup instanceof KQueueEventLoopGroup) {
-            channelClass = KQueueServerSocketChannel.class;
-        } else {
-            channelClass = NioServerSocketChannel.class;
-        }
-
+        Class<? extends ServerSocketChannel> channelClass = parent.getParentComponent().getServerSocketChannelClass();
         ConfigManager<?> configManager = getConfigManager();
         String lowMarkStr = configManager.getSystemProperties("flyingsocks.client.watermark.low");
         String highMarkStr = configManager.getSystemProperties("flyingsocks.client.watermark.high");

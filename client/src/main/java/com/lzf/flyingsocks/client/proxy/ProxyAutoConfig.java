@@ -39,7 +39,6 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -65,8 +64,6 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
     public static final String DEFAULT_NAME = "Config-PAC";
 
     private static final Logger log = LoggerFactory.getLogger(ProxyAutoConfig.class);
-
-    private static final Charset DEFAULT_CONFIG_ENCODING = StandardCharsets.UTF_8;
 
     private static final String GFWLIST_TEMPLATE_URL = "classpath://META-INF/pac-template/pac.txt";
     private static final String CNIPV4_TEMPLATE_URL = "classpath://META-INF/pac-template/cnipv4.txt";
@@ -281,15 +278,15 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
 
     private void copyGFWListConfig() {
         log.info("Can not found GFWList file on User DIR, ready to copy default file to User DIR.");
+        GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
+        Path path = cfg.configPath().resolve(GFWLIST_FILE);
 
-        byte[] b = new byte[1024000];
-        try (InputStream is = configManager.loadResource(GFWLIST_TEMPLATE_URL)) {
-            int r = is.read(b);
-            String str = new String(b, 0, r, DEFAULT_CONFIG_ENCODING);
-            GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
-            Path path = cfg.configPath().resolve(GFWLIST_FILE);
-            try (FileWriter fw = new FileWriter(path.toFile())) {
-                fw.write(str);
+        try (InputStream is = configManager.loadResource(GFWLIST_TEMPLATE_URL);
+            FileWriter fw = new FileWriter(path.toFile())) {
+            Scanner sc = new Scanner(is);
+            while (sc.hasNext()) {
+                fw.write(sc.next());
+                fw.write('\n');
             }
         } catch (IOException e) {
             log.error("Can not find default pac file", e);
@@ -299,14 +296,14 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
 
     private void copyCNIPv4Config() {
         log.info("Can not found China IPv4 Address file on User DIR, ready to copy default file to User DIR.");
-        byte[] b = new byte[1024000];
-        try (InputStream is = configManager.loadResource(CNIPV4_TEMPLATE_URL)) {
-            int r = is.read(b);
-            String str = new String(b, 0, r, StandardCharsets.US_ASCII);
-            GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
-            Path path = cfg.configPath().resolve(CNIPV4_FILE);
-            try (FileWriter fw = new FileWriter(path.toFile())) {
-                fw.write(str);
+        GlobalConfig cfg = configManager.getConfig(GlobalConfig.NAME, GlobalConfig.class);
+        Path path = cfg.configPath().resolve(CNIPV4_FILE);
+        try (InputStream is = configManager.loadResource(CNIPV4_TEMPLATE_URL);
+             FileWriter out = new FileWriter(path.toFile())) {
+            Scanner sc = new Scanner(is);
+            while (sc.hasNext()) {
+                out.write(sc.next());
+                out.write('\n');
             }
         } catch (IOException e) {
             log.error("Can not find default CN IPv4 file", e);

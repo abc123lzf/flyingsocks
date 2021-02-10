@@ -31,11 +31,13 @@ import org.jfree.chart.renderer.xy.XYAreaRenderer;
 import org.jfree.data.RangeType;
 import org.jfree.data.time.DynamicTimeSeriesCollection;
 import org.jfree.data.time.Second;
+import org.jfree.graphics2d.svg.SVGGraphics2D;
 import org.jfree.ui.RectangleInsets;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Paint;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -157,8 +159,12 @@ public final class DynamicTimeSeriesChart {
     }
 
 
-    public BufferedImage parseImage(int width, int style) {
-        return chart.createBufferedImage(width, style);
+    public BufferedImage parseImage(int width, int height) {
+        SVGGraphics2D gc = new SVGGraphics2D(width, height);
+        chart.draw(gc, new Rectangle2D.Double(0, 0, width, height));
+        gc.dispose();
+
+        return chart.createBufferedImage(width, height);
     }
 
 }

@@ -295,7 +295,7 @@ public final class SocksReceiverComponent extends AbstractComponent<ProxyCompone
             switch (request.cmdType()) {
                 case CONNECT: {
                     ProxyRequest pr = new ProxyRequest(host, port, ctx.channel(), ProxyRequest.Protocol.TCP);
-                    ctx.pipeline().addLast(new TcpProxyMessageHandler(pr, parent)).remove(this);
+                    ctx.pipeline().addLast(new TcpProxyMessageHandler(pr, getParentComponent())).remove(this);
                     ctx.writeAndFlush(new SocksCmdResponse(SocksCmdStatus.SUCCESS, SocksAddressType.IPv4));
                 }
                 break;

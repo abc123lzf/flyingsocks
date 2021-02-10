@@ -29,6 +29,7 @@ import com.lzf.flyingsocks.encrypt.EncryptSupport;
 import com.lzf.flyingsocks.encrypt.JksSSLEncryptProvider;
 import com.lzf.flyingsocks.encrypt.OpenSSLEncryptProvider;
 import com.lzf.flyingsocks.protocol.AuthRequestMessage;
+import com.lzf.flyingsocks.server.ClientAuthType;
 import com.lzf.flyingsocks.server.ServerConfig;
 import com.lzf.flyingsocks.server.core.OpenSSLConfig;
 import com.lzf.flyingsocks.server.core.ProxyProcessor;
@@ -61,7 +62,7 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
             case JKS:
                 provider = EncryptSupport.lookupProvider("JKS");
                 break;
-            case None:
+            case NONE:
                 provider = null;
                 break;
             default: {
@@ -138,16 +139,16 @@ public class ClientProcessor extends AbstractComponent<ProxyProcessor> {
      */
     boolean doAuth(AuthRequestMessage msg) {
         ServerConfig.Node n = parent.getServerConfig();
-        if (n.authType.typeFieldValue != msg.getAuthType()) { //如果认证方式不匹配
+        if (n.authType.getMessageHeader() != msg.getAuthType()) { //如果认证方式不匹配
             return false;
         }
 
         Map<String, String> parameters = msg.getParameters();
 
-        if (n.authType == ServerConfig.AuthType.SIMPLE) {
+        if (n.authType == ClientAuthType.SIMPLE) {
             String password = parameters.get("password");
             return Objects.equals(n.getArgument("password"), password);
-        } else if (n.authType == ServerConfig.AuthType.USER) {
+        } else if (n.authType == ClientAuthType.USER) {
             String group = n.getArgument("group");
             UserDatabase db = parent.getParentComponent().getUserDatabase();
             return db.doAuth(group, msg.getParameter("user"), msg.getParameter("pass"));

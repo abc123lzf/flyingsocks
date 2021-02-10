@@ -22,6 +22,7 @@
 package com.lzf.flyingsocks.client.gui.swt;
 
 import com.lzf.flyingsocks.AbstractComponent;
+import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.client.Client;
 
 import org.eclipse.swt.widgets.Display;
@@ -51,12 +52,18 @@ public class SWTViewComponent extends AbstractComponent<Client> {
      */
     private MainScreenModule mainScreenModule;
 
+    /**
+     * HTTP代理设置页面
+     */
+    private HttpProxySettingModule httpProxySettingModule;
+
 
     public SWTViewComponent(Client parent) {
         super("SWTViewComponent", Objects.requireNonNull(parent));
 
-        if (Utils.isMacOS()) {
-            getConfigManager().setSystemProperties("apple.awt.UIElement", "true");
+        ConfigManager<?> configManager = getConfigManager();
+        if (configManager.isMacOS()) {
+            configManager.setSystemProperties("apple.awt.UIElement", "true");
         }
 
         try {
@@ -76,6 +83,7 @@ public class SWTViewComponent extends AbstractComponent<Client> {
             addModule(this.serverSettingModule = new ServerSettingModule(this, display));
             addModule(this.socksSettingModule = new SocksSettingModule(this, display));
             addModule(this.mainScreenModule = new MainScreenModule(this, display));
+            addModule(this.httpProxySettingModule = new HttpProxySettingModule(this));
         } catch (Throwable t) {
             log.error("SWT Thread occur a error", t);
             System.exit(1);
@@ -114,6 +122,10 @@ public class SWTViewComponent extends AbstractComponent<Client> {
 
     void openMainScreenUI() {
         mainScreenModule.setVisiable(true);
+    }
+
+    void openHttpProxySettingUI() {
+        httpProxySettingModule.setVisiable(true);
     }
 
     @Override

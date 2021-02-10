@@ -193,7 +193,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             pass.setBounds(360, 210, 460, 30);
 
             encrypt.add("无加密", 0);
-            encrypt.add("TLS/SSL", 1);
+            encrypt.add("TLS v1.2", 1);
             auth.add("普通认证", 0);
             auth.add("用户认证", 1);
 

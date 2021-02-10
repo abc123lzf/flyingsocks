@@ -39,17 +39,9 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.epoll.EpollDatagramChannel;
-import io.netty.channel.epoll.EpollEventLoopGroup;
-import io.netty.channel.epoll.EpollSocketChannel;
-import io.netty.channel.kqueue.KQueueDatagramChannel;
-import io.netty.channel.kqueue.KQueueEventLoopGroup;
-import io.netty.channel.kqueue.KQueueSocketChannel;
 import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioDatagramChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
 
 import java.net.InetSocketAddress;
 import java.util.Iterator;
@@ -77,12 +69,12 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
     /**
      * TCP客户端连接引导模板
      */
-    private final BootstrapTemplate tcpBootstrap;
+    private final BootstrapTemplate tcpBootstrapTemplate;
 
     /**
      * UDP引导模板
      */
-    private final BootstrapTemplate udpBootstrap;
+    private final BootstrapTemplate udpBootstrapTemplate;
 
     /**
      * 该模块核心线程池
@@ -94,30 +86,19 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
         super("DispatcherProcessor", Objects.requireNonNull(parent));
 
         EventLoopGroup group = parent.getChildWorker();
-        Class<? extends SocketChannel> socketChannelClass;
-        Class<? extends DatagramChannel> datagramChannelClass;
-        if (group instanceof EpollEventLoopGroup) {
-            socketChannelClass = EpollSocketChannel.class;
-            datagramChannelClass = EpollDatagramChannel.class;
-        } else if (group instanceof KQueueEventLoopGroup) {
-            socketChannelClass = KQueueSocketChannel.class;
-            datagramChannelClass = KQueueDatagramChannel.class;
-        } else {
-            socketChannelClass = NioSocketChannel.class;
-            datagramChannelClass = NioDatagramChannel.class;
-        }
-
+        Class<? extends SocketChannel> socketChannelClass = parent.getSocketChannelClass();
+        Class<? extends DatagramChannel> datagramChannelClass = parent.getDatagramChannelClass();
         Bootstrap tcpBoot = new Bootstrap()
                 .group(group)
                 .channel(socketChannelClass)
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)
                 .option(ChannelOption.AUTO_READ, false);  // 防止服务端上传速度小于下载速度导致内存溢出
-        this.tcpBootstrap = new BootstrapTemplate(tcpBoot);
+        this.tcpBootstrapTemplate = new BootstrapTemplate(tcpBoot);
 
         Bootstrap udpBoot = new Bootstrap()
                 .group(group)
                 .channel(datagramChannelClass);
-        this.udpBootstrap = new BootstrapTemplate(udpBoot);
+        this.udpBootstrapTemplate = new BootstrapTemplate(udpBoot);
     }
 
     @Override
@@ -266,7 +247,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                         } else {
                             switch (prm.getProtocol()) {
                                 case TCP: {
-                                    conn.future = tcpBootstrap.doConnect(host, port, new TcpDispatchHandler(task),
+                                    conn.future = tcpBootstrapTemplate.doConnect(host, port, new TcpDispatchHandler(task),
                                             future -> {
                                                 if (!future.isSuccess()) { //如果连接没有建立成功，那么向客户端返回一个错误的消息
                                                     log.warn("Can not connect to {}:{}", host, port);
@@ -280,7 +261,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                                 break;
 
                                 case UDP: {
-                                    conn.future = udpBootstrap.doBind(0, new UdpDispatchHandler(task),
+                                    conn.future = udpBootstrapTemplate.doBind(0, new UdpDispatchHandler(task),
                                             future -> {
                                                 if (!future.isSuccess()) {
                                                     log.warn("Can not bind UDP Port");

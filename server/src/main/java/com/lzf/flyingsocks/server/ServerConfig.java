@@ -85,7 +85,7 @@ public class ServerConfig extends AbstractConfig implements Config {
 
         this.location = folder;
 
-        Path file = location.resolve(SERVER_CONFIG_NAME);
+        Path file = folder.resolve(SERVER_CONFIG_NAME);
         if (Files.notExists(file)) {
             try {
                 makeTemplateConfigFile(file);
@@ -111,10 +111,17 @@ public class ServerConfig extends AbstractConfig implements Config {
                     System.exit(1);
                 }
 
-                EncryptType encryptType = EncryptType.valueOf(obj.getString("encrypt"));
-                AuthType authType = AuthType.valueOf(obj.getString("auth-type").toUpperCase());
+                ClientEncryptType encryptType = ClientEncryptType.configValueOf(obj.getString("encrypt"));
+                if (encryptType == null) {
+                    throw new ConfigInitializationException("Unsupport encrypt type: " + obj.getString("encrypt"));
+                }
 
-                if (encryptType == EncryptType.OpenSSL && !BaseUtils.isPort(certPort)) {
+                ClientAuthType authType = ClientAuthType.configValueOf(obj.getString("auth-type"));
+                if (authType == null) {
+                    throw new ConfigInitializationException("Unsupport auth type: " + obj.getString("auth-type"));
+                }
+
+                if (encryptType == ClientEncryptType.OpenSSL && !BaseUtils.isPort(certPort)) {
                     log.error("Illegal CertPort {}, should be large than 0 and smaller than 65536", certPort);
                     System.exit(1);
                 }
@@ -168,24 +175,6 @@ public class ServerConfig extends AbstractConfig implements Config {
     }
 
     /**
-     * 服务器指定的认证类型
-     */
-    public enum AuthType {
-        SIMPLE((byte)0x00),
-        USER((byte) 0x01);
-
-        public final byte typeFieldValue;
-
-        AuthType(byte val) {
-            this.typeFieldValue = val;
-        }
-    }
-
-    public enum EncryptType {
-        None, OpenSSL, JKS
-    }
-
-    /**
      * 服务器配置节点类
      * 每个节点需要绑定不同的端口，并拥有各自的配置方案
      */
@@ -194,13 +183,13 @@ public class ServerConfig extends AbstractConfig implements Config {
         public final int port;      //绑定端口
         public final int certPort;  //收发CA证书端口
         public final int maxClient; //最大客户端连接数
-        public final AuthType authType; //认证方式
-        public final EncryptType encryptType;   //加密方式
+        public final ClientAuthType authType; //认证方式
+        public final ClientEncryptType encryptType;   //加密方式
 
         //认证参数
         private final Map<String, String> args = new HashMap<>(4);
 
-        private Node(String name, int port, int certPort, int maxClient, AuthType authType, EncryptType encryptType) {
+        private Node(String name, int port, int certPort, int maxClient, ClientAuthType authType, ClientEncryptType encryptType) {
             this.name = Objects.requireNonNull(name);
             this.port = port;
             this.certPort = certPort;

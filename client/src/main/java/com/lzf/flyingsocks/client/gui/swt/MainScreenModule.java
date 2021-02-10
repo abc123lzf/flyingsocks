@@ -31,6 +31,7 @@ import org.eclipse.swt.events.FocusAdapter;
 import org.eclipse.swt.events.FocusEvent;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Combo;
@@ -41,6 +42,7 @@ import org.eclipse.swt.widgets.Text;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -61,6 +63,8 @@ import static com.lzf.flyingsocks.client.proxy.server.ProxyServerConfig.Node;
  * 主界面
  */
 final class MainScreenModule extends AbstractModule<SWTViewComponent> {
+
+    private static final DateTimeFormatter STATUS_TEXT_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
     /**
      * 鼠标停留按钮的颜色
@@ -169,6 +173,8 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
     }
 
     private void submitChartUpdateTask() {
+        Point downloadSize = downloadChartCanvas.getSize();
+        Point uploadSize = uploadChartCanvas.getSize();
         display.timerExec(1000, new Runnable() {
             @Override
             public void run() {
@@ -185,8 +191,8 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
                 }
 
                 if (shell.isVisible()) {
-                    refreshCanvas(downloadChartCanvas, downloadChart.parseImage(adaptDPI(CHART_WIDTH), adaptDPI(CHART_HEIGHT)));
-                    refreshCanvas(uploadChartCanvas, uploadChart.parseImage(adaptDPI(CHART_WIDTH), adaptDPI(CHART_HEIGHT)));
+                    refreshCanvas(downloadChartCanvas, downloadChart.parseImage(downloadSize.x, downloadSize.y));
+                    refreshCanvas(uploadChartCanvas, uploadChart.parseImage(uploadSize.x, uploadSize.y));
                 }
             }
         });
@@ -339,7 +345,7 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
 
     private void appendStatusText(String text) {
         LocalTime time = LocalTime.now();
-        String str = "【" + time.toString() + "】" + Utils.i18n(text) + Text.DELIMITER;
+        String str = "【" + STATUS_TEXT_TIME_FORMAT.format(time) + "】" + Utils.i18n(text) + Text.DELIMITER;
         if (statusTextArea.getLineCount() > 5000) {
             statusTextArea.setText(str);
         } else {

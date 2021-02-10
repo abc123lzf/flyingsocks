@@ -27,6 +27,25 @@ package com.lzf.flyingsocks.server;
  */
 public enum ClientEncryptType {
 
-    NONE, OpenSSL, JKS
+    NONE("None"), OpenSSL("OpenSSL"), JKS("JKS");
 
+    private final String configValue;
+
+    ClientEncryptType(String configValue) {
+        this.configValue = configValue;
+    }
+
+    public String configValue() {
+        return configValue;
+    }
+
+    public static ClientEncryptType configValueOf(String value) {
+        for (ClientEncryptType type : values()) {
+            if (type.configValue().equals(value)) {
+                return type;
+            }
+        }
+
+        return null;
+    }
 }

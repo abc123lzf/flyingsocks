@@ -191,7 +191,7 @@ public class ProxyServerConfig extends AbstractConfig {
 
 
     public enum EncryptType {
-        NONE, SSL
+        NONE, SSL, SSL_CA
     }
 
 

@@ -80,7 +80,7 @@ abstract class Utils {
                 Class<? extends GraphicsDevice> deviceClass = device.getClass();
                 Method getScaleFactor = deviceClass.getDeclaredMethod("getScaleFactor");
                 int scaleFactor = (Integer) getScaleFactor.invoke(device);
-                result = scaleFactor * 0.75f;
+                result = scaleFactor * 0.75f / 2.0f;
             } catch (Exception e) {
                 System.err.println("Can not get scale factor, cause:" + e.getMessage());
                 result = 1;
