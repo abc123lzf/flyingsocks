@@ -77,7 +77,8 @@ public class AuthResponseMessage extends Message {
     }
 
     public Map<String, String> getExtraData() {
-        return Collections.unmodifiableMap(extraData);
+        Map<String, String> extraData = this.extraData;
+        return extraData != null ? Collections.unmodifiableMap(extraData) : null;
     }
 
     @Override

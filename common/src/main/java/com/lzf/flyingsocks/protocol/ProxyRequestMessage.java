@@ -73,7 +73,15 @@ public class ProxyRequestMessage extends ProxyMessage {
 
 
     public enum Protocol {
-        TCP, UDP, CLOSE; //Close表示要求服务器关闭与目标服务器的连接
+        TCP(0),
+        UDP(1 << 7),
+        CLOSE(1 << 6); //Close表示要求服务器关闭与目标服务器的连接
+
+        final byte value;
+
+        Protocol(int val) {
+            this.value = (byte) val;
+        }
     }
 
 
@@ -135,13 +143,7 @@ public class ProxyRequestMessage extends ProxyMessage {
         header.writeByte(hlen);
         header.writeBytes(hostBytes);
 
-        if (protocol == Protocol.UDP) {
-            header.writeByte(1 << 7);
-        } else if (protocol == Protocol.CLOSE) {
-            header.writeByte(1 << 6);
-        } else {
-            header.writeByte(0);
-        }
+        header.writeByte(protocol.value);
 
         header.writeShort(port);
         header.writeInt(message.readableBytes());
