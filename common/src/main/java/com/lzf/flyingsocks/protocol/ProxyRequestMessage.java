@@ -21,12 +21,13 @@
  */
 package com.lzf.flyingsocks.protocol;
 
-import com.lzf.flyingsocks.util.BaseUtils;
+import com.lzf.flyingsocks.misc.BaseUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 /**
@@ -54,7 +55,7 @@ public class ProxyRequestMessage extends ProxyMessage {
     /**
      * 目标主机名编码
      */
-    private static final Charset HOST_ENCODING = Charset.forName("Unicode");
+    private static final Charset HOST_ENCODING = StandardCharsets.UTF_8;
 
     /**
      * 代理主机名，例如www.google.com

@@ -26,7 +26,7 @@ import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.client.proxy.ProxyComponent;
 import com.lzf.flyingsocks.client.proxy.ProxyRequest;
-import com.lzf.flyingsocks.util.BaseUtils;
+import com.lzf.flyingsocks.misc.BaseUtils;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;

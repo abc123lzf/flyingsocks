@@ -21,7 +21,7 @@
  */
 package com.lzf.flyingsocks.client.proxy.socks;
 
-import com.lzf.flyingsocks.util.BaseUtils;
+import com.lzf.flyingsocks.misc.BaseUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.socket.DatagramPacket;

@@ -19,26 +19,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.lzf.flyingsocks.client.proxy.util;
-
-import io.netty.buffer.ByteBuf;
+package com.lzf.flyingsocks.client;
 
 /**
  * @author lzf abc123lzf@126.com
- * @since 2020/12/16 20:56
+ * @since 2021/3/2 15:04
  */
-public interface MessageReceiver {
+public class Demo {
 
-    /**
-     * 接收来自客户端的消息
-     *
-     * @param message 客户端消息体
-     */
-    void receive(ByteBuf message);
 
-    /**
-     * {@link MessageDeliverer} 关闭后的行为
-     */
-    default void close() {
+    public static void main(String[] args) {
+        long number = 0;
     }
+
+    private static byte stage_type(long number) {
+        return (byte) (number >> 56);
+    }
+
 }

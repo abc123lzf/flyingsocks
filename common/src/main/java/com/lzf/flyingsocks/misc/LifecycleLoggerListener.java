@@ -19,7 +19,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.lzf.flyingsocks.util;
+package com.lzf.flyingsocks.misc;
 
 import com.lzf.flyingsocks.Lifecycle;
 import com.lzf.flyingsocks.LifecycleEvent;

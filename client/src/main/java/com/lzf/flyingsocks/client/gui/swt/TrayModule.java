@@ -55,9 +55,9 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
 
     private final Shell shell;
 
-    TrayModule(SWTViewComponent component, Display display) {
+    TrayModule(SWTViewComponent component) {
         super(Objects.requireNonNull(component));
-        this.display = Objects.requireNonNull(display);
+        this.display = component.getDisplay();
         this.operator = getComponent().getParentComponent();
         this.shell = new Shell(display);
         shell.setText("flyingsocks");
@@ -84,7 +84,7 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         createMenuItem(menu, "编辑服务器配置...", e -> belongComponent.openServerSettingUI());
         createMenuSeparator(menu);
         createMenuItem(menu, "本地Socks5代理设置...", e -> belongComponent.openSocksSettingUI());
-        createMenuItem(menu, "本地HTTP代理设置...", e -> belongComponent.openHttpProxySettingUI());
+        //createMenuItem(menu, "本地HTTP代理设置...", e -> belongComponent.openHttpProxySettingUI());
         createMenuSeparator(menu);
 
         initialAboutMenu(shell, menu);

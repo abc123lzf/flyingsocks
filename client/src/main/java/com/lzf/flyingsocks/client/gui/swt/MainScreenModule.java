@@ -116,9 +116,9 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
     private final Canvas downloadChartCanvas;
 
 
-    MainScreenModule(SWTViewComponent component, Display display) {
+    MainScreenModule(SWTViewComponent component) {
         super(Objects.requireNonNull(component), "Main-Screen");
-        this.display = display;
+        this.display = component.getDisplay();
         this.operator = getComponent().getParentComponent();
 
         Shell shell = createShell(display, "主界面", initTitleIcon(), 720, 580);

@@ -19,48 +19,60 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.lzf.flyingsocks.util;
+package com.lzf.flyingsocks.misc;
 
-import com.lzf.flyingsocks.protocol.Message;
-import com.lzf.flyingsocks.protocol.SerializationException;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandler;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-@ChannelHandler.Sharable
-public class FSMessageOutboundEncoder extends ChannelOutboundHandlerAdapter {
-    private static final Logger log = LoggerFactory.getLogger("FSMessageOutboundEncoder");
+import java.util.Arrays;
+import java.util.Objects;
 
-    public static final String HANDLER_NAME = "FSMessageOutboundEncoder";
+/**
+ * 在发送消息时自动添加分隔符
+ *
+ * @author lzf abc123lzf@126.com
+ * @since 2021/1/23 23:14
+ */
+public class DelimiterOutboundHandler extends ChannelOutboundHandlerAdapter {
 
-    public static final FSMessageOutboundEncoder INSTANCE = new FSMessageOutboundEncoder();
+    /**
+     * 分隔符ByteBuf
+     */
+    private final ByteBuf delimiter;
 
-    private FSMessageOutboundEncoder() {
-        super();
+    /**
+     * 强制使用VoidPromise
+     */
+    private final boolean enforceVoidPromise;
+
+
+    public DelimiterOutboundHandler(byte[] delimiter) {
+        this(delimiter, false);
     }
 
-    @Override
-    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
-        if (msg instanceof Message) {
-            Message message = (Message) msg;
 
-            try {
-                ByteBuf buf = message.serialize(ctx.alloc());
-                ctx.write(buf, promise);
-            } catch (SerializationException e) {
-                log.error("Serialize exception occur, with type: {}", message.getClass().getName(), e);
+    public DelimiterOutboundHandler(byte[] delimiter, boolean enforceVoidPromise) {
+        Objects.requireNonNull(delimiter);
+        byte[] arr = Arrays.copyOf(delimiter, delimiter.length);
+        this.delimiter = Unpooled.wrappedBuffer(arr).asReadOnly();
+        this.enforceVoidPromise = enforceVoidPromise;
+    }
+
+
+    @Override
+    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+        if (msg instanceof ByteBuf) {
+            delimiter.readerIndex(0);
+            if (enforceVoidPromise) {
+                promise = ctx.voidPromise();
             }
+            ctx.write(msg, promise);
+            ctx.write(delimiter.retain(), promise);
         } else {
             ctx.write(msg, promise);
         }
-    }
-
-    @Override
-    public boolean isSharable() {
-        return true;
     }
 }

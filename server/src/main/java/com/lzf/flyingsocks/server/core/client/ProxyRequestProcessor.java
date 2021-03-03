@@ -26,7 +26,7 @@ import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.encrypt.EncryptProvider;
 import com.lzf.flyingsocks.server.core.ClientSession;
-import com.lzf.flyingsocks.util.FSMessageOutboundEncoder;
+import com.lzf.flyingsocks.misc.FSMessageOutboundEncoder;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;

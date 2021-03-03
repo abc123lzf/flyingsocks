@@ -29,7 +29,7 @@ import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.Named;
-import com.lzf.flyingsocks.util.BaseUtils;
+import com.lzf.flyingsocks.misc.BaseUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

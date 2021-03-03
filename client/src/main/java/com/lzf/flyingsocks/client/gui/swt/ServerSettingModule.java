@@ -25,7 +25,7 @@ import com.lzf.flyingsocks.AbstractModule;
 import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
-import com.lzf.flyingsocks.util.BaseUtils;
+import com.lzf.flyingsocks.misc.BaseUtils;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
@@ -69,9 +69,9 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
     private final ServerSettingForm serverSettingForm;
 
-    ServerSettingModule(SWTViewComponent component, Display display) {
+    ServerSettingModule(SWTViewComponent component) {
         super(Objects.requireNonNull(component));
-        this.display = display;
+        this.display = component.getDisplay();
         this.operator = component.getParentComponent();
 
         Image icon;

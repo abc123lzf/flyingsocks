@@ -25,7 +25,7 @@ import com.lzf.flyingsocks.protocol.AuthRequestMessage;
 import com.lzf.flyingsocks.protocol.AuthResponseMessage;
 import com.lzf.flyingsocks.protocol.SerializationException;
 import com.lzf.flyingsocks.server.core.ClientSession;
-import com.lzf.flyingsocks.util.MessageHeaderCheckHandler;
+import com.lzf.flyingsocks.misc.MessageHeaderCheckHandler;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;

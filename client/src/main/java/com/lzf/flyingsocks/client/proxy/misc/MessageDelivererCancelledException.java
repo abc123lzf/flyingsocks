@@ -19,15 +19,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.lzf.flyingsocks.util;
+package com.lzf.flyingsocks.client.proxy.misc;
 
-import java.util.Set;
+import java.io.IOException;
 
-public interface ReturnableSet<E> extends Set<E> {
+/**
+ * @author lzf abc123lzf@126.com
+ * @since 2020/12/16 22:17
+ */
+public class MessageDelivererCancelledException extends IOException {
 
-    /**
-     * @return 查找hashCode和object相等并且equals返回true的对象
-     */
-    E getIfContains(Object object);
+    public MessageDelivererCancelledException() {
+        super();
+    }
 
 }

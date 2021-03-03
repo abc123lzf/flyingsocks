@@ -79,10 +79,10 @@ public class SWTViewComponent extends AbstractComponent<Client> {
     @Override
     protected void initInternal() {
         try {
-            addModule(new TrayModule(this, display));
-            addModule(this.serverSettingModule = new ServerSettingModule(this, display));
-            addModule(this.socksSettingModule = new SocksSettingModule(this, display));
-            addModule(this.mainScreenModule = new MainScreenModule(this, display));
+            addModule(new TrayModule(this));
+            addModule(this.serverSettingModule = new ServerSettingModule(this));
+            addModule(this.socksSettingModule = new SocksSettingModule(this));
+            addModule(this.mainScreenModule = new MainScreenModule(this));
             addModule(this.httpProxySettingModule = new HttpProxySettingModule(this));
         } catch (Throwable t) {
             log.error("SWT Thread occur a error", t);
@@ -95,6 +95,7 @@ public class SWTViewComponent extends AbstractComponent<Client> {
         parent.setGUITask(() -> {
             try {
                 Thread t = Thread.currentThread();
+                t.setName("SWT-UI-Thread");
                 while (!t.isInterrupted()) {
                     if (!display.readAndDispatch()) {
                         display.sleep();
@@ -102,13 +103,13 @@ public class SWTViewComponent extends AbstractComponent<Client> {
                 }
                 display.dispose();
             } catch (RuntimeException | Error t) {
-                log.error("SWT Thread occur a error, please submit this issue to GitHub, thanks", t);
+                log.error("An error occur in SWT-UI-Thread", t);
                 System.exit(1);
             }
         });
     }
 
-    public final Display getDisplay() {
+    Display getDisplay() {
         return display;
     }
 

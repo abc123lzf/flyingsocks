@@ -19,7 +19,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.lzf.flyingsocks.client.proxy.util;
+package com.lzf.flyingsocks.client.proxy.misc;
 
 import io.netty.buffer.ByteBuf;
 

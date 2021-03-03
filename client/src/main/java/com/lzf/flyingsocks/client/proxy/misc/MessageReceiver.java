@@ -19,18 +19,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.lzf.flyingsocks.client.proxy.util;
+package com.lzf.flyingsocks.client.proxy.misc;
 
-import java.io.IOException;
+import io.netty.buffer.ByteBuf;
 
 /**
  * @author lzf abc123lzf@126.com
- * @since 2020/12/16 22:17
+ * @since 2020/12/16 20:56
  */
-public class MessageDelivererCancelledException extends IOException {
+public interface MessageReceiver {
 
-    public MessageDelivererCancelledException() {
-        super();
+    /**
+     * 接收来自客户端的消息
+     *
+     * @param message 客户端消息体
+     */
+    void receive(ByteBuf message);
+
+    /**
+     * {@link MessageDeliverer} 关闭后的行为
+     */
+    default void close() {
     }
-
 }

@@ -25,11 +25,10 @@ import com.lzf.flyingsocks.AbstractModule;
 import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
 import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
-import com.lzf.flyingsocks.util.BaseUtils;
+import com.lzf.flyingsocks.misc.BaseUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
@@ -57,7 +56,7 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
 
     private final Shell shell;
 
-    SocksSettingModule(SWTViewComponent component, Display display) {
+    SocksSettingModule(SWTViewComponent component) {
         super(Objects.requireNonNull(component));
         this.operator = component.getParentComponent();
 
@@ -68,7 +67,7 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
             throw new Error(e);
         }
 
-        this.shell = createShell(display, "Socks5本地代理设置", icon, 600, 250);
+        this.shell = createShell(component.getDisplay(), "Socks5本地代理设置", icon, 600, 250);
         initial();
         adaptDPI(shell);
     }

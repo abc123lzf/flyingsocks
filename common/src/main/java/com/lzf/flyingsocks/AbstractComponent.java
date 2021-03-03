@@ -21,7 +21,7 @@
  */
 package com.lzf.flyingsocks;
 
-import com.lzf.flyingsocks.util.LifecycleLoggerListener;
+import com.lzf.flyingsocks.misc.LifecycleLoggerListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

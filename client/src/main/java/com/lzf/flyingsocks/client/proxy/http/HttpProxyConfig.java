@@ -27,7 +27,7 @@ import com.lzf.flyingsocks.AbstractConfig;
 import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.client.GlobalConfig;
-import com.lzf.flyingsocks.util.BaseUtils;
+import com.lzf.flyingsocks.misc.BaseUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;

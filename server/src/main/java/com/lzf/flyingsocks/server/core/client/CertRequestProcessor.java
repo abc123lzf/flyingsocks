@@ -24,7 +24,7 @@ package com.lzf.flyingsocks.server.core.client;
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.protocol.CertRequestMessage;
-import com.lzf.flyingsocks.util.FSMessageOutboundEncoder;
+import com.lzf.flyingsocks.misc.FSMessageOutboundEncoder;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
