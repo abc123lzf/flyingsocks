@@ -25,6 +25,7 @@ import com.lzf.flyingsocks.protocol.AuthRequestMessage;
 import com.lzf.flyingsocks.server.core.ClientSession;
 import com.lzf.flyingsocks.server.core.ProxyTaskManager;
 import io.netty.channel.Channel;
+import io.netty.resolver.dns.DnsNameResolver;
 import io.netty.util.concurrent.FastThreadLocal;
 
 import java.util.Map;
@@ -62,6 +63,11 @@ final class ConnectionContext {
      */
     private Predicate<AuthRequestMessage> authPredicate;
 
+    /**
+     * DNS客户端
+     */
+    private DnsNameResolver nameResolver;
+
 
     private ConnectionContext() {
     }
@@ -73,11 +79,13 @@ final class ConnectionContext {
      * @param proxyTaskManager 发布代理任务 {@link com.lzf.flyingsocks.server.core.ProxyProcessor}
      * @param authPredicate 认证逻辑 {@link com.lzf.flyingsocks.server.core.client.ClientProcessor#doAuth(AuthRequestMessage)}
      */
-    static void initial(Channel channel, ProxyTaskManager proxyTaskManager, Predicate<AuthRequestMessage> authPredicate) {
+    static void initial(Channel channel, ProxyTaskManager proxyTaskManager, Predicate<AuthRequestMessage> authPredicate,
+                        DnsNameResolver nameResolver) {
         accessCheckout(channel);
         ConnectionContext ctx = new ConnectionContext();
         ctx.proxyTaskManager = Objects.requireNonNull(proxyTaskManager);
         ctx.authPredicate = Objects.requireNonNull(authPredicate);
+        ctx.nameResolver = Objects.requireNonNull(nameResolver);
 
         Map<Channel, ConnectionContext> map = CONTEXT.get();
         map.put(channel, ctx);
@@ -132,6 +140,19 @@ final class ConnectionContext {
         }
 
         return ctx.authPredicate;
+    }
+
+
+    static DnsNameResolver nameResolver(Channel channel) {
+        accessCheckout(channel);
+        Map<Channel, ConnectionContext> map = CONTEXT.get();
+        ConnectionContext ctx = map.get(channel);
+        if (ctx == null) {
+            ctx = new ConnectionContext();
+            map.put(channel, ctx);
+        }
+
+        return ctx.nameResolver;
     }
 
 

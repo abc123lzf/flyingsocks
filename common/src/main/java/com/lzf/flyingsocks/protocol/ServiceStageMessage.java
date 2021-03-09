@@ -31,6 +31,12 @@ import io.netty.buffer.CompositeByteBuf;
  * |  SVID |  LEN |    MESSAGE    |
  * +-------+------+---------------+
  *
+ * 目前SVID有四种类型：
+ * 0x00：TCP、UDP流量转发请求与响应
+ * 0x01：DNS域名解析请求、响应
+ * 0x7E：PONG消息
+ * 0x7F：PING消息
+ *
  * @author lzf abc123lzf@126.com
  * @since 2021/1/27 4:06
  */

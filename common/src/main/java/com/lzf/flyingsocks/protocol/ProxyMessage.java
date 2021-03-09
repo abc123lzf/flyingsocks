@@ -28,7 +28,7 @@ import io.netty.buffer.ByteBuf;
  */
 abstract class ProxyMessage extends ServiceStageMessage {
 
-    private static final byte SERVICE_ID = 0;
+    public static final byte SERVICE_ID = 0;
 
     /**
      * 客户端发起代理请求的序列ID

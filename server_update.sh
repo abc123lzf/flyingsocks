@@ -18,7 +18,7 @@ fi
 function backupConfig() {
   rm -rf /tmp/flyingsocks-backup
   mkdir /tmp/flyingsocks-backup
-  cp $FS_HOME/config /tmp/flyingsocks-backup || return 1
+  cp -r $FS_HOME/config /tmp/flyingsocks-backup || return 1
   return 0
 }
 

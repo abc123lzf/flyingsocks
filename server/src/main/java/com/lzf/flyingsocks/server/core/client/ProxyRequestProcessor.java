@@ -25,8 +25,8 @@ import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.encrypt.EncryptProvider;
-import com.lzf.flyingsocks.server.core.ClientSession;
 import com.lzf.flyingsocks.misc.FSMessageOutboundEncoder;
+import com.lzf.flyingsocks.server.core.ClientSession;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
@@ -39,6 +39,12 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.WriteBufferWaterMark;
 import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioDatagramChannel;
+import io.netty.resolver.ResolvedAddressTypes;
+import io.netty.resolver.dns.DefaultAuthoritativeDnsServerCache;
+import io.netty.resolver.dns.DefaultDnsCache;
+import io.netty.resolver.dns.DnsNameResolver;
+import io.netty.resolver.dns.DnsNameResolverBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.IntegerValidator;
 
@@ -76,7 +82,16 @@ class ProxyRequestProcessor extends AbstractComponent<ClientProcessor> {
     private final ClientSessionHandler clientSessionHandler;
 
 
+    /**
+     * 代理服务Channel
+     */
     private volatile ServerSocketChannel serverSocketChannel;
+
+
+    /**
+     * DNS解析工具，用于处理DNS请求
+     */
+    private DnsNameResolver dnsNameResolver;
 
 
     ProxyRequestProcessor(ClientProcessor processor, EncryptProvider encryptProvider) {
@@ -90,6 +105,15 @@ class ProxyRequestProcessor extends AbstractComponent<ClientProcessor> {
 
     @Override
     protected void initInternal() {
+        EventLoopGroup bossGroup = parent.getParentComponent().getBossWorker();
+        // 初始化域名解析服务
+        DnsNameResolverBuilder nameResolverBuilder = new DnsNameResolverBuilder(bossGroup.next());
+        nameResolverBuilder.channelType(NioDatagramChannel.class)
+                .resolveCache(new DefaultDnsCache())
+                .resolvedAddressTypes(ResolvedAddressTypes.IPV4_PREFERRED)
+                .authoritativeDnsServerCache(new DefaultAuthoritativeDnsServerCache());
+        this.dnsNameResolver = nameResolverBuilder.build();
+
         super.initInternal();
     }
 
@@ -99,17 +123,18 @@ class ProxyRequestProcessor extends AbstractComponent<ClientProcessor> {
         EventLoopGroup bossGroup = parent.getParentComponent().getBossWorker();
         EventLoopGroup childGroup = parent.getParentComponent().getChildWorker();
 
+        // 初始化代理服务
         Class<? extends ServerSocketChannel> channelClass = parent.getParentComponent().getServerSocketChannelClass();
         ConfigManager<?> configManager = getConfigManager();
         String lowMarkStr = configManager.getSystemProperties("flyingsocks.client.watermark.low");
         String highMarkStr = configManager.getSystemProperties("flyingsocks.client.watermark.high");
 
         if (StringUtils.isBlank(lowMarkStr) || !IntegerValidator.getInstance().isValid(lowMarkStr)) {
-            lowMarkStr = "8388608";
+            lowMarkStr = "1572864";
         }
 
         if (StringUtils.isBlank(highMarkStr) || !IntegerValidator.getInstance().isValid(highMarkStr)) {
-            highMarkStr = "10485760";
+            highMarkStr = "2097152";
         }
 
         WriteBufferWaterMark waterMark = new WriteBufferWaterMark(Integer.parseInt(lowMarkStr), Integer.parseInt(highMarkStr));
@@ -122,7 +147,7 @@ class ProxyRequestProcessor extends AbstractComponent<ClientProcessor> {
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) throws Exception {
-                        ConnectionContext.initial(ch, parent.getParentComponent(), parent::doAuth);
+                        ConnectionContext.initial(ch, parent.getParentComponent(), parent::doAuth, dnsNameResolver);
                         ChannelPipeline cp = ch.pipeline();
                         if (encryptProvider != null) {
                             Map<String, Object> params = Collections.singletonMap("alloc", ch.alloc());
@@ -148,6 +173,7 @@ class ProxyRequestProcessor extends AbstractComponent<ClientProcessor> {
     }
 
 
+
     @Override
     protected void stopInternal() {
         ServerSocketChannel serverChannel = this.serverSocketChannel;
@@ -155,6 +181,7 @@ class ProxyRequestProcessor extends AbstractComponent<ClientProcessor> {
             serverChannel.close();
         }
 
+        dnsNameResolver.close();
         super.stopInternal();
     }
 

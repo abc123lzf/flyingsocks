@@ -55,6 +55,12 @@ public class SerializationException extends Exception {
         this.messageClass = messageClass;
     }
 
+    public SerializationException(Class<? extends Message> messageClass, String message, Throwable t) {
+        super("[" + messageClass.getName() + "] " + message, t);
+        this.messageClass = messageClass;
+    }
+
+
     private static String toMessage(Class<? extends Message> messageClass, String msg) {
         return "[" + messageClass.getName() + "]" + msg;
     }
