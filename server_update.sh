@@ -48,5 +48,7 @@ rm -rf ${FS_HOME:?}
 mkdir -p $FS_HOME
 
 cd ..
-cp server/target/flyingsocks-server-bin.zip ..
+\cp -f server/target/flyingsocks-server-bin.zip ..
 unzip ../flyingsocks-server-bin.zip -d $FS_HOME/..
+
+

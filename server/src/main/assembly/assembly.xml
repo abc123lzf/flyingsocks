@@ -21,6 +21,13 @@
             </includes>
         </fileSet>
 
+        <fileSet>
+            <outputDirectory>/</outputDirectory>
+            <includes>
+                <include>LICENSE</include>
+            </includes>
+        </fileSet>
+
         <!-- 打包启停脚本到bin下 -->
         <fileSet>
             <directory>src/main/shell</directory>

@@ -111,7 +111,8 @@ class ProxyRequestProcessor extends AbstractComponent<ClientProcessor> {
         nameResolverBuilder.channelType(NioDatagramChannel.class)
                 .resolveCache(new DefaultDnsCache())
                 .resolvedAddressTypes(ResolvedAddressTypes.IPV4_PREFERRED)
-                .authoritativeDnsServerCache(new DefaultAuthoritativeDnsServerCache());
+                .authoritativeDnsServerCache(new DefaultAuthoritativeDnsServerCache())
+                .recursionDesired(true);
         this.dnsNameResolver = nameResolverBuilder.build();
 
         super.initInternal();
@@ -182,6 +183,7 @@ class ProxyRequestProcessor extends AbstractComponent<ClientProcessor> {
         }
 
         dnsNameResolver.close();
+        dnsNameResolver = null;
         super.stopInternal();
     }
 
