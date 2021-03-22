@@ -24,7 +24,9 @@ package com.lzf.flyingsocks.client;
 import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.ConfigEvent;
 import com.lzf.flyingsocks.ConfigEventListener;
+import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.client.gui.swt.SWTViewComponent;
+import com.lzf.flyingsocks.client.proxy.http.HttpProxyConfig;
 import com.lzf.flyingsocks.client.proxy.server.ConnectionStateListener;
 import com.lzf.flyingsocks.client.proxy.ProxyAutoConfig;
 import com.lzf.flyingsocks.client.proxy.ProxyComponent;
@@ -245,6 +247,44 @@ public final class StandardClient extends Client {
     public SocksConfig getSocksConfig() {
         SocksConfig cfg = getConfigManager().getConfig(SocksConfig.NAME, SocksConfig.class);
         return cfg.configFacade();
+    }
+
+    @Override
+    public boolean isHttpProxyOpen() {
+        GlobalConfig gc = getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
+        return gc.isEnableHttpProxy();
+    }
+
+    @Override
+    public void setupHttpProxySwitch(boolean open) {
+        GlobalConfig gc = getConfigManager().getConfig(GlobalConfig.NAME, GlobalConfig.class);
+        gc.setEnableHttpProxy(open);
+    }
+
+    @Override
+    public HttpProxyConfig getHttpProxyConfig() {
+        HttpProxyConfig cfg = getConfigManager().getConfig(HttpProxyConfig.NAME, HttpProxyConfig.class);
+        if (cfg == null) {
+            return null;
+        }
+        return cfg.configFacade();
+    }
+
+    @Override
+    public void updateHttpProxyConfig(boolean open, int port, boolean auth, String username, String password) {
+        ConfigManager<?> manager = getConfigManager();
+        setupHttpProxySwitch(open);
+        HttpProxyConfig cfg = manager.getConfig(HttpProxyConfig.NAME, HttpProxyConfig.class);
+        if (cfg == null && open) {
+            cfg = new HttpProxyConfig(manager);
+            manager.registerConfig(cfg);
+            cfg.update(port, auth, username, password);
+            return;
+        }
+
+        if (cfg != null) {
+            cfg.update(port, auth, username, password);
+        }
     }
 
     @Override

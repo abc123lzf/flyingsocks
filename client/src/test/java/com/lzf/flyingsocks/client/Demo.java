@@ -28,12 +28,13 @@ package com.lzf.flyingsocks.client;
 public class Demo {
 
 
+
     public static void main(String[] args) {
-        long number = 0;
+        System.out.print(stage_type(256));
     }
 
-    private static byte stage_type(long number) {
-        return (byte) (number >> 56);
+    private static double stage_type(int number) {
+        return Math.log(number) / Math.log(2);
     }
 
 }

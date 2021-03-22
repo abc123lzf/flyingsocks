@@ -103,7 +103,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
     @Override
     protected void initInternal() {
-        requestReceiver = new ThreadPoolExecutor(0, 4, 30, TimeUnit.SECONDS,
+        ExecutorService receiverPool = new ThreadPoolExecutor(0, 4, 30, TimeUnit.SECONDS,
                 new SynchronousQueue<>(), Executors.defaultThreadFactory(), new ThreadPoolExecutor.DiscardPolicy());
 
         int cpus = Runtime.getRuntime().availableProcessors();
@@ -119,8 +119,10 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
         log.info("Using {} dispatcher thread.", task);
 
         for (int i = 0; i < task; i++) {
-            requestReceiver.execute(new DispatcherTask());
+            receiverPool.execute(new DispatcherTask());
         }
+
+        this.requestReceiver = receiverPool;
 
         super.initInternal();
     }
@@ -206,8 +208,9 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
                         final ProxyRequestMessage prm = task.getRequestMessage();
                         final ClientSession cs = task.session();
 
-                        if (!cs.isActive())
+                        if (!cs.isActive()) {
                             continue;
+                        }
 
                         final ReturnableSet<ActiveConnection> set = activeConnectionMap.computeIfAbsent(cs,
                                 key -> new ReturnableLinkedHashSet<>(128));

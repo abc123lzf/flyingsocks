@@ -45,6 +45,7 @@ import java.awt.GraphicsEnvironment;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.lang.reflect.Method;
+import java.text.MessageFormat;
 import java.util.Locale;
 import java.util.ResourceBundle;
 
@@ -320,6 +321,16 @@ abstract class Utils {
             return RESOURCE_BUNDLE.getString(key);
         }
         return key;
+    }
+
+
+    static String i18n(String key, Object... args) {
+        if (!RESOURCE_BUNDLE.containsKey(key)) {
+            return key;
+        }
+
+        String pattern = RESOURCE_BUNDLE.getString(key);
+        return MessageFormat.format(pattern, args);
     }
 
 

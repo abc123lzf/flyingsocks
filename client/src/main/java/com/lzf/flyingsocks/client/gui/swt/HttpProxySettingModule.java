@@ -22,17 +22,22 @@
 package com.lzf.flyingsocks.client.gui.swt;
 
 import com.lzf.flyingsocks.AbstractModule;
+import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.client.ClientOperator;
+import com.lzf.flyingsocks.client.GlobalConfig;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
+import com.lzf.flyingsocks.client.proxy.http.HttpProxyConfig;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import static com.lzf.flyingsocks.client.gui.swt.Utils.addButtonSelectionListener;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createButton;
@@ -40,6 +45,7 @@ import static com.lzf.flyingsocks.client.gui.swt.Utils.createLabel;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createRadio;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createShell;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.loadImage;
+import static com.lzf.flyingsocks.client.gui.swt.Utils.showMessageBox;
 
 /**
  * HTTP本地代理设置界面
@@ -75,34 +81,124 @@ public class HttpProxySettingModule extends AbstractModule<SWTViewComponent> {
         createLabel(shell, "用户名", 20, 110, 80, 30, SWT.CENTER);
         createLabel(shell, "密码", 20, 145, 80, 30, SWT.CENTER);
 
-        Button open = createRadio(shell, "开启", 160, 5, 80, 30);
-        Button close = createRadio(shell, "关闭", 250, 5, 80, 30);
+        Composite switchComp = new Composite(shell, SWT.NONE);
+        switchComp.setBounds(20, 5, 380, 30);
+        Button openRadio = createRadio(switchComp, "开启", 140, 5, 80, 30);
+        Button closeRadio = createRadio(switchComp, "关闭", 230, 5, 80, 30);
+        addButtonSelectionListener(openRadio, e -> {
+            openRadio.setSelection(true);
+            closeRadio.setSelection(false);
+        });
+        addButtonSelectionListener(closeRadio, e -> {
+            openRadio.setSelection(false);
+            closeRadio.setSelection(true);
+        });
 
         Text portText = new Text(shell, SWT.BORDER);
         portText.setBounds(160, 40, 380, 30);
 
-        Button authOpen = createRadio(shell, "开启", 160, 75, 80, 30);
-        Button authClose = createRadio(shell, "关闭", 250, 75, 80, 30);
+        Composite authComp = new Composite(shell, SWT.NONE);
+        authComp.setBounds(20, 75, 380, 30);
+        Button authOpenRadio = createRadio(authComp, "开启", 140, 0, 80, 30);
+        Button authCloseRadio = createRadio(authComp, "关闭", 230, 0, 80, 30);
+        addButtonSelectionListener(authCloseRadio, e -> {
+            authCloseRadio.setSelection(true);
+            authOpenRadio.setSelection(false);
+        });
+        addButtonSelectionListener(authOpenRadio, e -> {
+            authCloseRadio.setSelection(false);
+            authOpenRadio.setSelection(true);
+        });
 
         Text userText = new Text(shell, SWT.BORDER);
         userText.setBounds(160, 110, 380, 30);
 
-        Text passText = new Text(shell, SWT.BORDER);
+        Text passText = new Text(shell, SWT.BORDER | SWT.PASSWORD);
         passText.setBounds(160, 145, 380, 30);
 
-        Button enter = createButton(shell, "确认", 170, 180, 150, 30);
-        Button cancel = createButton(shell, "取消", 360, 180, 150, 30);
+        Button enterBtn = createButton(shell, "确认", 140, 180, 150, 35);
+        Button cancelBtn = createButton(shell, "取消", 330, 180, 150, 35);
 
-        addButtonSelectionListener(enter, e -> {
-            
+        addButtonSelectionListener(enterBtn, e -> {
+            boolean open = openRadio.getSelection();
+            boolean auth = authCloseRadio.getSelection();
+            int port;
+            try {
+                port = Integer.parseInt(portText.getText());
+            } catch (NumberFormatException nfe) {
+                showMessageBox(shell, "错误", "端口格式错误", SWT.ICON_ERROR | SWT.OK);
+                return;
+            }
+            String username = userText.getText();
+            String password = passText.getText();
+            operator.updateHttpProxyConfig(open, port, auth, username, password);
+            showMessageBox(shell, "提示", "修改成功", SWT.ICON_INFORMATION | SWT.OK);
         });
 
-        addButtonSelectionListener(cancel, e -> setVisiable(false));
+        if (operator.isHttpProxyOpen()) {
+            openRadio.setSelection(true);
+        } else {
+            closeRadio.setSelection(true);
+        }
 
-        addButtonSelectionListener(open, e -> close.setSelection(false));
-        addButtonSelectionListener(close, e -> open.setSelection(false));
-        addButtonSelectionListener(authClose, e -> authOpen.setSelection(false));
-        addButtonSelectionListener(authOpen, e -> authClose.setSelection(false));
+        HttpProxyConfig cfg = operator.getHttpProxyConfig();
+        Consumer<HttpProxyConfig> updater = config -> {
+            if (config == null) {
+                closeRadio.setSelection(true);
+                authCloseRadio.setSelection(true);
+                return;
+            }
+
+            portText.setText(String.valueOf(config.getBindPort()));
+            if (config.getUsername() != null) {
+                userText.setText(config.getUsername());
+            }
+            if (config.getPassword() != null) {
+                passText.setText(config.getPassword());
+            }
+            if (config.isAuth()) {
+                authOpenRadio.setSelection(true);
+            } else {
+                authCloseRadio.setSelection(true);
+            }
+        };
+
+        if (cfg != null) {
+            updater.accept(cfg);
+        } else {
+            closeRadio.setSelection(true);
+            authCloseRadio.setSelection(true);
+        }
+
+
+        addButtonSelectionListener(cancelBtn, e -> {
+            if (operator.isHttpProxyOpen()) {
+                openRadio.setSelection(true);
+            } else {
+                closeRadio.setSelection(true);
+            }
+            HttpProxyConfig hpc = operator.getHttpProxyConfig();
+            updater.accept(hpc);
+            setVisiable(false);
+        });
+
+        operator.registerConfigEventListener(event -> {
+            if (Config.UPDATE_EVENT.equals(event.getEvent()) && event.getSource() instanceof HttpProxyConfig) {
+                HttpProxyConfig hpc = (HttpProxyConfig) event.getSource();
+                updater.accept(hpc);
+            }
+        });
+
+        operator.registerConfigEventListener(event -> {
+            if (Config.UPDATE_EVENT.equals(event.getEvent()) && event.getSource() instanceof GlobalConfig) {
+                GlobalConfig gc = (GlobalConfig) event.getSource();
+                if (gc.isEnableHttpProxy()) {
+                    openRadio.setSelection(true);
+                } else {
+                    closeRadio.setSelection(true);
+                }
+            }
+        });
     }
 
     void setVisiable(boolean visiable) {

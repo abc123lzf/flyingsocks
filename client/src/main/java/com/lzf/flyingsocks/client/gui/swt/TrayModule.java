@@ -76,19 +76,19 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         tray.setVisible(true);
         tray.setToolTipText(shell.getText());
 
-        createMenuItem(menu, "打开主界面", e -> belongComponent.openMainScreenUI());
+        createMenuItem(menu, "swtui.tray.item.open_main_screen_ui", e -> belongComponent.openMainScreenUI());
 
         //PAC设置菜单
         initialPacMenu(shell, menu);
 
-        createMenuItem(menu, "编辑服务器配置...", e -> belongComponent.openServerSettingUI());
+        createMenuItem(menu, "swtui.tray.item.server_config_ui", e -> belongComponent.openServerSettingUI());
         createMenuSeparator(menu);
-        createMenuItem(menu, "本地Socks5代理设置...", e -> belongComponent.openSocksSettingUI());
-        //createMenuItem(menu, "本地HTTP代理设置...", e -> belongComponent.openHttpProxySettingUI());
+        createMenuItem(menu, "swtui.tray.item.socks5_config_ui", e -> belongComponent.openSocksSettingUI());
+        createMenuItem(menu, "swtui.tray.item.http_config_ui", e -> belongComponent.openHttpProxySettingUI());
         createMenuSeparator(menu);
 
         initialAboutMenu(shell, menu);
-        createMenuItem(menu, "退出", e -> {
+        createMenuItem(menu, "swtui.tray.item.exit", e -> {
             tray.dispose();
             shell.dispose();
             belongComponent.getParentComponent().stop();
@@ -106,7 +106,7 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
      */
     private void initialPacMenu(Shell shell, Menu main) {
         MenuItem pac = new MenuItem(main, SWT.CASCADE);
-        pac.setText("代理模式");
+        pac.setText(i18n("swtui.tray.item.proxy_mode"));
         Menu pacMenu = new Menu(shell, SWT.DROP_DOWN);
         pac.setMenu(pacMenu);
         MenuItem pac0 = new MenuItem(pacMenu, SWT.CASCADE ^ SWT.CHECK);
@@ -114,10 +114,10 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         MenuItem pac3 = new MenuItem(pacMenu, SWT.CASCADE ^ SWT.CHECK);
         MenuItem pac2 = new MenuItem(pacMenu, SWT.CASCADE ^ SWT.CHECK);
 
-        pac0.setText("不代理");
-        pac1.setText("GFW List模式");
-        pac2.setText("全局代理模式");
-        pac3.setText("仅代理境外地址");
+        pac0.setText(i18n("swtui.tray.item.proxy_mode.no_proxy"));
+        pac1.setText(i18n("swtui.tray.item.proxy_mode.gfwlist"));
+        pac2.setText(i18n("swtui.tray.item.proxy_mode.global"));
+        pac3.setText(i18n("swtui.tray.item.proxy_mode.ipwhitelist"));
 
         addMenuItemSelectionListener(pac0, e -> {
             operator.setProxyMode(PROXY_NO);
@@ -170,16 +170,16 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
 
     private void initialAboutMenu(Shell shell, Menu main) {
         MenuItem serv = new MenuItem(main, SWT.CASCADE);
-        serv.setText("帮助/关于");
+        serv.setText(i18n("swtui.tray.item.help"));
         Menu about = new Menu(shell, SWT.DROP_DOWN);
         serv.setMenu(about);
 
-        createCascadeMenuItem(about, "打开配置文件目录", e -> operator.openConfigDirectory());
-        createCascadeMenuItem(about, "打开日志目录", e -> operator.openLogDirectory());
-        createCascadeMenuItem(about, "清空日志", e -> operator.cleanLogFiles());
+        createCascadeMenuItem(about, "swtui.tray.item.help.open_config_dir", e -> operator.openConfigDirectory());
+        createCascadeMenuItem(about, "swtui.tray.item.help.open_log_dir", e -> operator.openLogDirectory());
+        createCascadeMenuItem(about, "swtui.tray.item.help.clean_log", e -> operator.cleanLogFiles());
         createMenuSeparator(about);
-        createCascadeMenuItem(about, "GitHub页面", e -> operator.openBrowser(GITHUB_PAGE));
-        createCascadeMenuItem(about, "问题反馈", e -> operator.openBrowser(ISSUE_PAGE));
+        createCascadeMenuItem(about, "swtui.tray.item.help.open_github", e -> operator.openBrowser(GITHUB_PAGE));
+        createCascadeMenuItem(about, "swtui.tray.item.help.open_issue", e -> operator.openBrowser(ISSUE_PAGE));
     }
 
 }

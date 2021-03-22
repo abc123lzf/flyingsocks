@@ -81,7 +81,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             throw new Error(e);
         }
 
-        this.shell = createShell(display, "服务器设置", icon, 850, 370);
+        this.shell = createShell(display, "swtui.serverconfig.title", icon, 850, 370);
         this.serverList = new ServerList();
         this.serverSettingForm = new ServerSettingForm();
 
@@ -98,8 +98,8 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         ServerList() {
             serverList = new List(shell, SWT.SINGLE | SWT.V_SCROLL | SWT.BORDER);
             serverList.setBounds(10, 10, 250, 305);
-            serverList.setToolTipText("服务器列表");
-            serverList.add("点击此处进行添加", 0);
+            serverList.setToolTipText(i18n("swtui.serverconfig.list.title"));
+            serverList.add(i18n("swtui.serverconfig.list.first"), 0);
             serverList.select(0);
 
             addListSelectionListener(serverList, e -> {
@@ -176,13 +176,13 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             Text user = new Text(shell, SWT.BORDER);
             Text pass = new Text(shell, SWT.BORDER | SWT.PASSWORD);
 
-            createLabel(shell, "地址", 270, 10, 70, 30, SWT.CENTER);
-            createLabel(shell, "端口", 270, 50, 70, 30, SWT.CENTER);
-            createLabel(shell, "证书端口", 550, 50, 80, 30, SWT.CENTER);
-            createLabel(shell, "加密方式", 270, 90, 80, 30, SWT.CENTER);
-            createLabel(shell, "认证方式", 270, 130, 80, 30, SWT.CENTER);
-            createLabel(shell, "用户名", 270, 170, 70, 30, SWT.CENTER);
-            createLabel(shell, "密码", 270, 210, 70, 30, SWT.CENTER);
+            createLabel(shell, "swtui.serverconfig.form.label.address", 270, 10, 70, 30, SWT.CENTER);
+            createLabel(shell, "swtui.serverconfig.form.label.port", 270, 50, 70, 30, SWT.CENTER);
+            createLabel(shell, "swtui.serverconfig.form.label.ssl_port", 550, 50, 80, 30, SWT.CENTER);
+            createLabel(shell, "swtui.serverconfig.form.label.encrypt_type", 270, 90, 80, 30, SWT.CENTER);
+            createLabel(shell, "swtui.serverconfig.form.label.auth_type", 270, 130, 80, 30, SWT.CENTER);
+            createLabel(shell, "swtui.serverconfig.form.label.username", 270, 170, 70, 30, SWT.CENTER);
+            createLabel(shell, "swtui.serverconfig.form.label.password", 270, 210, 70, 30, SWT.CENTER);
 
             host.setBounds(360, 10, 460, 30);
             port.setBounds(360, 50, 180, 30);
@@ -192,10 +192,10 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             user.setBounds(360, 170, 460, 30);
             pass.setBounds(360, 210, 460, 30);
 
-            encrypt.add("无加密", 0);
-            encrypt.add("TLS v1.2", 1);
-            auth.add("普通认证", 0);
-            auth.add("用户认证", 1);
+            encrypt.add(i18n("swtui.serverconfig.form.encrypt.none"), 0);
+            encrypt.add(i18n("swtui.serverconfig.form.encrypt.ssl"), 1);
+            auth.add(i18n("swtui.serverconfig.form.auth.normal"), 0);
+            auth.add(i18n("swtui.serverconfig.form.auth.user"), 1);
 
             encrypt.select(0);
             auth.select(1);
@@ -222,7 +222,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             });
 
             Button save = new Button(shell, SWT.PUSH);
-            save.setText("保存");
+            save.setText(i18n("swtui.serverconfig.form.save"));
             save.setBounds(270, 250, 270, 60);
 
             try (InputStream is = ResourceManager.openSaveIconImageStream()) {
@@ -234,14 +234,14 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             addButtonSelectionListener(save, e -> {
                 String _host = ServerSettingForm.this.host.getText();
                 if (!BaseUtils.isIPv4Address(_host) && !BaseUtils.isHostName(_host)) {
-                    showMessageBox(shell, "错误", "服务器主机名格式有误:需要为IPv4地址或是合法主机名/域名", SWT.ICON_ERROR | SWT.OK);
+                    showMessageBox(shell, "swtui.serverconfig.notice.error.title", "swtui.serverconfig.notice.error.host_error", SWT.ICON_ERROR | SWT.OK);
                     return;
                 }
 
                 String _ports = ServerSettingForm.this.port.getText();
                 int _port;
                 if (!BaseUtils.isPortString(_ports)) {
-                    showMessageBox(shell, "错误", "端口号有误,必须为1~65535之间的数字", SWT.ICON_ERROR | SWT.OK);
+                    showMessageBox(shell, "swtui.serverconfig.notice.error.title", "swtui.serverconfig.notice.error.port_error", SWT.ICON_ERROR | SWT.OK);
                     return;
                 }
 
@@ -251,7 +251,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                 int cport = 0;
                 if (en == 1) {
                     if (!BaseUtils.isPortString(cports)) {
-                        showMessageBox(shell, "错误", "证书端口号有误,必须为1~65535之间的数字", SWT.ICON_ERROR | SWT.OK);
+                        showMessageBox(shell, "swtui.serverconfig.notice.error.title", "swtui.serverconfig.notice.error.ssl_port_error", SWT.ICON_ERROR | SWT.OK);
                         return;
                     }
                     cport = Integer.parseInt(cports);
@@ -284,19 +284,22 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
                 if (serverList.select == -1 || serverList.select == 0) {
                     if (serverList.contains(_host, _port)) {
-                        showMessageBox(shell, "提示", "已经包含服务器 " + _host + ":" + _port + " 的配置", SWT.ICON_ERROR | SWT.OK);
+                        showMessageBox(shell, "swtui.serverconfig.notice.info.title",
+                                i18n("swtui.serverconfig.notice.info.server_exists", _host, _port), SWT.ICON_ERROR | SWT.OK);
                         return;
                     }
                     operator.addServerConfig(n);
-                    showMessageBox(shell, "成功", "成功添加服务器配置 " + _host + ":" + _port, SWT.ICON_INFORMATION | SWT.OK);
+                    showMessageBox(shell, "swtui.serverconfig.notice.success.title",
+                            i18n("swtui.serverconfig.notice.success.server_added", _host, _port), SWT.ICON_INFORMATION | SWT.OK);
                 } else {
                     operator.updateServerConfig(n);
-                    showMessageBox(shell, "成功", "成功修改服务器配置 " + _host + ":" + _port, SWT.ICON_INFORMATION | SWT.OK);
+                    showMessageBox(shell, "swtui.serverconfig.notice.success.title",
+                            i18n("swtui.serverconfig.notice.success.server_updated", _host, _port), SWT.ICON_INFORMATION | SWT.OK);
                 }
             });
 
             Button delete = new Button(shell, SWT.PUSH);
-            delete.setText("删除");
+            delete.setText(i18n("swtui.serverconfig.form.delete"));
             delete.setBounds(550, 250, 270, 60);
 
             try (InputStream is = ResourceManager.openDeleteIconImageStream()) {
@@ -308,7 +311,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             addButtonSelectionListener(delete, e -> {
                 Node n = serverList.selectNode();
                 if (n == null) {
-                    showMessageBox(shell, "提示", "请选择需要删除的服务器配置", SWT.ICON_INFORMATION | SWT.OK);
+                    showMessageBox(shell, "swtui.serverconfig.notice.info.title", "swtui.serverconfig.notice.info.no_server_select", SWT.ICON_INFORMATION | SWT.OK);
                     return;
                 }
 

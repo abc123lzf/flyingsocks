@@ -22,6 +22,7 @@
 package com.lzf.flyingsocks.client;
 
 import com.lzf.flyingsocks.ConfigEventListener;
+import com.lzf.flyingsocks.client.proxy.http.HttpProxyConfig;
 import com.lzf.flyingsocks.client.proxy.server.ConnectionStateListener;
 import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
 
@@ -122,6 +123,27 @@ public interface ClientOperator {
      * @return 获取本地Socks代理包装对象
      */
     SocksConfig getSocksConfig();
+
+    /**
+     * @return HTTP代理是否开启
+     */
+    boolean isHttpProxyOpen();
+
+    /**
+     * 设置是否打开HTTP代理
+     */
+    void setupHttpProxySwitch(boolean open);
+
+    /**
+     * @return 获取HTTP代理配置对象
+     */
+    HttpProxyConfig getHttpProxyConfig();
+
+
+    /**
+     * 修改HTTP代理配置
+     */
+    void updateHttpProxyConfig(boolean open, int port, boolean auth, String username, String password);
 
     /**
      * @return 系统代理模式

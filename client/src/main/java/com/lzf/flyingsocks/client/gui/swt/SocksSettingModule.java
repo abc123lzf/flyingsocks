@@ -67,7 +67,7 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
             throw new Error(e);
         }
 
-        this.shell = createShell(component.getDisplay(), "Socks5本地代理设置", icon, 600, 250);
+        this.shell = createShell(component.getDisplay(), "swtui.socks5.title", icon, 600, 250);
         initial();
         adaptDPI(shell);
     }

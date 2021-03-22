@@ -135,6 +135,15 @@ public class GlobalConfig extends AbstractConfig {
         return enableHttpProxy;
     }
 
+    public void setEnableHttpProxy(boolean enableHttpProxy) {
+        boolean enable = this.enableHttpProxy;
+        if (enable == enableHttpProxy) {
+            return;
+        }
+        this.enableHttpProxy = enableHttpProxy;
+        configManager.updateConfig(this);
+    }
+
     /**
      * @return 是否开启Socks5代理服务端口
      */
@@ -147,6 +156,16 @@ public class GlobalConfig extends AbstractConfig {
      */
     public boolean isEnableTransparentProxy() {
         return enableTransparentProxy;
+    }
+
+
+    public void setEnableTransparentProxy(boolean enableTransparentProxy) {
+        boolean enable = this.enableHttpProxy;
+        if (enable == enableTransparentProxy) {
+            return;
+        }
+        this.enableTransparentProxy = enableTransparentProxy;
+        configManager.updateConfig(this);
     }
 
     /**

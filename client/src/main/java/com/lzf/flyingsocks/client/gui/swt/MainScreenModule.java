@@ -54,6 +54,7 @@ import static com.lzf.flyingsocks.client.gui.swt.Utils.createColor;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createCombo;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createLabel;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createShell;
+import static com.lzf.flyingsocks.client.gui.swt.Utils.i18n;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.loadImage;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.refreshCanvas;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.showMessageBox;
@@ -121,7 +122,7 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
         this.display = component.getDisplay();
         this.operator = getComponent().getParentComponent();
 
-        Shell shell = createShell(display, "主界面", initTitleIcon(), 720, 580);
+        Shell shell = createShell(display, "swtui.main.title", initTitleIcon(), 720, 580);
         shell.setBackground(new Color(display, 255, 255, 255));
         this.shell = shell;
 
@@ -153,7 +154,7 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
      * 初始化服务器选择列表
      */
     private ServerList initServerChooseList(Shell shell) {
-        createLabel(shell, "选择服务器", 10, 10, 160, 40, SWT.CENTER).setBackground(createColor(255, 255, 255));
+        createLabel(shell, "swtui.main.serverlist.label", 10, 10, 160, 40, SWT.CENTER).setBackground(createColor(255, 255, 255));
         return new ServerList(180, 10, 340, 40);
     }
 
@@ -224,7 +225,7 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
                 }
             });
             this.connBtn = conn;
-            appendStatusText("未连接");
+            appendStatusText("swtui.main.status.not_connect");
             changeConnBtn(false);
             update();
             operator.registerProxyServerConfigListener(Config.UPDATE_EVENT, this::update, false);
@@ -239,52 +240,52 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
                         operator.registerConnectionStateListener(n, (_n, cs) -> display.syncExec(() -> {
                             switch (cs) {
                                 case NEW:
-                                    appendStatusText("初始化中...");
+                                    appendStatusText("swtui.main.status.new");
                                     break;
                                 case SSL_INITIAL:
-                                    appendStatusText("准备SSL证书连接...");
+                                    appendStatusText("swtui.main.status.ssl_initial");
                                     break;
                                 case SSL_CONNECTING:
-                                    appendStatusText("正在发起SSL证书连接...");
+                                    appendStatusText("swtui.main.status.ssl_connecting");
                                     break;
                                 case SSL_CONNECT_TIMEOUT:
-                                    appendStatusText("SSL证书连接超时,请检查服务器配置");
+                                    appendStatusText("swtui.main.status.ssl_connect_timeout");
                                     break;
                                 case SSL_CONNECT_AUTH_FAILURE:
-                                    appendStatusText("未通过服务器认证,请检查认证信息是否正确");
+                                    appendStatusText("swtui.main.status.ssl_connect_auth_failure");
                                     break;
                                 case SSL_CONNECT:
-                                    appendStatusText("正在获取SSL证书...");
+                                    appendStatusText("swtui.main.status.ssl_connect");
                                     break;
                                 case SSL_CONNECT_DONE:
-                                    appendStatusText("SSL证书获取完成");
+                                    appendStatusText("swtui.main.status.ssl_connect_done");
                                     break;
                                 case SSL_CONNECT_ERROR:
-                                    appendStatusText("SSL证书连接错误");
+                                    appendStatusText("swtui.main.status.ssl_connect_error");
                                     break;
                                 case PROXY_INITIAL:
-                                    appendStatusText("准备发起代理连接...");
+                                    appendStatusText("swtui.main.status.proxy_initial");
                                     break;
                                 case PROXY_CONNECTING:
-                                    appendStatusText("正在连接代理服务...");
+                                    appendStatusText("swtui.main.status.proxy_connecting");
                                     break;
                                 case PROXY_CONNECT_TIMEOUT:
-                                    appendStatusText("代理服务连接超时");
+                                    appendStatusText("swtui.main.status.proxy_connect_timeout");
                                     break;
                                 case PROXY_CONNECT:
-                                    appendStatusText("成功与服务器建立代理服务连接");
+                                    appendStatusText("swtui.main.status.proxy_connect");
                                     break;
                                 case PROXY_CONNECT_AUTH_FAILURE:
-                                    appendStatusText("代理服务认证失败,请检查认证信息是否正确");
+                                    appendStatusText("swtui.main.status.proxy_connect_auth_failure");
                                     break;
                                 case PROXY_CONNECT_ERROR:
-                                    appendStatusText("与代理服务连接发生错误");
+                                    appendStatusText("swtui.main.status.proxy_connect_error");
                                     break;
                                 case PROXY_DISCONNECT:
-                                    appendStatusText("暂时与服务器断开连接,尝试进行重连...");
+                                    appendStatusText("swtui.main.status.proxy_disconnect");
                                     break;
                                 case UNUSED:
-                                    appendStatusText("代理服务器连接已停止");
+                                    appendStatusText("swtui.main.status.proxy_unused");
                                     break;
                             }
                         }));
@@ -345,7 +346,7 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
 
     private void appendStatusText(String text) {
         LocalTime time = LocalTime.now();
-        String str = "【" + STATUS_TEXT_TIME_FORMAT.format(time) + "】" + Utils.i18n(text) + Text.DELIMITER;
+        String str = "【" + STATUS_TEXT_TIME_FORMAT.format(time) + "】" + i18n(text) + Text.DELIMITER;
         if (statusTextArea.getLineCount() > 5000) {
             statusTextArea.setText(str);
         } else {

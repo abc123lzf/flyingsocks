@@ -196,6 +196,16 @@ public class HttpProxyConfig extends AbstractConfig {
     }
 
 
+    public void update(int port, boolean auth, String username, String password) {
+        this.port = port;
+        this.auth = auth;
+        this.username = username;
+        this.password = password;
+
+        configManager.updateConfig(this);
+    }
+
+
     @Override
     public void save() throws Exception {
         JSONObject json = new JSONObject();
@@ -217,4 +227,61 @@ public class HttpProxyConfig extends AbstractConfig {
             throw new ConfigInitializationException("Can not create file:" + path, e);
         }
     }
+
+
+    private static class Facade extends HttpProxyConfig {
+
+        private final HttpProxyConfig config;
+
+        private Facade(HttpProxyConfig config) {
+            super(config.configManager);
+            this.config = config;
+        }
+
+        @Override
+        public int getBindPort() {
+            return config.getBindPort();
+        }
+
+        @Override
+        public String getBindAddress() {
+            return config.getBindAddress();
+        }
+
+        @Override
+        public boolean isAuth() {
+            return false;
+        }
+
+        @Override
+        public String getUsername() {
+            return config.getUsername();
+        }
+
+        @Override
+        public String getPassword() {
+            return config.getPassword();
+        }
+
+        @Override
+        public boolean canSave() {
+            return false;
+        }
+
+        @Override
+        public void save() throws Exception {
+            throw new UnsupportedOperationException("Facade object");
+        }
+
+        @Override
+        public void update(int port, boolean auth, String username, String password) {
+            throw new UnsupportedOperationException("Facade object");
+        }
+    }
+
+
+    public HttpProxyConfig configFacade() {
+        return new Facade(this);
+    }
+
 }
