@@ -59,7 +59,7 @@ public final class StandardClient extends Client {
             p.forEach((k, v) -> setSystemProperties((String) k, (String) v));
         } catch (IOException e) {
             log.error("Read config.properties occur a exception", e);
-            System.exit(1);
+            exitWithNotify(1, "exitmsg.standard_client.config_load_error", e.getMessage());
         }
 
         GlobalConfig cfg = new GlobalConfig(getConfigManager());

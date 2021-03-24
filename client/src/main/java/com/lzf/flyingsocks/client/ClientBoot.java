@@ -55,7 +55,7 @@ public abstract class ClientBoot {
         } catch (ComponentException e) {
             log.error("flyingsocks client {} start failure, cause:", VERSION, e);
             log.info("submit issue at https://github.com/abc123lzf/flyingsocks");
-            System.exit(1);
+            Client.exitWithNotify(1, "exitmsg.client_boot.start_failure", e.getMessage());
         }
 
         long ed = System.currentTimeMillis();

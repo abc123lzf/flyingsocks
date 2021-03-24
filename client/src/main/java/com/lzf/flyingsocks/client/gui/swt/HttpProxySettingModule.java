@@ -27,6 +27,7 @@ import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.GlobalConfig;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
 import com.lzf.flyingsocks.client.proxy.http.HttpProxyConfig;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Button;
@@ -70,21 +71,21 @@ public class HttpProxySettingModule extends AbstractModule<SWTViewComponent> {
             throw new Error(e);
         }
 
-        this.shell = createShell(component.getDisplay(), "HTTP本地代理设置", icon, 600, 280);
+        this.shell = createShell(component.getDisplay(), "swtui.http.title", icon, 600, 280);
         initial();
     }
 
     private void initial() {
-        createLabel(shell, "开关", 20, 5, 80, 30, SWT.CENTER);
-        createLabel(shell, "代理端口", 20, 40, 80, 30, SWT.CENTER);
-        createLabel(shell, "认证", 20, 75, 80, 30, SWT.CENTER);
-        createLabel(shell, "用户名", 20, 110, 80, 30, SWT.CENTER);
-        createLabel(shell, "密码", 20, 145, 80, 30, SWT.CENTER);
+        createLabel(shell, "swtui.http.form.label.switch", 20, 5, 80, 30, SWT.CENTER);
+        createLabel(shell, "swtui.http.form.label.port", 20, 40, 80, 30, SWT.CENTER);
+        createLabel(shell, "swtui.http.form.label.validate", 20, 75, 80, 30, SWT.CENTER);
+        createLabel(shell, "swtui.http.form.label.username", 20, 110, 80, 30, SWT.CENTER);
+        createLabel(shell, "swtui.http.form.label.password", 20, 145, 80, 30, SWT.CENTER);
 
         Composite switchComp = new Composite(shell, SWT.NONE);
         switchComp.setBounds(20, 5, 380, 30);
-        Button openRadio = createRadio(switchComp, "开启", 140, 5, 80, 30);
-        Button closeRadio = createRadio(switchComp, "关闭", 230, 5, 80, 30);
+        Button openRadio = createRadio(switchComp, "swtui.http.form.button.switch_open", 140, 5, 80, 30);
+        Button closeRadio = createRadio(switchComp, "swtui.http.form.button.switch_close", 230, 5, 80, 30);
         addButtonSelectionListener(openRadio, e -> {
             openRadio.setSelection(true);
             closeRadio.setSelection(false);
@@ -99,8 +100,8 @@ public class HttpProxySettingModule extends AbstractModule<SWTViewComponent> {
 
         Composite authComp = new Composite(shell, SWT.NONE);
         authComp.setBounds(20, 75, 380, 30);
-        Button authOpenRadio = createRadio(authComp, "开启", 140, 0, 80, 30);
-        Button authCloseRadio = createRadio(authComp, "关闭", 230, 0, 80, 30);
+        Button authOpenRadio = createRadio(authComp, "swtui.http.form.button.validate_open", 140, 0, 80, 30);
+        Button authCloseRadio = createRadio(authComp, "swtui.http.form.button.validate_close", 230, 0, 80, 30);
         addButtonSelectionListener(authCloseRadio, e -> {
             authCloseRadio.setSelection(true);
             authOpenRadio.setSelection(false);
@@ -116,23 +117,29 @@ public class HttpProxySettingModule extends AbstractModule<SWTViewComponent> {
         Text passText = new Text(shell, SWT.BORDER | SWT.PASSWORD);
         passText.setBounds(160, 145, 380, 30);
 
-        Button enterBtn = createButton(shell, "确认", 140, 180, 150, 35);
-        Button cancelBtn = createButton(shell, "取消", 330, 180, 150, 35);
+        Button enterBtn = createButton(shell, "swtui.http.form.button.enter", 140, 180, 150, 35);
+        Button cancelBtn = createButton(shell, "swtui.http.form.button.cancel", 330, 180, 150, 35);
 
         addButtonSelectionListener(enterBtn, e -> {
             boolean open = openRadio.getSelection();
-            boolean auth = authCloseRadio.getSelection();
+            boolean auth = authOpenRadio.getSelection();
             int port;
             try {
                 port = Integer.parseInt(portText.getText());
             } catch (NumberFormatException nfe) {
-                showMessageBox(shell, "错误", "端口格式错误", SWT.ICON_ERROR | SWT.OK);
+                showMessageBox(shell, "swtui.http.notice.error.title", "swtui.http.notice.error.port_error", SWT.ICON_ERROR | SWT.OK);
                 return;
             }
             String username = userText.getText();
             String password = passText.getText();
+
+            if (auth && StringUtils.isAnyBlank(username, password)) {
+                showMessageBox(shell, "swtui.http.notice.error.title", "swtui.http.notice.error.auth_error", SWT.ICON_ERROR | SWT.OK);
+                return;
+            }
+
             operator.updateHttpProxyConfig(open, port, auth, username, password);
-            showMessageBox(shell, "提示", "修改成功", SWT.ICON_INFORMATION | SWT.OK);
+            showMessageBox(shell, "swtui.http.notice.error.title", "swtui.http.notice.update_success", SWT.ICON_INFORMATION | SWT.OK);
         });
 
         if (operator.isHttpProxyOpen()) {

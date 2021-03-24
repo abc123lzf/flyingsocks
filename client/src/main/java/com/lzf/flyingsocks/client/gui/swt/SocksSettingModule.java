@@ -73,13 +73,13 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
     }
 
     private void initial() {
-        createLabel(shell, "验证", 20, 5, 80, 30, SWT.CENTER);
-        createLabel(shell, "用户名", 20, 40, 80, 30, SWT.CENTER);
-        createLabel(shell, "密码", 20, 75, 80, 30, SWT.CENTER);
-        createLabel(shell, "代理端口", 20, 110, 80, 30, SWT.CENTER);
+        createLabel(shell, "swtui.socks5.form.label.validate", 20, 5, 80, 30, SWT.CENTER);
+        createLabel(shell, "swtui.socks5.form.label.username", 20, 40, 80, 30, SWT.CENTER);
+        createLabel(shell, "swtui.socks5.form.label.password", 20, 75, 80, 30, SWT.CENTER);
+        createLabel(shell, "swtui.socks5.form.label.port", 20, 110, 80, 30, SWT.CENTER);
 
-        Button open = createRadio(shell, "打开", 160, 5, 80, 30);
-        Button off = createRadio(shell, "关闭", 250, 5, 80, 30);
+        Button open = createRadio(shell, "swtui.socks5.form.button.open", 160, 5, 80, 30);
+        Button off = createRadio(shell, "swtui.socks5.form.button.close", 250, 5, 80, 30);
 
         Text user = new Text(shell, SWT.BORDER);
         user.setBounds(160, 40, 380, 30);
@@ -88,7 +88,7 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
         Text port = new Text(shell, SWT.BORDER);
         port.setBounds(160, 110, 130, 30);
 
-        Button enter = createButton(shell, "确认", 170, 145, 150, 30);
+        Button enter = createButton(shell, "swtui.socks5.form.button.enter", 170, 145, 150, 30);
         addButtonSelectionListener(enter, e -> {
             boolean auth = open.getSelection();
             String username = user.getText();
@@ -97,16 +97,18 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
             if (BaseUtils.isPortString(port.getText())) {
                 p = Integer.parseInt(port.getText());
             } else {
-                showMessageBox(shell, "提示", "端口不合法", SWT.ICON_ERROR | SWT.OK);
+                showMessageBox(shell, "swtui.socks5.notice.title", "swtui.socks5.notice.port_error", SWT.ICON_ERROR | SWT.OK);
                 return;
             }
 
             operator.updateSocksProxyAuthentication(p, auth, username, password);
             SocksConfig cfg = operator.getSocksConfig();
             if (cfg.getPort() != p) {
-                showMessageBox(shell, "提示", "修改完成, 代理端口的修改需要重启才可生效", SWT.ICON_INFORMATION | SWT.OK);
+                showMessageBox(shell, "swtui.socks5.notice.title", "swtui.socks5.notice.update_success",
+                        SWT.ICON_INFORMATION | SWT.OK);
             } else {
-                showMessageBox(shell, "提示", "修改完成", SWT.ICON_INFORMATION | SWT.OK);
+                showMessageBox(shell, "swtui.socks5.notice.title", "swtui.socks5.notice.unchanged",
+                        SWT.ICON_INFORMATION | SWT.OK);
             }
         });
 
@@ -120,7 +122,7 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
             pass.setEditable(false);
         });
 
-        Button cancel = createButton(shell, "取消", 360, 145, 150, 30);
+        Button cancel = createButton(shell, "swtui.socks5.form.button.cancel", 360, 145, 150, 30);
         addButtonSelectionListener(cancel, e -> setVisiable(false));
 
         SocksConfig cfg = operator.getSocksConfig();

@@ -24,6 +24,7 @@ package com.lzf.flyingsocks.client.proxy.socks;
 import com.lzf.flyingsocks.AbstractComponent;
 import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.Config;
+import com.lzf.flyingsocks.client.Client;
 import com.lzf.flyingsocks.client.proxy.ProxyComponent;
 import com.lzf.flyingsocks.client.proxy.ProxyRequest;
 import com.lzf.flyingsocks.misc.BaseUtils;
@@ -113,6 +114,9 @@ public final class SocksReceiverComponent extends AbstractComponent<ProxyCompone
 
     @Override
     protected void startInternal() {
+        EventLoopGroup eventLoopGroup = this.eventLoopGroup;
+        String bindAddress = this.bindAddress;
+        int port = this.port;
         try {
             ServerBootstrap boot = new ServerBootstrap();
             boot.group(eventLoopGroup)
@@ -130,7 +134,7 @@ public final class SocksReceiverComponent extends AbstractComponent<ProxyCompone
             boot.bind(bindAddress, port).addListener(f -> {
                 if (!f.isSuccess()) {
                     log.error("Socks server bind failure, address:[{}:{}]", bindAddress, port, f.cause());
-                    System.exit(1);
+                    Client.exitWithNotify(1, "exitmsg.socks.bind_error", port, f.cause().getMessage());
                 } else {
                     log.info("Netty socks server complete");
                 }

@@ -31,6 +31,7 @@ import org.apache.log4j.Appender;
 import org.apache.log4j.FileAppender;
 import org.apache.log4j.Logger;
 
+import javax.swing.JOptionPane;
 import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
@@ -39,8 +40,11 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.MessageFormat;
 import java.util.Enumeration;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.ResourceBundle;
 
 public abstract class Client extends TopLevelComponent
         implements Component<VoidComponent>, Environment, ClientOperator {
@@ -54,6 +58,11 @@ public abstract class Client extends TopLevelComponent
      * 当前版本号
      */
     static final String VERSION = "v3.0";
+
+
+    private static final ResourceBundle EXIT_MSG_BUNDLE =
+            ResourceBundle.getBundle("META-INF/i18n/exitmsg", Locale.getDefault());
+
 
     /**
      * GUI事件处理循环
@@ -151,6 +160,36 @@ public abstract class Client extends TopLevelComponent
         }
 
         return false;
+    }
+
+
+    public static void exitWithNotify(int status, String message) {
+        if (Desktop.isDesktopSupported()) {
+            JOptionPane.showMessageDialog(null, message != null ? message : "", "ERROR", JOptionPane.ERROR_MESSAGE);
+        }
+        System.exit(status);
+    }
+
+
+    public static void exitWithNotify(int status, String string, Object... args) {
+        if (Desktop.isDesktopSupported()) {
+            String msg;
+            if (EXIT_MSG_BUNDLE.containsKey(string)) {
+                msg = EXIT_MSG_BUNDLE.getString(string);
+            } else {
+                msg = string;
+            }
+
+            if (args == null || args.length == 0) {
+                JOptionPane.showMessageDialog(null, msg,
+                        EXIT_MSG_BUNDLE.getString("exitmsg.title"), JOptionPane.ERROR_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(null, MessageFormat.format(msg, args),
+                        EXIT_MSG_BUNDLE.getString("exitmsg.title"), JOptionPane.ERROR_MESSAGE);
+            }
+        }
+
+        System.exit(status);
     }
 
 }

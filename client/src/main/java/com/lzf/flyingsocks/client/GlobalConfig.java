@@ -225,7 +225,8 @@ public class GlobalConfig extends AbstractConfig {
         properties.put("enable-transparent", Boolean.toString(this.enableTransparentProxy));
         properties.put("connect-timeout", Integer.toString(this.connectTimeout));
 
-        try (FileWriter writer = new FileWriter(path.toFile())) {
+        Path path = this.path;
+        try (FileWriter writer = new FileWriter(path.resolve(FILE_NAME).toFile())) {
             properties.store(writer, "flyingsocks base configuration");
         } catch (IOException e) {
             throw new ConfigInitializationException("Can not initialize global config file", e);

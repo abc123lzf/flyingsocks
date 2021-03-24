@@ -86,7 +86,7 @@ public class SWTViewComponent extends AbstractComponent<Client> {
             addModule(this.httpProxySettingModule = new HttpProxySettingModule(this));
         } catch (Throwable t) {
             log.error("SWT Thread occur a error", t);
-            System.exit(1);
+            Client.exitWithNotify(1, "exitmsg.swt_view.init_failure", t.getMessage());
         }
     }
 
@@ -104,7 +104,7 @@ public class SWTViewComponent extends AbstractComponent<Client> {
                 display.dispose();
             } catch (RuntimeException | Error t) {
                 log.error("An error occur in SWT-UI-Thread", t);
-                System.exit(1);
+                Client.exitWithNotify(1, "exitmsg.swt_view.run_error", t.getMessage());
             }
         });
     }

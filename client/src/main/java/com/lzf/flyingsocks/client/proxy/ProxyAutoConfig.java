@@ -25,6 +25,7 @@ import com.lzf.flyingsocks.AbstractConfig;
 import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
+import com.lzf.flyingsocks.client.Client;
 import com.lzf.flyingsocks.client.GlobalConfig;
 import com.lzf.flyingsocks.misc.BaseUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -104,7 +105,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
             loadGFWListFile(gfwFile);
         } catch (IOException e) {
             log.error("Read GFWList file occur a exception", e);
-            System.exit(1);
+            Client.exitWithNotify(1, "exitmsg.pac.gfw_load_error", e.getMessage());
         }
 
         Path cnipv4file = cfg.configPath().resolve(CNIPV4_FILE);
@@ -116,7 +117,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
             loadIPv4CNAddressFile(cnipv4file);
         } catch (IOException e) {
             log.error("Read CN IPv4 file occur a exception", e);
-            System.exit(1);
+            Client.exitWithNotify(1, "exitmsg.pac.ipv4_load_error", e.getMessage());
         }
 
         int proxyMode;
@@ -290,7 +291,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
             }
         } catch (IOException e) {
             log.error("Can not find default pac file", e);
-            System.exit(1);
+            Client.exitWithNotify(1, "exitmsg.pac.gfw_default_load_error", e.getMessage());
         }
     }
 
@@ -307,7 +308,7 @@ public class ProxyAutoConfig extends AbstractConfig implements Config {
             }
         } catch (IOException e) {
             log.error("Can not find default CN IPv4 file", e);
-            System.exit(1);
+            Client.exitWithNotify(1, "exitmsg.pac.ipv4_default_load_error", e.getMessage());
         }
     }
 
