@@ -88,7 +88,7 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
         Text port = new Text(shell, SWT.BORDER);
         port.setBounds(160, 110, 130, 30);
 
-        Button enter = createButton(shell, "swtui.socks5.form.button.enter", 170, 145, 150, 30);
+        Button enter = createButton(shell, "swtui.socks5.form.button.enter", 170, 145, 150, 40);
         addButtonSelectionListener(enter, e -> {
             boolean auth = open.getSelection();
             String username = user.getText();
@@ -122,7 +122,7 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
             pass.setEditable(false);
         });
 
-        Button cancel = createButton(shell, "swtui.socks5.form.button.cancel", 360, 145, 150, 30);
+        Button cancel = createButton(shell, "swtui.socks5.form.button.cancel", 360, 145, 150, 40);
         addButtonSelectionListener(cancel, e -> setVisiable(false));
 
         SocksConfig cfg = operator.getSocksConfig();

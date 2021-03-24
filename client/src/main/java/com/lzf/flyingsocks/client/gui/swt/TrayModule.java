@@ -175,8 +175,8 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         serv.setMenu(about);
 
         createCascadeMenuItem(about, "swtui.tray.item.help.open_config_dir", e -> operator.openConfigDirectory());
-        createCascadeMenuItem(about, "swtui.tray.item.help.open_log_dir", e -> operator.openLogDirectory());
-        createCascadeMenuItem(about, "swtui.tray.item.help.clean_log", e -> operator.cleanLogFiles());
+        //createCascadeMenuItem(about, "swtui.tray.item.help.open_log_dir", e -> operator.openLogDirectory());
+        //createCascadeMenuItem(about, "swtui.tray.item.help.clean_log", e -> operator.cleanLogFiles());
         createMenuSeparator(about);
         createCascadeMenuItem(about, "swtui.tray.item.help.open_github", e -> operator.openBrowser(GITHUB_PAGE));
         createCascadeMenuItem(about, "swtui.tray.item.help.open_issue", e -> operator.openBrowser(ISSUE_PAGE));

@@ -31,6 +31,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
+import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.List;
 import org.eclipse.swt.widgets.Shell;
@@ -81,9 +82,15 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             throw new Error(e);
         }
 
-        this.shell = createShell(display, "swtui.serverconfig.title", icon, 850, 370);
-        this.serverList = new ServerList();
-        this.serverSettingForm = new ServerSettingForm();
+        this.shell = createShell(display, "swtui.serverconfig.title", icon, 850, 350);
+
+        Composite listComp = new Composite(this.shell, SWT.NONE);
+        listComp.setBounds(10, 10, 250, 280);
+        this.serverList = new ServerList(listComp);
+
+        Composite formComp = new Composite(this.shell, SWT.NONE);
+        formComp.setBounds(270, 10, 570, 280);
+        this.serverSettingForm = new ServerSettingForm(formComp);
 
         setVisiable(false);
         adaptDPI(shell);
@@ -95,9 +102,9 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         private final Map<Integer, Node> serverMap = new TreeMap<>();
         int select = 0;
 
-        ServerList() {
-            serverList = new List(shell, SWT.SINGLE | SWT.V_SCROLL | SWT.BORDER);
-            serverList.setBounds(10, 10, 250, 305);
+        ServerList(Composite composite) {
+            serverList = new List(composite, SWT.SINGLE | SWT.V_SCROLL | SWT.BORDER);
+            serverList.setBounds(0, 0, 250, 280);
             serverList.setToolTipText(i18n("swtui.serverconfig.list.title"));
             serverList.add(i18n("swtui.serverconfig.list.first"), 0);
             serverList.select(0);
@@ -166,31 +173,31 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         private final Text user;
         private final Text pass;
 
-        ServerSettingForm() {
-            Text host = new Text(shell, SWT.BORDER);
-            Text port = new Text(shell, SWT.BORDER);
-            Text certPort = new Text(shell, SWT.BORDER);
-            Combo encrypt = new Combo(shell, SWT.DROP_DOWN | SWT.READ_ONLY);
-            Combo auth = new Combo(shell, SWT.DROP_DOWN | SWT.READ_ONLY);
+        ServerSettingForm(Composite composite) {
+            Text host = new Text(composite, SWT.BORDER);
+            Text port = new Text(composite, SWT.BORDER);
+            Text certPort = new Text(composite, SWT.BORDER);
+            Combo encrypt = new Combo(composite, SWT.DROP_DOWN | SWT.READ_ONLY);
+            Combo auth = new Combo(composite, SWT.DROP_DOWN | SWT.READ_ONLY);
 
-            Text user = new Text(shell, SWT.BORDER);
-            Text pass = new Text(shell, SWT.BORDER | SWT.PASSWORD);
+            Text user = new Text(composite, SWT.BORDER);
+            Text pass = new Text(composite, SWT.BORDER | SWT.PASSWORD);
 
-            createLabel(shell, "swtui.serverconfig.form.label.address", 270, 10, 70, 30, SWT.CENTER);
-            createLabel(shell, "swtui.serverconfig.form.label.port", 270, 50, 70, 30, SWT.CENTER);
-            createLabel(shell, "swtui.serverconfig.form.label.ssl_port", 550, 50, 80, 30, SWT.CENTER);
-            createLabel(shell, "swtui.serverconfig.form.label.encrypt_type", 270, 90, 80, 30, SWT.CENTER);
-            createLabel(shell, "swtui.serverconfig.form.label.auth_type", 270, 130, 80, 30, SWT.CENTER);
-            createLabel(shell, "swtui.serverconfig.form.label.username", 270, 170, 70, 30, SWT.CENTER);
-            createLabel(shell, "swtui.serverconfig.form.label.password", 270, 210, 70, 30, SWT.CENTER);
+            createLabel(composite, "swtui.serverconfig.form.label.address", 0, 0, 70, 30, SWT.CENTER);
+            createLabel(composite, "swtui.serverconfig.form.label.port", 0, 40, 70, 30, SWT.CENTER);
+            createLabel(composite, "swtui.serverconfig.form.label.ssl_port", 280, 40, 80, 30, SWT.CENTER);
+            createLabel(composite, "swtui.serverconfig.form.label.encrypt_type", 0, 80, 80, 30, SWT.CENTER);
+            createLabel(composite, "swtui.serverconfig.form.label.auth_type", 0, 120, 80, 30, SWT.CENTER);
+            createLabel(composite, "swtui.serverconfig.form.label.username", 0, 160, 70, 30, SWT.CENTER);
+            createLabel(composite, "swtui.serverconfig.form.label.password", 0, 200, 70, 30, SWT.CENTER);
 
-            host.setBounds(360, 10, 460, 30);
-            port.setBounds(360, 50, 180, 30);
-            certPort.setBounds(640, 50, 180, 30);
-            encrypt.setBounds(360, 90, 460, 30);
-            auth.setBounds(360, 130, 460, 30);
-            user.setBounds(360, 170, 460, 30);
-            pass.setBounds(360, 210, 460, 30);
+            host.setBounds(90, 0, 460, 30);
+            port.setBounds(90, 40, 180, 30);
+            certPort.setBounds(370, 40, 180, 30);
+            encrypt.setBounds(90, 80, 460, 30);
+            auth.setBounds(90, 120, 460, 30);
+            user.setBounds(90, 160, 460, 30);
+            pass.setBounds(90, 200, 460, 30);
 
             encrypt.add(i18n("swtui.serverconfig.form.encrypt.none"), 0);
             encrypt.add(i18n("swtui.serverconfig.form.encrypt.ssl"), 1);
@@ -221,15 +228,9 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                 }
             });
 
-            Button save = new Button(shell, SWT.PUSH);
+            Button save = new Button(composite, SWT.PUSH);
             save.setText(i18n("swtui.serverconfig.form.save"));
-            save.setBounds(270, 250, 270, 60);
-
-            try (InputStream is = ResourceManager.openSaveIconImageStream()) {
-                save.setImage(new Image(display, is));
-            } catch (IOException e) {
-                log.warn("Can not read save-icon image.", e);
-            }
+            save.setBounds(0, 240, 270, 40);
 
             addButtonSelectionListener(save, e -> {
                 String _host = ServerSettingForm.this.host.getText();
@@ -298,15 +299,9 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                 }
             });
 
-            Button delete = new Button(shell, SWT.PUSH);
+            Button delete = new Button(composite, SWT.PUSH);
             delete.setText(i18n("swtui.serverconfig.form.delete"));
-            delete.setBounds(550, 250, 270, 60);
-
-            try (InputStream is = ResourceManager.openDeleteIconImageStream()) {
-                delete.setImage(new Image(display, is));
-            } catch (IOException e) {
-                log.warn("Can not read delete-icon image.", e);
-            }
+            delete.setBounds(280, 240, 270, 40);
 
             addButtonSelectionListener(delete, e -> {
                 Node n = serverList.selectNode();
