@@ -151,6 +151,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         }
 
         private Node selectNode() {
+            int select = this.select;
             return select != -1 && select != 0 ? serverMap.get(select) : null;
         }
 
@@ -165,6 +166,12 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
     }
 
     private final class ServerSettingForm {
+        private static final int ENCRYPT_IDX_NONE = 0;
+        private static final int ENCRYPT_IDX_TLS = 1;
+        private static final int ENCRYPT_IDX_TLS_CA = 2;
+        private static final int AUTH_IDX_NORMAL = 0;
+        private static final int AUTH_IDX_USER = 1;
+
         private final Text host;
         private final Text port;
         private final Text certPort;
@@ -199,18 +206,19 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             user.setBounds(90, 160, 460, 30);
             pass.setBounds(90, 200, 460, 30);
 
-            encrypt.add(i18n("swtui.serverconfig.form.encrypt.none"), 0);
-            encrypt.add(i18n("swtui.serverconfig.form.encrypt.ssl"), 1);
-            auth.add(i18n("swtui.serverconfig.form.auth.normal"), 0);
-            auth.add(i18n("swtui.serverconfig.form.auth.user"), 1);
+            encrypt.add(i18n("swtui.serverconfig.form.encrypt.none"), ENCRYPT_IDX_NONE);
+            encrypt.add(i18n("swtui.serverconfig.form.encrypt.ssl"), ENCRYPT_IDX_TLS);
+            encrypt.add(i18n("swtui.serverconfig.form.encrypt.ssl_ca"), ENCRYPT_IDX_TLS_CA);
+            auth.add(i18n("swtui.serverconfig.form.auth.normal"), AUTH_IDX_NORMAL);
+            auth.add(i18n("swtui.serverconfig.form.auth.user"), AUTH_IDX_USER);
 
-            encrypt.select(0);
-            auth.select(1);
+            encrypt.select(ENCRYPT_IDX_NONE);
+            auth.select(AUTH_IDX_NORMAL);
             user.setEditable(false);
 
             addComboSelectionListener(auth, e -> {
                 int idx = auth.getSelectionIndex();
-                if (idx == 0) {
+                if (idx == AUTH_IDX_NORMAL) {
                     user.setText("");
                     user.setEditable(false);
                 } else {
@@ -220,7 +228,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
             addComboSelectionListener(encrypt, e -> {
                 int idx = encrypt.getSelectionIndex();
-                if (idx == 0) {
+                if (idx == ENCRYPT_IDX_NONE || idx == ENCRYPT_IDX_TLS_CA) {
                     certPort.setText("");
                     certPort.setEditable(false);
                 } else {
@@ -250,7 +258,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                 int en = encrypt.getSelectionIndex();
                 String cports = ServerSettingForm.this.certPort.getText();
                 int cport = 0;
-                if (en == 1) {
+                if (en == ENCRYPT_IDX_TLS) {
                     if (!BaseUtils.isPortString(cports)) {
                         showMessageBox(shell, "swtui.serverconfig.notice.error.title", "swtui.serverconfig.notice.error.ssl_port_error", SWT.ICON_ERROR | SWT.OK);
                         return;
@@ -272,8 +280,21 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                 n.setHost(_host);
                 n.setPort(_port);
                 n.setCertPort(cport);
-                n.setEncryptType(en == 1 ? EncryptType.SSL : EncryptType.NONE);
-                n.setAuthType(au == 1 ? AuthType.USER : AuthType.SIMPLE);
+
+                if (en == ENCRYPT_IDX_NONE) {
+                    n.setEncryptType(EncryptType.NONE);
+                } else if (en == ENCRYPT_IDX_TLS) {
+                    n.setEncryptType(EncryptType.SSL);
+                } else {
+                    n.setEncryptType(EncryptType.SSL_CA);
+                }
+
+                if (au == AUTH_IDX_NORMAL) {
+                    n.setAuthType(AuthType.SIMPLE);
+                } else {
+                    n.setAuthType(AuthType.USER);
+                }
+
                 if (au == 0) {
                     n.setAuthArgument(Collections.singletonMap("password", pwd));
                 } else {
