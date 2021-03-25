@@ -207,6 +207,11 @@ public class HttpProxyConfig extends AbstractConfig {
 
 
     @Override
+    public boolean canSave() {
+        return true;
+    }
+
+    @Override
     public void save() throws Exception {
         JSONObject json = new JSONObject();
         json.put("address", this.address);
@@ -220,7 +225,7 @@ public class HttpProxyConfig extends AbstractConfig {
         ByteBuffer buf = ByteBuffer.allocate(content.length());
         buf.put(content.getBytes(StandardCharsets.US_ASCII));
         Path path = this.filePath;
-        try (FileChannel ch = FileChannel.open(path, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+        try (FileChannel ch = FileChannel.open(path, StandardOpenOption.WRITE)) {
             buf.rewind();
             ch.write(buf);
         } catch (IOException e) {
@@ -250,7 +255,7 @@ public class HttpProxyConfig extends AbstractConfig {
 
         @Override
         public boolean isAuth() {
-            return false;
+            return config.isAuth();
         }
 
         @Override

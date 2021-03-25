@@ -215,6 +215,10 @@ public class GlobalConfig extends AbstractConfig {
         this.connectTimeout = Integer.parseInt(properties.getProperty("connect-timeout", Integer.toString(DEFAULT_CONNECT_TIMEOUT)));
     }
 
+    @Override
+    public boolean canSave() {
+        return true;
+    }
 
     @Override
     public void save() throws Exception {
