@@ -22,19 +22,23 @@
 
 #### 编译安装
 1. 使用Git克隆代码仓库到本地 <br>
-2. 使用Maven编译服务端模块 <br>
+2. 编译安装common模块到本地仓库
+```
+mvn clean install -pl common -Dmaven.test.skip=true
+``` 
+3. 使用Maven编译服务端模块 <br>
 ```
 mvn clean install -pl server -am -Dmaven.test.skip=true
 ```
-3. 进入server目录，执行以下命令 <br>
+4. 进入server目录，执行以下命令 <br>
 ```
 mvn assembly:single
 ```
-4. 再进入target目录，解压flyingsocks-server-bin.zip到/opt目录下
+5. 再进入target目录，解压flyingsocks-server-bin.zip到/opt目录下
 ```
 unzip flyingsocks-server-bin.zip -d /opt
 ```
-5. 进入/opt/flyingsocks-server/config目录，修改配置文件server.json，配置文件格式如下：
+6. 进入/opt/flyingsocks-server/config目录，修改配置文件server.json，配置文件格式如下：
 
         [
           {
@@ -50,7 +54,7 @@ unzip flyingsocks-server-bin.zip -d /opt
 
     <br>
         server.json格式为JSON数组字符串，每个数组元素可单独绑定一个端口并单独指定加密方式和认证方式。其中，name为节点名称（可任意取名），port为代理服务端口，cert-port为用来获取CA证书的端口。
-        max-client为这个节点最大的客户端连接数，encrypt为加密方式，目前仅支持OpenSSL和不加密(正式环境不要用，会影响代理效果)，auth-type为认证方式。<br>
+        max-client为这个节点最大的客户端连接数，encrypt为加密方式，目前仅支持OpenSSL和不加密(正式环境不要用)，auth-type为认证方式。<br>
         认证方式目前仅支持simple和user两种方式<br>
         如果选择为simple方式，那么仅需在上述文件中追加password字段即可。<br>
         如果选择为user方式，那么需要追加group字段，group字段的含义是用户组名称，用户组则需要额外的user.json配置文件。<br>
@@ -86,7 +90,11 @@ unzip flyingsocks-server-bin.zip -d /opt
 需要安装JDK 1.8和Maven
 
 #### 编译安装
-1. 执行以下命令
+1. 编译安装common模块
+```
+mvn clean install -pl common -Dmaven.test.skip=true
+```   
+2. 编译安装client模块
 ```
 # Windows 32位JDK
 mvn clean install -pl client -am -P win32 -Dmaven.test.skip=true
@@ -99,11 +107,14 @@ mvn clean install -pl client -am -P linux32 -Dmaven.test.skip=true
 # Linux 64位JDK
 mvn clean install -pl client -am -P linux64 -Dmaven.test.skip=true
 ```
-2. 进入client/target目录，运行JAR包
+3. 进入client/target目录，运行JAR包
 ```
 javaw -jar flyingsocks-client-3.0-SNAPSHOT-jar-with-dependencies.jar
 ```
-
+MacOS系统需要添加JVM参数-XstartOnFirstThread，否则UI界面无法启动
+```
+javaw -XstartOnFirstThread -jar flyingsocks-client-3.0-SNAPSHOT-jar-with-dependencies.jar
+```
 
 ## 客户端使用说明
 
@@ -117,6 +128,7 @@ javaw -jar flyingsocks-client-3.0-SNAPSHOT-jar-with-dependencies.jar
    对于加密方式，如果服务器使用TLSv1.2加密并且证书为自签证书，则需要选择“TLS v1.2”并指定证书端口，用于事先下载证书；如果是CA机构签发的证书，且该证书与服务器地址匹配，那么选择加密方式“TLS v1.2 (CA证书)”，此时无需填写证书端口。
 4. 对于认证方式，如果是用户认证，需要输入用户名及其密码，普通认证仅需要输入密码即可。
 5. 输入完成后，点击保存即可。只有在右键系统托盘图标正常退出时，这些配置才会保存在电脑上。
+6. 右键托盘图标选择“打开主界面”，选择刚才配置的服务器，然后点击连接（每次启动应用程序时都要执行该操作）。电脑睡眠再唤醒后，为了恢复代理连接，需要点击断开连接再点击连接。       
 
 #### 连接到代理服务器
 
@@ -128,7 +140,7 @@ javaw -jar flyingsocks-client-3.0-SNAPSHOT-jar-with-dependencies.jar
 flyingsocks提供了四种代理模式，可通过右键托盘图标，在“代理模式”子菜单中选择。各个代理模式作用如下：
 
 1. “不代理”，即所有代理连接都是直连，该模式无需连接到代理服务器。
-2. “GFWList模式”，即所有在GFWList名单中的域名（不包含IP地址）都通过代理服务器建立连接，不在名单中的由本地直连。可在用户配置目录下的pac.txt中指定，默认已经包含5000余条记录。
+2. （推荐）“GFWList模式”，即所有在GFWList名单中的域名（不包含IP地址）都通过代理服务器建立连接，不在名单中的由本地直连。可在用户配置目录下的pac.txt中指定，默认已经包含5000余条记录。
    域名的DNS解析都由代理服务器管理，不存在DNS污染问题。
 3. “仅代理境外地址”，即所有境外服务器都通过代理服务器建立连接。DNS解析在本地完成，所以可能会存在DNS污染问题。
 4. “全局模式”，所有代理请求都由代理服务器完成，包括国内网站，不存在DNS污染问题。
