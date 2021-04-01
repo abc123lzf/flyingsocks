@@ -21,6 +21,7 @@
  */
 package com.lzf.flyingsocks.client;
 
+import com.lzf.flyingsocks.Component;
 import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.ConfigEvent;
 import com.lzf.flyingsocks.ConfigEventListener;
@@ -98,7 +99,12 @@ public final class StandardClient extends Client {
      */
     @Override
     protected void restartInternal() {
-        throw new ComponentException("can not restart client");
+        throw new ComponentException("Could not restart client");
+    }
+
+    @Override
+    protected void handleException(Component<?> component, Exception exception) {
+        exitWithNotify(1, "exitmsg.component_failure", component.getName(), exception.getMessage());
     }
 
     @Override
