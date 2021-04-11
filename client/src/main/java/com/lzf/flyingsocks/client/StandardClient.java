@@ -294,6 +294,15 @@ public final class StandardClient extends Client {
     }
 
     @Override
+    public void setupWindowsSystemProxy(boolean open) {
+        ConfigManager<?> manager = getConfigManager();
+        HttpProxyConfig cfg = manager.getConfig(HttpProxyConfig.NAME, HttpProxyConfig.class);
+        if (cfg != null) {
+            cfg.enableWindowsSystemProxy(open);
+        }
+    }
+
+    @Override
     public long queryProxyServerUploadThroughput(Node node) {
         ProxyComponent pc = getComponentByName(ProxyComponent.NAME, ProxyComponent.class);
         return pc.queryProxyServerUploadThroughput(node.getHost(), node.getPort());

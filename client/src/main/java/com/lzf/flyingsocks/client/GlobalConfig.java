@@ -89,14 +89,16 @@ public class GlobalConfig extends AbstractConfig {
      */
     @Override
     protected void initInternal() throws ConfigInitializationException {
-        String location;
+        String location = configManager.getSystemProperties("config.location");
 
-        if (configManager.isWindows()) {
-            location = configManager.getSystemProperties("config.location.windows");
-        } else if (configManager.isMacOS()) {
-            location = configManager.getSystemProperties("config.location.mac");
-        } else {
-            location = configManager.getSystemProperties("config.location.linux");
+        if (location == null) {
+            if (configManager.isWindows()) {
+                location = configManager.getSystemProperties("config.location.windows");
+            } else if (configManager.isMacOS()) {
+                location = configManager.getSystemProperties("config.location.mac");
+            } else {
+                location = configManager.getSystemProperties("config.location.linux");
+            }
         }
 
         location = StringSubstitutor.replaceSystemProperties(location);

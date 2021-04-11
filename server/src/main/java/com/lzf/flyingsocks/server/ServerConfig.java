@@ -33,6 +33,7 @@ import com.lzf.flyingsocks.misc.BaseUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -68,7 +69,7 @@ public class ServerConfig extends AbstractConfig implements Config {
     protected void initInternal() throws ConfigInitializationException {
         String folderString = configManager.getSystemProperties("flyingsocks.config.location");
         if (folderString == null) {
-            folderString = configManager.getSystemProperties("user.home");
+            folderString = configManager.getSystemProperties("user.home") + File.separatorChar + "flyingsocks-server";
             log.info("Properties flyingsocks.config.location not configure, using path {}", folderString);
         }
 

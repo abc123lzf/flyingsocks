@@ -58,6 +58,8 @@ import static com.lzf.flyingsocks.client.gui.swt.Utils.*;
  */
 final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
 
+    public static final String NAME = ServerSettingModule.class.getSimpleName();
+
     private static final Logger log = LoggerFactory.getLogger("ServerSettingUI");
 
     private final Display display;
@@ -71,7 +73,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
     private final ServerSettingForm serverSettingForm;
 
     ServerSettingModule(SWTViewComponent component) {
-        super(Objects.requireNonNull(component));
+        super(Objects.requireNonNull(component), NAME);
         this.display = component.getDisplay();
         this.operator = component.getParentComponent();
 

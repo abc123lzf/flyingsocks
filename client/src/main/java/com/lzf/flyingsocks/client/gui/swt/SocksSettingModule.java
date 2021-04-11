@@ -52,12 +52,14 @@ import static com.lzf.flyingsocks.client.gui.swt.Utils.showMessageBox;
  */
 final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
 
+    public static final String NAME = SocksSettingModule.class.getSimpleName();
+
     private final ClientOperator operator;
 
     private final Shell shell;
 
     SocksSettingModule(SWTViewComponent component) {
-        super(Objects.requireNonNull(component));
+        super(Objects.requireNonNull(component), NAME);
         this.operator = component.getParentComponent();
 
         Image icon;

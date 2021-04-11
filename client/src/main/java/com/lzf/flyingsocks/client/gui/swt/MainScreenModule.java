@@ -65,6 +65,8 @@ import static com.lzf.flyingsocks.client.proxy.server.ProxyServerConfig.Node;
  */
 final class MainScreenModule extends AbstractModule<SWTViewComponent> {
 
+    public static final String NAME = MainScreenModule.class.getSimpleName();
+
     private static final DateTimeFormatter STATUS_TEXT_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
     /**
@@ -118,7 +120,7 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
 
 
     MainScreenModule(SWTViewComponent component) {
-        super(Objects.requireNonNull(component), "Main-Screen");
+        super(Objects.requireNonNull(component), NAME);
         this.display = component.getDisplay();
         this.operator = getComponent().getParentComponent();
 
@@ -127,13 +129,14 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
         this.shell = shell;
 
         this.statusTextArea = initStatusTextArea(shell);
-        this.uploadChart = new DynamicTimeSeriesChart("UPLOAD", "", "MB/s", 60, DynamicTimeSeriesChart.STYLE_PURPLE);
-        this.downloadChart = new DynamicTimeSeriesChart("DOWNLOAD", "", "MB/s", 60, DynamicTimeSeriesChart.STYLE_BLUE);
+        this.uploadChart = new DynamicTimeSeriesChart("上传", "", "MB/s", 60, DynamicTimeSeriesChart.STYLE_PURPLE);
+        this.downloadChart = new DynamicTimeSeriesChart("下载", "", "MB/s", 60, DynamicTimeSeriesChart.STYLE_BLUE);
 
         this.uploadChartCanvas = initChartCanvas(this.uploadChart, 10, 270, CHART_WIDTH, CHART_HEIGHT);
         this.downloadChartCanvas = initChartCanvas(this.downloadChart, 355, 270, CHART_WIDTH, CHART_HEIGHT);
 
         this.serverList = initServerChooseList(shell);
+        appendStatusText("swtui.main.status.not_connect");
         adaptDPI(shell);
         setVisiable(false);
         submitChartUpdateTask();
@@ -225,7 +228,6 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
                 }
             });
             this.connBtn = conn;
-            appendStatusText("swtui.main.status.not_connect");
             changeConnBtn(false);
             update();
             operator.registerProxyServerConfigListener(Config.UPDATE_EVENT, this::update, false);
@@ -290,7 +292,7 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
                             }
                         }));
                     } else {
-                        showMessageBox(shell, "提示", "请选择一个有效的服务器", SWT.ICON_INFORMATION | SWT.OK);
+                        showMessageBox(shell, "swtui.main.notice.title", "swtui.main.notice.server_not_select", SWT.ICON_INFORMATION | SWT.OK);
                     }
                 }
             });
@@ -321,10 +323,10 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
 
         private void changeConnBtn(boolean disconnect) {
             if (disconnect) {
-                connBtn.setText("断开连接");
+                connBtn.setText(i18n("swtui.main.button.disconnect"));
                 this.disconnect = true;
             } else {
-                connBtn.setText("连接");
+                connBtn.setText(i18n("swtui.main.button.connect"));
                 this.disconnect = false;
             }
         }
@@ -345,8 +347,24 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
 
 
     private void appendStatusText(String text) {
+        StringBuilder sb = new StringBuilder(35);
+
         LocalTime time = LocalTime.now();
-        String str = "【" + STATUS_TEXT_TIME_FORMAT.format(time) + "】" + i18n(text) + Text.DELIMITER;
+        sb.append('<').append(STATUS_TEXT_TIME_FORMAT.format(time)).append('>');
+
+        Node selectNode = serverList.selectNode();
+        sb.append('[');
+        if (selectNode == null) {
+            sb.append("NONE");
+        } else {
+            sb.append(selectNode.getHost()).append(':').append(selectNode.getPort());
+        }
+        sb.append("] ");
+
+        sb.append(i18n(text));
+        sb.append(Text.DELIMITER);
+
+        String str = sb.toString();
         if (statusTextArea.getLineCount() > 5000) {
             statusTextArea.setText(str);
         } else {
