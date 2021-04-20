@@ -377,6 +377,9 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
                 case SSL:
                     encrypt.select(1);
                     break;
+                case SSL_CA:
+                    encrypt.select(2);
+                    break;
             }
         }
 
