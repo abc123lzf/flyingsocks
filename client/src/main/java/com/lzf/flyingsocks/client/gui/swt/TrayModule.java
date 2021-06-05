@@ -25,6 +25,7 @@ import com.lzf.flyingsocks.AbstractModule;
 import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
 
+import com.lzf.flyingsocks.client.proxy.http.HttpProxyConfig;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
@@ -80,6 +81,10 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
 
         //PAC设置菜单
         initialPacMenu(shell, menu);
+
+        if (supportWindowsSystemProxy()) {
+            initialWindowsSystemProxyMenu(shell, menu);
+        }
 
         createMenuItem(menu, "swtui.tray.item.server_config_ui", e -> belongComponent.openServerSettingUI());
         createMenuSeparator(menu);
@@ -180,6 +185,47 @@ final class TrayModule extends AbstractModule<SWTViewComponent> {
         createMenuSeparator(about);
         createCascadeMenuItem(about, "swtui.tray.item.help.open_github", e -> operator.openBrowser(GITHUB_PAGE));
         createCascadeMenuItem(about, "swtui.tray.item.help.open_issue", e -> operator.openBrowser(ISSUE_PAGE));
+    }
+
+
+    private void initialWindowsSystemProxyMenu(Shell shell, Menu main) {
+        MenuItem mi = new MenuItem(main, SWT.CASCADE);
+        mi.setText(i18n("swtui.tray.item.wsp_proxy"));
+        Menu menu = new Menu(shell, SWT.DROP_DOWN);
+        mi.setMenu(menu);
+
+        MenuItem open = new MenuItem(menu, SWT.CASCADE ^ SWT.CHECK);
+        MenuItem close = new MenuItem(menu, SWT.CASCADE ^ SWT.CHECK);
+        open.setText(i18n("swtui.http.form.button.wsp_open"));
+        close.setText(i18n("swtui.http.form.button.wsp_close"));
+
+        HttpProxyConfig cfg = operator.getHttpProxyConfig();
+        if (cfg.isEnableWindowsSystemProxy()) {
+            open.setSelection(true);
+        } else {
+            close.setSelection(true);
+        }
+
+        addMenuItemSelectionListener(open, e -> {
+            open.setSelection(true);
+            close.setSelection(false);
+            operator.setupWindowsSystemProxy(true);
+        });
+
+        addMenuItemSelectionListener(close, e -> {
+            open.setSelection(false);
+            close.setSelection(true);
+            operator.setupWindowsSystemProxy(false);
+        });
+    }
+
+
+    private boolean supportWindowsSystemProxy() {
+        HttpProxyConfig cfg = operator.getHttpProxyConfig();
+        if (cfg == null) {
+            return false;
+        }
+        return cfg.supportWindowsSystemProxy();
     }
 
 }

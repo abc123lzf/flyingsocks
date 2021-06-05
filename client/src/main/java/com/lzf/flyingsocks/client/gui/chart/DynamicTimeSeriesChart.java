@@ -28,6 +28,7 @@ import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYAreaRenderer;
+import org.jfree.chart.title.TextTitle;
 import org.jfree.data.RangeType;
 import org.jfree.data.time.DynamicTimeSeriesCollection;
 import org.jfree.data.time.Second;
@@ -36,6 +37,7 @@ import org.jfree.ui.RectangleInsets;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Paint;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
@@ -79,8 +81,8 @@ public final class DynamicTimeSeriesChart {
         dataset.setTimeBase(new Second(DateUtils.addSeconds(new Date(), -interval)));
         dataset.addSeries(new float[0], 0, "");
 
-        JFreeChart chart = ChartFactory.createTimeSeriesChart(title, xAxisName, yAxisName, dataset, false, false, false);
-
+        JFreeChart chart = ChartFactory.createTimeSeriesChart("", xAxisName, yAxisName, dataset, false, false, false);
+        chart.setTitle(new TextTitle(title, new Font("黑体", Font.PLAIN, 18)));
         if (style == STYLE_BLUE) {
             initialChartStyle(chart, Color.white, new Color(17, 125, 187),
                     new Color(217, 234, 244),

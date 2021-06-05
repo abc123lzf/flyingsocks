@@ -56,12 +56,14 @@ import static com.lzf.flyingsocks.client.gui.swt.Utils.showMessageBox;
  */
 public class HttpProxySettingModule extends AbstractModule<SWTViewComponent> {
 
+    public static final String NAME = HttpProxySettingModule.class.getSimpleName();
+
     private final ClientOperator operator;
 
     private final Shell shell;
 
     HttpProxySettingModule(SWTViewComponent component) {
-        super(Objects.requireNonNull(component), "HttpProxySettingModule");
+        super(Objects.requireNonNull(component), NAME);
         this.operator = component.getParentComponent();
 
         Image icon;
@@ -176,7 +178,6 @@ public class HttpProxySettingModule extends AbstractModule<SWTViewComponent> {
             closeRadio.setSelection(true);
             authCloseRadio.setSelection(true);
         }
-
 
         addButtonSelectionListener(cancelBtn, e -> {
             if (operator.isHttpProxyOpen()) {

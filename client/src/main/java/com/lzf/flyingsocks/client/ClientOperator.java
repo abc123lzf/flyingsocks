@@ -146,6 +146,12 @@ public interface ClientOperator {
     void updateHttpProxyConfig(boolean open, int port, boolean auth, String username, String password);
 
     /**
+     * 打开Windows系统代理
+     */
+    void setupWindowsSystemProxy(boolean open);
+
+
+    /**
      * @return 系统代理模式
      */
     int proxyMode();

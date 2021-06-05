@@ -190,6 +190,7 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
                     entry.getValue().init();
                 } catch (Exception e) {
                     log.error(String.format("Component [%s] init failure.", entry.getKey()), e);
+                    handleException(entry.getValue(), e);
                 }
             }
         }
@@ -203,6 +204,7 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
                     entry.getValue().start();
                 } catch (Exception e) {
                     log.error(String.format("Component [%s] start failure.", entry.getKey()), e);
+                    handleException(entry.getValue(), e);
                 }
             }
         }
@@ -216,6 +218,7 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
                     entry.getValue().stop();
                 } catch (Exception e) {
                     log.error(String.format("Component [%s] stop failure.", entry.getKey()), e);
+                    handleException(entry.getValue(), e);
                 }
             }
         }
@@ -229,12 +232,17 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
                     entry.getValue().restart();
                 } catch (Exception e) {
                     log.error(String.format("Component [%s] restart failure.", entry.getKey()), e);
+                    handleException(entry.getValue(), e);
                 }
             }
         }
 
         super.restartInternal();
     }
+
+
+    protected void handleException(Component<?> component, Exception exception) { }
+
 
     /**
      * 当子模块需要修改名称时由子模块调用

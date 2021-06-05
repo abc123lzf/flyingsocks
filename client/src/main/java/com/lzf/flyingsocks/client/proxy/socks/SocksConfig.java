@@ -218,6 +218,11 @@ public class SocksConfig extends AbstractConfig {
         }
 
         @Override
+        public boolean canSave() {
+            return false;
+        }
+
+        @Override
         public void update(int port, boolean auth, String username, String password) {
             throw new UnsupportedOperationException();
         }

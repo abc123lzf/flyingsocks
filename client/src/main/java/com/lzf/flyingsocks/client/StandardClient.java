@@ -21,6 +21,7 @@
  */
 package com.lzf.flyingsocks.client;
 
+import com.lzf.flyingsocks.Component;
 import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.ConfigEvent;
 import com.lzf.flyingsocks.ConfigEventListener;
@@ -98,7 +99,12 @@ public final class StandardClient extends Client {
      */
     @Override
     protected void restartInternal() {
-        throw new ComponentException("can not restart client");
+        throw new ComponentException("Could not restart client");
+    }
+
+    @Override
+    protected void handleException(Component<?> component, Exception exception) {
+        exitWithNotify(1, "exitmsg.component_failure", component.getName(), exception.getMessage());
     }
 
     @Override
@@ -284,6 +290,15 @@ public final class StandardClient extends Client {
 
         if (cfg != null) {
             cfg.update(port, auth, username, password);
+        }
+    }
+
+    @Override
+    public void setupWindowsSystemProxy(boolean open) {
+        ConfigManager<?> manager = getConfigManager();
+        HttpProxyConfig cfg = manager.getConfig(HttpProxyConfig.NAME, HttpProxyConfig.class);
+        if (cfg != null) {
+            cfg.enableWindowsSystemProxy(open);
         }
     }
 

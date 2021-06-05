@@ -37,27 +37,6 @@ public class SWTViewComponent extends AbstractComponent<Client> {
 
     private final Display display;
 
-    /**
-     * Socks代理设置页面
-     */
-    private SocksSettingModule socksSettingModule;
-
-    /**
-     * 服务器设置页面
-     */
-    private ServerSettingModule serverSettingModule;
-
-    /**
-     * 主界面
-     */
-    private MainScreenModule mainScreenModule;
-
-    /**
-     * HTTP代理设置页面
-     */
-    private HttpProxySettingModule httpProxySettingModule;
-
-
     public SWTViewComponent(Client parent) {
         super("SWTViewComponent", Objects.requireNonNull(parent));
 
@@ -80,10 +59,10 @@ public class SWTViewComponent extends AbstractComponent<Client> {
     protected void initInternal() {
         try {
             addModule(new TrayModule(this));
-            addModule(this.serverSettingModule = new ServerSettingModule(this));
-            addModule(this.socksSettingModule = new SocksSettingModule(this));
-            addModule(this.mainScreenModule = new MainScreenModule(this));
-            addModule(this.httpProxySettingModule = new HttpProxySettingModule(this));
+            addModule(new ServerSettingModule(this));
+            addModule(new SocksSettingModule(this));
+            addModule(new MainScreenModule(this));
+            addModule(new HttpProxySettingModule(this));
         } catch (Throwable t) {
             log.error("SWT Thread occur a error", t);
             Client.exitWithNotify(1, "exitmsg.swt_view.init_failure", t.getMessage());
@@ -114,19 +93,19 @@ public class SWTViewComponent extends AbstractComponent<Client> {
     }
 
     void openSocksSettingUI() {
-        socksSettingModule.setVisiable(true);
+        getModuleByName(SocksSettingModule.NAME, SocksSettingModule.class).setVisiable(true);
     }
 
     void openServerSettingUI() {
-        serverSettingModule.setVisiable(true);
+        getModuleByName(ServerSettingModule.NAME, ServerSettingModule.class).setVisiable(true);
     }
 
     void openMainScreenUI() {
-        mainScreenModule.setVisiable(true);
+        getModuleByName(MainScreenModule.NAME, MainScreenModule.class).setVisiable(true);
     }
 
     void openHttpProxySettingUI() {
-        httpProxySettingModule.setVisiable(true);
+        getModuleByName(HttpProxySettingModule.NAME, HttpProxySettingModule.class).setVisiable(true);
     }
 
     @Override

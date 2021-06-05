@@ -22,6 +22,7 @@
 package com.lzf.flyingsocks.client.proxy.http;
 
 import com.lzf.flyingsocks.AbstractComponent;
+import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.Config;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.client.proxy.ProxyComponent;
@@ -88,6 +89,8 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
 
     private volatile EventLoopGroup eventLoopGroup;
 
+    private volatile boolean enableWindowsSystemProxy;
+
     public HttpReceiverComponent(ProxyComponent parent) {
         super("HttpRequestReceiver", Objects.requireNonNull(parent));
     }
@@ -146,7 +149,7 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
         int port = config.getBindPort();
         String address = config.getBindAddress();
 
-        bootstrap.bind(address, port).addListener((ChannelFuture future) -> {
+        ChannelFuture bindFuture = bootstrap.bind(address, port).addListener((ChannelFuture future) -> {
             if (!future.isSuccess()) {
                 log.error("HTTP Proxy service bind error", future.cause());
             } else {
@@ -154,15 +157,39 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
             }
         }).awaitUninterruptibly();
 
+        if (!bindFuture.isSuccess()) {
+            throw new ComponentException(bindFuture.cause());
+        }
+
+        if (config.isEnableWindowsSystemProxy() && getConfigManager().isWindows()) {
+            if (WindowsSystemProxy.isAvailable()) {
+                boolean res = WindowsSystemProxy.switchProxy(true);
+                if (res) {
+                    this.enableWindowsSystemProxy = true;
+                    WindowsSystemProxy.setupProxyServerAddress("127.0.0.1", port);
+                } else {
+                    log.warn("Could not open windows system proxy");
+                }
+            } else {
+                log.warn("Unable to configure windows system proxy", WindowsSystemProxy.unavailabilityCause());
+            }
+        }
+
         super.startInternal();
     }
 
     @Override
     protected void stopInternal() {
+        if (this.enableWindowsSystemProxy) {
+            WindowsSystemProxy.switchProxy(false);
+            this.enableWindowsSystemProxy = false;
+        }
+
         EventLoopGroup eventLoopGroup = this.eventLoopGroup;
         if (eventLoopGroup != null) {
             eventLoopGroup.shutdownGracefully();
         }
+
         super.stopInternal();
     }
 

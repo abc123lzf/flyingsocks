@@ -122,6 +122,10 @@ public class HttpProxyConfig extends AbstractConfig {
         return password;
     }
 
+    public boolean isEnableWindowsSystemProxy() {
+        return enableWindowsSystemProxy;
+    }
+
     private void loadConfigFile(Path path) {
         JSONObject json;
         try (FileChannel ch = FileChannel.open(path, StandardOpenOption.READ)) {
@@ -196,12 +200,26 @@ public class HttpProxyConfig extends AbstractConfig {
     }
 
 
+    public boolean supportWindowsSystemProxy() {
+        return WindowsSystemProxy.isAvailable();
+    }
+
+
     public void update(int port, boolean auth, String username, String password) {
         this.port = port;
         this.auth = auth;
         this.username = username;
         this.password = password;
 
+        configManager.updateConfig(this);
+    }
+
+
+    public void enableWindowsSystemProxy(boolean open) {
+        if (this.enableWindowsSystemProxy == open || (open && !supportWindowsSystemProxy())) {
+            return;
+        }
+        this.enableWindowsSystemProxy = open;
         configManager.updateConfig(this);
     }
 
@@ -236,36 +254,15 @@ public class HttpProxyConfig extends AbstractConfig {
 
     private static class Facade extends HttpProxyConfig {
 
-        private final HttpProxyConfig config;
-
         private Facade(HttpProxyConfig config) {
             super(config.configManager);
-            this.config = config;
-        }
-
-        @Override
-        public int getBindPort() {
-            return config.getBindPort();
-        }
-
-        @Override
-        public String getBindAddress() {
-            return config.getBindAddress();
-        }
-
-        @Override
-        public boolean isAuth() {
-            return config.isAuth();
-        }
-
-        @Override
-        public String getUsername() {
-            return config.getUsername();
-        }
-
-        @Override
-        public String getPassword() {
-            return config.getPassword();
+            super.filePath = config.filePath;
+            super.address = config.getBindAddress();
+            super.port = config.getBindPort();
+            super.auth = config.isAuth();
+            super.username = config.getUsername();
+            super.password = config.getPassword();
+            super.enableWindowsSystemProxy = config.isEnableWindowsSystemProxy();
         }
 
         @Override
@@ -281,6 +278,11 @@ public class HttpProxyConfig extends AbstractConfig {
         @Override
         public void update(int port, boolean auth, String username, String password) {
             throw new UnsupportedOperationException("Facade object");
+        }
+
+        @Override
+        public HttpProxyConfig configFacade() {
+            throw new UnsupportedOperationException();
         }
     }
 
