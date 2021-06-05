@@ -40,6 +40,7 @@ import java.io.InputStream;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import static com.lzf.flyingsocks.client.gui.swt.Utils.adaptDPI;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.addButtonSelectionListener;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createButton;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createLabel;
@@ -75,6 +76,7 @@ public class HttpProxySettingModule extends AbstractModule<SWTViewComponent> {
 
         this.shell = createShell(component.getDisplay(), "swtui.http.title", icon, 600, 280);
         initial();
+        adaptDPI(shell);
     }
 
     private void initial() {
