@@ -32,8 +32,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 
-import static com.lzf.flyingsocks.server.Server.VERSION;
-
 /**
  * 服务器启动引导类
  */
@@ -59,21 +57,21 @@ public abstract class ServerBoot {
 
             printBanner();
             long st = System.currentTimeMillis();
-            log.info("flyingsocks server {} start...", VERSION);
+            log.info("flyingsocks server {} start...", server.getVersion());
             try {
                 server.init();
                 server.start();
                 long ed = System.currentTimeMillis();
-                log.info("flyingsocks server {} start complete, use {} millisecond", VERSION, ed - st);
+                log.info("flyingsocks server {} start complete, use {} millisecond", server.getVersion(), ed - st);
 
                 Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                    log.info("flyingsocks server {} ready to shutdown", VERSION);
+                    log.info("flyingsocks server {} ready to shutdown", server.getVersion());
                     shutdown();
-                    log.info("flyingsocks server {} shut down complete", VERSION);
+                    log.info("flyingsocks server {} shut down complete", server.getVersion());
                 }));
 
             } catch (ComponentException e) {
-                log.error("flyingsocks server {} start failure, cause:", VERSION);
+                log.error("flyingsocks server {} start failure, cause:", server.getVersion());
                 log.info("If it caused by BUG, please submit issue at https://github.com/abc123lzf/flyingsocks , Thanks");
             }
         }
@@ -90,7 +88,7 @@ public abstract class ServerBoot {
     }
 
     private static void printBanner() {
-        try (InputStream is = server.getConfigManager().loadResource("classpath://banner");
+        try (InputStream is = server.getConfigManager().loadResource("classpath://META-INF/banner");
              BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.US_ASCII))) {
             String line;
             while ((line = reader.readLine()) != null) {

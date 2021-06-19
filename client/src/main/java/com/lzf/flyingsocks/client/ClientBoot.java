@@ -30,8 +30,6 @@ import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.util.concurrent.locks.LockSupport;
 
-import static com.lzf.flyingsocks.client.Client.VERSION;
-
 /**
  * 客户端启动引导类
  */
@@ -39,27 +37,28 @@ public abstract class ClientBoot {
 
     private static final Logger log = LoggerFactory.getLogger(ClientBoot.class);
 
+    private static final Client client = new StandardClient();
+
     public static void main(String[] args) {
         if (log.isDebugEnabled()) {
             log.debug("System properties: {}", JSON.toJSONString(System.getProperties()));
             log.debug("System env: {}", JSON.toJSONString(System.getenv()));
         }
 
-        log.info("flyingsocks client {} start...", VERSION);
+        log.info("flyingsocks client {} start...", client.getVersion());
         long st = System.currentTimeMillis();
-        Client client = new StandardClient();
         try {
             client.init();
             client.start();
             System.gc();
         } catch (ComponentException e) {
-            log.error("flyingsocks client {} start failure, cause:", VERSION, e);
+            log.error("flyingsocks client {} start failure, cause:", client.getVersion(), e);
             log.info("submit issue at https://github.com/abc123lzf/flyingsocks");
             Client.exitWithNotify(1, "exitmsg.client_boot.start_failure", e.getMessage());
         }
 
         long ed = System.currentTimeMillis();
-        log.info("flyingsocks client {} start complete, use {} millisecond", VERSION, ed - st);
+        log.info("flyingsocks client {} start complete, use {} millisecond", client.getVersion(), ed - st);
 
         boolean running = client.runGUITask();
         if (!running) {

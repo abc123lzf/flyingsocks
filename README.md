@@ -1,6 +1,6 @@
-![](flyingsocks.png)
+![](images/flyingsocks.png)
 
-## 介绍
+## 1. 介绍
 
 该项目是基于Java Netty开发的Socks5代理客户端/服务器，功能类似于Shadowsocks<br/>
 
@@ -10,9 +10,9 @@
 注意该项目客户端与Shadowsocks所采用的通信协议不兼容，需要自己部署该项目的服务端到境外服务器上。
 
 
-## 服务端安装/部署
+## 2. 服务端安装/部署
 
-#### 软件依赖
+#### 2.1 软件依赖
 - JDK 1.8
 - Maven
 - Git
@@ -20,7 +20,7 @@
 - OpenSSL
 
 
-#### 编译安装
+#### 2.2 编译安装
 1. 使用Git克隆代码仓库到本地 <br>
 2. 编译安装common模块到本地仓库
 ```
@@ -83,13 +83,13 @@ unzip flyingsocks-server-bin.zip -d /opt
 6. 进入config目录下的encrypt目录，新建文件夹，文件夹名为server.json配置文件中的name属性，进入到该文件夹中，复制CA证书和私钥到该目录，私钥文件名为private.key，需要使用PKCS8编码，公钥文件（证书文件）名为ca.crt。
 7. 进入bin目录，执行startup.sh，并使用netstat -tunlp查看端口绑定情况，如果服务没有启动成功，执行startup.sh -t查看错误原因。如果需要关闭服务，执行stop.sh即可。
 
-## 客户端安装
+## 3. 客户端安装
 
-#### 基本要求
+#### 3.1 基本要求
 
 需要安装JDK 1.8和Maven
 
-#### 编译安装
+#### 3.2 编译安装
 1. 编译安装common模块
 ```
 mvn clean install -pl common -Dmaven.test.skip=true
@@ -116,13 +116,13 @@ MacOS系统需要添加JVM参数-XstartOnFirstThread，否则UI界面无法启�
 javaw -XstartOnFirstThread -jar flyingsocks-client-3.0-SNAPSHOT-jar-with-dependencies.jar
 ```
 
-## 客户端使用说明
+## 4. 客户端使用说明
 
-#### 添加代理服务器
+#### 4.1 添加代理服务器
 
 1. 右键托盘图标，选择“编辑服务器配置...”
 2. 左侧栏点击“点击此处添加服务器配置”,如图：
-   ![GUI服务器配置页面](gui-server-setting.png)
+   ![GUI服务器配置页面](images/gui-server-setting.png)
 
 3. 输入服务器相关配置。基本配置为服务器地址（IP地址或者域名）及其代理端口（默认为2020）。
    对于加密方式，如果服务器使用TLSv1.2加密并且证书为自签证书，则需要选择“TLS v1.2”并指定证书端口，用于事先下载证书；如果是CA机构签发的证书，且该证书与服务器地址匹配，那么选择加密方式“TLS v1.2 (CA证书)”，此时无需填写证书端口。
@@ -130,12 +130,12 @@ javaw -XstartOnFirstThread -jar flyingsocks-client-3.0-SNAPSHOT-jar-with-depende
 5. 输入完成后，点击保存即可。只有在右键系统托盘图标正常退出时，这些配置才会保存在电脑上。
 6. 右键托盘图标选择“打开主界面”，选择刚才配置的服务器，然后点击连接（每次启动应用程序时都要执行该操作）。电脑睡眠再唤醒后，为了恢复代理连接，需要点击断开连接再点击连接。       
 
-#### 连接到代理服务器
+#### 4.2 连接到代理服务器
 
 右键托盘图标，选择“打开主界面”，选择刚才配置好的界面，点击连接即可。下方状态栏如果显示“成功与代理服务器建立连接”则代表连接建立成功。
-![GUI服务器连接界面](gui-main.png)
+![GUI服务器连接界面](images/gui-main.png)
 
-#### 代理模式
+#### 4.3 代理模式
 
 flyingsocks提供了四种代理模式，可通过右键托盘图标，在“代理模式”子菜单中选择。各个代理模式作用如下：
 
@@ -145,9 +145,16 @@ flyingsocks提供了四种代理模式，可通过右键托盘图标，在“代
 3. “仅代理境外地址”，即所有境外服务器都通过代理服务器建立连接。DNS解析在本地完成，所以可能会存在DNS污染问题。
 4. “全局模式”，所有代理请求都由代理服务器完成，包括国内网站，不存在DNS污染问题。
 
-#### 透明代理
+#### 4.4 透明代理
 
 暂不支持
+
+#### 4.5 iOS端使用
+1. 电脑打开客户端HTTP代理，设置好代理端口，并记下电脑的局域网IP
+2. iPhone连接到同一路由器，WiFi设置中，选择HTTP代理中的配置代理
+![iOS配置代理](images/iOS-setup1.png)
+3. 选择手动，并填入电脑的局域网IP和刚刚设置的代理端口，最后点击右上角存储
+![iOS配置代理](images/iOS-setup2.png)
 
 ## 使用的框架
 

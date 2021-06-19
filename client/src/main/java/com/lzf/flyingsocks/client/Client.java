@@ -54,11 +54,6 @@ public abstract class Client extends TopLevelComponent
      */
     static final String DEFAULT_COMPONENT_NAME = "flyingsocks-client";
 
-    /**
-     * 当前版本号
-     */
-    static final String VERSION = "v3.0";
-
 
     private static final ResourceBundle EXIT_MSG_BUNDLE =
             ResourceBundle.getBundle("META-INF/i18n/exitmsg", Locale.getDefault());

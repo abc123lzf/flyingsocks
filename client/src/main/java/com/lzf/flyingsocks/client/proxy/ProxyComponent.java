@@ -47,9 +47,9 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -85,7 +85,7 @@ public class ProxyComponent extends AbstractComponent<Client> implements ProxyRe
     /**
      * 异步任务执行器
      */
-    private final ExecutorService asyncTaskExecutorService = Executors.newCachedThreadPool();
+    private final ExecutorService asyncTaskExecutorService;
 
     /**
      * IO线程池
@@ -103,6 +103,10 @@ public class ProxyComponent extends AbstractComponent<Client> implements ProxyRe
                     log.error("Can not execture more IO Task");
                     throw new RejectedExecutionException("Can not execture more IO Task");
                 });
+        ThreadPoolExecutor asyncTaskExecutorService = new ThreadPoolExecutor(4, 4,
+                2, TimeUnit.MINUTES, new ArrayBlockingQueue<>(128));
+        asyncTaskExecutorService.allowCoreThreadTimeOut(true);
+        this.asyncTaskExecutorService = asyncTaskExecutorService;
     }
 
 

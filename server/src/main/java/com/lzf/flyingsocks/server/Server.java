@@ -30,9 +30,9 @@ import com.lzf.flyingsocks.server.db.UserDatabase;
 public interface Server extends Component<VoidComponent>, Environment {
 
     /**
-     * 服务器版本
+     * @return 服务器版本
      */
-    String VERSION = "v3.0";
+    String getVersion();
 
     /**
      * @return 服务器配置信息

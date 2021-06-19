@@ -29,7 +29,11 @@ import com.lzf.flyingsocks.server.db.TextUserDatabase;
 import com.lzf.flyingsocks.server.db.UserDatabase;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.Properties;
+import java.util.Scanner;
 
 
 public class StandardServer extends TopLevelComponent implements Server {

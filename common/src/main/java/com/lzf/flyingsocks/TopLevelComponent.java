@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Scanner;
 
 /**
  * 表示顶层组件，顶层组件不可拥有父组件
@@ -46,6 +47,8 @@ public abstract class TopLevelComponent extends AbstractComponent<VoidComponent>
         }
     }
 
+    protected final String version;
+
     /**
      * 配置管理器实例
      */
@@ -53,11 +56,13 @@ public abstract class TopLevelComponent extends AbstractComponent<VoidComponent>
 
     protected TopLevelComponent() {
         super();
+        this.version = readVersion();
         addModule(configManager);
     }
 
     protected TopLevelComponent(String name) {
         super(name, null);
+        this.version = readVersion();
         addModule(configManager);
     }
 
@@ -66,6 +71,9 @@ public abstract class TopLevelComponent extends AbstractComponent<VoidComponent>
         return null;
     }
 
+    public final String getVersion() {
+        return version;
+    }
 
     @Override
     public String getEnvironmentVariable(String key) {
@@ -105,5 +113,16 @@ public abstract class TopLevelComponent extends AbstractComponent<VoidComponent>
 
     protected ConfigManager<?> getConfigManager() {
         return configManager;
+    }
+
+    private static String readVersion() {
+        try (InputStream versionInputStream = new URL("classpath://META-INF/version").openStream();
+             Scanner sc = new Scanner(versionInputStream)) {
+            String version = sc.nextLine();
+            String tag = sc.nextLine();
+            return version + "-" + tag;
+        } catch (IOException e) {
+            throw new Error(e);
+        }
     }
 }
