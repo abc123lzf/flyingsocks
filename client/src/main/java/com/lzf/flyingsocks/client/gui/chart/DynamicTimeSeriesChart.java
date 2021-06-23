@@ -140,7 +140,7 @@ public final class DynamicTimeSeriesChart {
         plot.setRenderer(renderer);
 
         DateAxis axis = (DateAxis) plot.getDomainAxis();
-        axis.setDateFormatOverride(new SimpleDateFormat("mm:ss"));
+        axis.setDateFormatOverride(new SimpleDateFormat("    "));
 
         NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
         rangeAxis.setRangeType(RangeType.POSITIVE);
