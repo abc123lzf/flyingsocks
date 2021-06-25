@@ -46,27 +46,24 @@ import static com.lzf.flyingsocks.client.proxy.ProxyAutoChecker.*;
  * @author lizifan 695199262@qq.com
  * SWT系统托盘实现
  */
-final class TrayModule extends AbstractModule<SWTViewComponent> {
+final class TrayModule extends SwtModule {
+
     private static final String GITHUB_PAGE = "https://github.com/abc123lzf/flyingsocks";
+
     private static final String ISSUE_PAGE = "https://github.com/abc123lzf/flyingsocks/issues";
 
-    private final Display display;
-
-    private final ClientOperator operator;
-
-    private final Shell shell;
-
-    TrayModule(SWTViewComponent component) {
+    TrayModule(SwtViewComponent component) {
         super(Objects.requireNonNull(component));
-        this.display = component.getDisplay();
-        this.operator = getComponent().getParentComponent();
-        this.shell = new Shell(display);
-        shell.setText("flyingsocks");
-
-        initial();
     }
 
-    private void initial() {
+    @Override
+    protected Shell buildShell() {
+        Shell shell = new Shell(display);
+        shell.setText("flyingsocks");
+        return shell;
+    }
+
+    protected void initial() {
         final Tray trayTool = display.getSystemTray();
 
         final TrayItem tray = new TrayItem(trayTool, SWT.NONE);

@@ -21,26 +21,17 @@
  */
 package com.lzf.flyingsocks.client.gui.swt;
 
-import com.lzf.flyingsocks.AbstractModule;
 import com.lzf.flyingsocks.Config;
-import com.lzf.flyingsocks.client.ClientOperator;
-import com.lzf.flyingsocks.client.gui.ResourceManager;
 import com.lzf.flyingsocks.misc.BaseUtils;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.List;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -56,36 +47,24 @@ import static com.lzf.flyingsocks.client.gui.swt.Utils.*;
  * @since 2019.8.17 23:05
  * 服务器设置界面
  */
-final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
+final class ServerSettingModule extends SwtModule {
 
-    public static final String NAME = ServerSettingModule.class.getSimpleName();
+    private ServerList serverList;
 
-    private static final Logger log = LoggerFactory.getLogger("ServerSettingUI");
+    private ServerSettingForm serverSettingForm;
 
-    private final Display display;
+    ServerSettingModule(SwtViewComponent component) {
+        super(Objects.requireNonNull(component));
+    }
 
-    private final Shell shell;
 
-    private final ClientOperator operator;
+    @Override
+    protected Shell buildShell() {
+        return createShell(display, "swtui.serverconfig.title", loadIcon(), 850, 350);
+    }
 
-    private final ServerList serverList;
-
-    private final ServerSettingForm serverSettingForm;
-
-    ServerSettingModule(SWTViewComponent component) {
-        super(Objects.requireNonNull(component), NAME);
-        this.display = component.getDisplay();
-        this.operator = component.getParentComponent();
-
-        Image icon;
-        try (InputStream is = ResourceManager.openIconImageStream()) {
-            icon = new Image(display, is);
-        } catch (IOException e) {
-            throw new Error(e);
-        }
-
-        this.shell = createShell(display, "swtui.serverconfig.title", icon, 850, 350);
-
+    @Override
+    protected void initial() {
         Composite listComp = new Composite(this.shell, SWT.NONE);
         listComp.setBounds(10, 10, 250, 280);
         this.serverList = new ServerList(listComp);
@@ -93,11 +72,7 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
         Composite formComp = new Composite(this.shell, SWT.NONE);
         formComp.setBounds(270, 10, 570, 280);
         this.serverSettingForm = new ServerSettingForm(formComp);
-
-        setVisiable(false);
-        adaptDPI(shell);
     }
-
 
     private final class ServerList {
         private final List serverList;
@@ -416,11 +391,6 @@ final class ServerSettingModule extends AbstractModule<SWTViewComponent> {
             setUser("");
             setPass("");
         }
-    }
-
-
-    void setVisiable(boolean visiable) {
-        shell.setVisible(visiable);
     }
 
 

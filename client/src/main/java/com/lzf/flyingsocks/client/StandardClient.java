@@ -26,7 +26,7 @@ import com.lzf.flyingsocks.ComponentException;
 import com.lzf.flyingsocks.ConfigEvent;
 import com.lzf.flyingsocks.ConfigEventListener;
 import com.lzf.flyingsocks.ConfigManager;
-import com.lzf.flyingsocks.client.gui.swt.SWTViewComponent;
+import com.lzf.flyingsocks.client.gui.swt.SwtViewComponent;
 import com.lzf.flyingsocks.client.proxy.http.HttpProxyConfig;
 import com.lzf.flyingsocks.client.proxy.server.ConnectionStateListener;
 import com.lzf.flyingsocks.client.proxy.ProxyAutoConfig;
@@ -69,7 +69,7 @@ public final class StandardClient extends Client {
         addComponent(new ProxyComponent(this));
 
         if (cfg.isEnableGUI()) {
-            addComponent(new SWTViewComponent(this));
+            addComponent(new SwtViewComponent(this));
         }
 
         super.initInternal();

@@ -21,9 +21,7 @@
  */
 package com.lzf.flyingsocks.client.gui.swt;
 
-import com.lzf.flyingsocks.AbstractModule;
 import com.lzf.flyingsocks.Config;
-import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
 import com.lzf.flyingsocks.client.gui.chart.DynamicTimeSeriesChart;
 import org.eclipse.swt.SWT;
@@ -35,7 +33,6 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Combo;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
@@ -63,9 +60,7 @@ import static com.lzf.flyingsocks.client.proxy.server.ProxyServerConfig.Node;
 /**
  * 主界面
  */
-final class MainScreenModule extends AbstractModule<SWTViewComponent> {
-
-    public static final String NAME = MainScreenModule.class.getSimpleName();
+final class MainScreenModule extends SwtModule {
 
     private static final DateTimeFormatter STATUS_TEXT_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
@@ -84,50 +79,48 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
 
     private static final int CHART_HEIGHT = 270;
 
-
-    private final Display display;
-
-    private final Shell shell;
-
-    private final ClientOperator operator;
-
-    private final ServerList serverList;
+    private ServerList serverList;
 
     /**
      * 服务器连接状态文本告示栏
      */
-    private final Text statusTextArea;
+    private Text statusTextArea;
 
     /**
      * 上传速度监测图表
      */
-    private final DynamicTimeSeriesChart uploadChart;
+    private DynamicTimeSeriesChart uploadChart;
 
     /**
      * 上传速度监测图表SWT画板
      */
-    private final Canvas uploadChartCanvas;
+    private Canvas uploadChartCanvas;
 
     /**
      * 下载速度监测图标
      */
-    private final DynamicTimeSeriesChart downloadChart;
+    private DynamicTimeSeriesChart downloadChart;
 
     /**
      * 下载速度监测图标SWT画板
      */
-    private final Canvas downloadChartCanvas;
+    private Canvas downloadChartCanvas;
 
 
-    MainScreenModule(SWTViewComponent component) {
-        super(Objects.requireNonNull(component), NAME);
-        this.display = component.getDisplay();
-        this.operator = getComponent().getParentComponent();
+    MainScreenModule(SwtViewComponent component) {
+        super(Objects.requireNonNull(component));
+        submitChartUpdateTask();
+    }
 
+    @Override
+    protected Shell buildShell() {
         Shell shell = createShell(display, "swtui.main.title", initTitleIcon(), 720, 580);
         shell.setBackground(new Color(display, 255, 255, 255));
-        this.shell = shell;
+        return shell;
+    }
 
+    @Override
+    protected void initial() {
         this.statusTextArea = initStatusTextArea(shell);
         this.uploadChart = new DynamicTimeSeriesChart("上传", "", "MB/s", 60, DynamicTimeSeriesChart.STYLE_PURPLE);
         this.downloadChart = new DynamicTimeSeriesChart("下载", "", "MB/s", 60, DynamicTimeSeriesChart.STYLE_BLUE);
@@ -137,9 +130,6 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
 
         this.serverList = initServerChooseList(shell);
         appendStatusText("swtui.main.status.not_connect");
-        adaptDPI(shell);
-        setVisiable(false);
-        submitChartUpdateTask();
     }
 
     /**
@@ -219,7 +209,6 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
                 @Override
                 public void focusGained(FocusEvent e) {
                     conn.setBackground(BUTTON_FOCUS_COLOR);
-
                 }
 
                 @Override
@@ -338,11 +327,6 @@ final class MainScreenModule extends AbstractModule<SWTViewComponent> {
         Node usingNode() {
             return usingNode;
         }
-    }
-
-
-    void setVisiable(boolean visible) {
-        shell.setVisible(visible);
     }
 
 

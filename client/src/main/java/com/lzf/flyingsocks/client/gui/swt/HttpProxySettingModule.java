@@ -55,31 +55,19 @@ import static com.lzf.flyingsocks.client.gui.swt.Utils.showMessageBox;
  * @author lzf abc123lzf@126.com
  * @since 2021/1/24 0:50
  */
-public class HttpProxySettingModule extends AbstractModule<SWTViewComponent> {
+public class HttpProxySettingModule extends SwtModule {
 
-    public static final String NAME = HttpProxySettingModule.class.getSimpleName();
-
-    private final ClientOperator operator;
-
-    private final Shell shell;
-
-    HttpProxySettingModule(SWTViewComponent component) {
-        super(Objects.requireNonNull(component), NAME);
-        this.operator = component.getParentComponent();
-
-        Image icon;
-        try (InputStream is = ResourceManager.openIconImageStream()) {
-            icon = loadImage(is);
-        } catch (IOException e) {
-            throw new Error(e);
-        }
-
-        this.shell = createShell(component.getDisplay(), "swtui.http.title", icon, 600, 280);
-        initial();
-        adaptDPI(shell);
+    HttpProxySettingModule(SwtViewComponent component) {
+        super(Objects.requireNonNull(component));
     }
 
-    private void initial() {
+    @Override
+    protected Shell buildShell() {
+        return createShell(display, "swtui.http.title", loadIcon(), 600, 280);
+    }
+
+    @Override
+    protected void initial() {
         createLabel(shell, "swtui.http.form.label.switch", 20, 5, 80, 30, SWT.CENTER);
         createLabel(shell, "swtui.http.form.label.port", 20, 40, 80, 30, SWT.CENTER);
         createLabel(shell, "swtui.http.form.label.validate", 20, 75, 80, 30, SWT.CENTER);
@@ -211,7 +199,4 @@ public class HttpProxySettingModule extends AbstractModule<SWTViewComponent> {
         });
     }
 
-    void setVisiable(boolean visiable) {
-        shell.setVisible(visiable);
-    }
 }

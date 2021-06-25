@@ -21,28 +21,20 @@
  */
 package com.lzf.flyingsocks.client.gui.swt;
 
-import com.lzf.flyingsocks.AbstractModule;
-import com.lzf.flyingsocks.client.ClientOperator;
-import com.lzf.flyingsocks.client.gui.ResourceManager;
 import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
 import com.lzf.flyingsocks.misc.BaseUtils;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Objects;
 
-import static com.lzf.flyingsocks.client.gui.swt.Utils.adaptDPI;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.addButtonSelectionListener;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createButton;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createLabel;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createRadio;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createShell;
-import static com.lzf.flyingsocks.client.gui.swt.Utils.loadImage;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.showMessageBox;
 
 /**
@@ -50,31 +42,18 @@ import static com.lzf.flyingsocks.client.gui.swt.Utils.showMessageBox;
  * @since 2019.9.10
  * Socks5代理设置界面
  */
-final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
+final class SocksSettingModule extends SwtModule {
 
-    public static final String NAME = SocksSettingModule.class.getSimpleName();
-
-    private final ClientOperator operator;
-
-    private final Shell shell;
-
-    SocksSettingModule(SWTViewComponent component) {
-        super(Objects.requireNonNull(component), NAME);
-        this.operator = component.getParentComponent();
-
-        Image icon;
-        try (InputStream is = ResourceManager.openIconImageStream()) {
-            icon = loadImage(is);
-        } catch (IOException e) {
-            throw new Error(e);
-        }
-
-        this.shell = createShell(component.getDisplay(), "swtui.socks5.title", icon, 600, 250);
-        initial();
-        adaptDPI(shell);
+    SocksSettingModule(SwtViewComponent component) {
+        super(Objects.requireNonNull(component));
     }
 
-    private void initial() {
+    @Override
+    protected Shell buildShell() {
+        return createShell(display, "swtui.socks5.title", loadIcon(), 600, 250);
+    }
+
+    protected void initial() {
         createLabel(shell, "swtui.socks5.form.label.validate", 20, 5, 80, 30, SWT.CENTER);
         createLabel(shell, "swtui.socks5.form.label.username", 20, 40, 80, 30, SWT.CENTER);
         createLabel(shell, "swtui.socks5.form.label.password", 20, 75, 80, 30, SWT.CENTER);
@@ -145,9 +124,5 @@ final class SocksSettingModule extends AbstractModule<SWTViewComponent> {
         }
 
         port.setText(String.valueOf(cfg.getPort()));
-    }
-
-    void setVisiable(boolean visiable) {
-        shell.setVisible(visiable);
     }
 }

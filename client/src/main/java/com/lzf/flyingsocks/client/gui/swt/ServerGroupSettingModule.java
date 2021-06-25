@@ -19,56 +19,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.lzf.flyingsocks;
+package com.lzf.flyingsocks.client.gui.swt;
+
+import org.eclipse.swt.widgets.Shell;
+
+import java.util.Objects;
 
 /**
- * 模块抽象模板类
+ * 服务器组设置
  *
- * @param <T> 所属的组件类型
+ * @author lzf abc123lzf@126.com
+ * @since 2021/6/19 7:27 下午
  */
-public abstract class AbstractModule<T extends Component<?>> implements Module<T> {
+final class ServerGroupSettingModule extends SwtModule {
 
-    /**
-     * 模块名称
-     */
-    private String name;
-
-    /**
-     * 所属的组件名称
-     */
-    protected final T belongComponent;
-
-    protected AbstractModule(T component) {
-        this.name = getClass().getSimpleName();
-        this.belongComponent = component;
+    ServerGroupSettingModule(SwtViewComponent component) {
+        super(Objects.requireNonNull(component));
     }
 
-    protected AbstractModule(T component, String name) {
-        this.name = name;
-        this.belongComponent = component;
-    }
 
     @Override
-    @SuppressWarnings("rawtypes")
-    public void setName(String name) {
-        if (belongComponent instanceof AbstractComponent<?>) {
-            ((AbstractComponent) belongComponent).changeModuleComponentName(this.name, name);
-        }
-        this.name = name;
+    protected Shell buildShell() {
+        return null;
     }
 
-    @Override
-    public final T getComponent() {
-        return belongComponent;
-    }
 
     @Override
-    public String getName() {
-        return name;
-    }
+    protected void initial() {
 
-    @Override
-    public String toString() {
-        return "Module [" + name + "] from component [" + belongComponent.getName() + "]";
     }
 }
