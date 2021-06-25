@@ -29,6 +29,8 @@ import com.lzf.flyingsocks.AbstractConfig;
 import com.lzf.flyingsocks.ConfigInitializationException;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.client.GlobalConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
 import java.io.FileWriter;
@@ -36,13 +38,19 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ProxyServerConfig extends AbstractConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(ProxyServerConfig.class);
 
     public static final String DEFAULT_NAME = "config.proxyserver";
 
@@ -51,7 +59,12 @@ public class ProxyServerConfig extends AbstractConfig {
     /**
      * 服务器节点集合
      */
-    private final List<Node> nodes = new CopyOnWriteArrayList<>();
+    private final Map<String, Node> servers = new ConcurrentHashMap<>();
+
+    /**
+     * 服务器组
+     */
+    private final Map<String, Group> groups = new ConcurrentHashMap<>();
 
 
     public ProxyServerConfig(ConfigManager<?> configManager) {
@@ -75,10 +88,12 @@ public class ProxyServerConfig extends AbstractConfig {
                 throw new ConfigInitializationException("File size is abnormalcy, you can restart this application");
             }
 
-            JSONArray array = JSON.parseArray(new String(b, StandardCharsets.UTF_8));
+            JSONObject object = JSON.parseObject(new String(b, StandardCharsets.UTF_8));
 
-            for (int i = 0; i < array.size(); i++) {
-                JSONObject o = array.getJSONObject(i);
+            JSONArray servers = object.getJSONArray("servers");
+            for (int i = 0; i < servers.size(); i++) {
+                JSONObject o = servers.getJSONObject(i);
+                String id = o.getString("id");
                 String host = o.getString("host");
                 int port = o.getIntValue("port");
                 int certPort = o.getIntValue("cert-port");
@@ -91,10 +106,35 @@ public class ProxyServerConfig extends AbstractConfig {
                 boolean use = o.getBooleanValue("state");
                 EncryptType etype = EncryptType.valueOf(o.getString("encrypt").toUpperCase());
 
-                nodes.add(new Node(host, port, certPort, type, etype, authArg, use));
+                this.servers.putIfAbsent(id, new Node(id, host, port, certPort, type, etype, authArg, use));
             }
+
+            JSONArray groups = object.getJSONArray("groups");
+            for (int i = 0; i < groups.size(); i++) {
+                JSONObject o = groups.getJSONObject(i);
+                String id = o.getString("id");
+                String name = o.getString("name");
+                JSONArray nodes = o.getJSONArray("nodes");
+                List<Node> groupNodes = new ArrayList<>(nodes.size());
+                for (int j = 0; j < nodes.size(); j++) {
+                    String nid = nodes.getString(i);
+                    Node n = this.servers.get(nid);
+                    if (n == null) {
+                        log.warn("Server configuration id [{}] not found, ignore", nid);
+                        continue;
+                    }
+                    groupNodes.add(n);
+                }
+
+                Group group = new Group(id, name);
+                group.addNodes(groupNodes);
+                this.groups.put(id, group);
+            }
+
         } catch (IOException e) {
             throw new ConfigInitializationException(e);
+        } catch (RuntimeException e) {
+            log.warn("Load config at {} failure", path, e);
         }
     }
 
@@ -109,9 +149,11 @@ public class ProxyServerConfig extends AbstractConfig {
 
         Path p = cfg.configPath().resolve(SERVER_SETTING_FILE);
 
-        JSONArray arr = new JSONArray(nodes.size());
-        for (Node node : nodes) {
+        JSONObject object = new JSONObject();
+        JSONArray servers = new JSONArray(this.servers.size());
+        for (Node node : this.servers.values()) {
             JSONObject o = new JSONObject();
+            o.put("id", node.getId());
             o.put("host", node.getHost());
             o.put("port", node.getPort());
             o.put("cert-port", node.getCertPort());
@@ -125,21 +167,29 @@ public class ProxyServerConfig extends AbstractConfig {
                 o.put("state", node.isUse());
             }
             o.put("encrypt", node.encryptType.name());
-            arr.add(o);
+            servers.add(o);
         }
 
+        object.put("servers", servers);
+
+        JSONArray groups = new JSONArray(this.groups.size());
+        
+
         try (FileWriter writer = new FileWriter(p.toFile())) {
-            writer.write(arr.toString(SerializerFeature.PrettyFormat));
+            writer.write(object.toString(SerializerFeature.PrettyFormat));
         }
     }
 
     public Node[] getProxyServerConfig() {
-        return nodes.toArray(new Node[0]);
+        return this.servers.values().toArray(new Node[0]);
     }
 
 
     public void addProxyServerNode(Node node) {
-        nodes.add(node);
+        if (node.getId() == null) {
+            node.setId(UUID.randomUUID().toString().replace("-", ""));
+        }
+        servers.put(node.getId(), node);
         configManager.updateConfig(this);
     }
 
@@ -152,21 +202,22 @@ public class ProxyServerConfig extends AbstractConfig {
     }
 
     public boolean containsProxyServerNode(Node node) {
-        return nodes.contains(node);
+        return this.servers.containsKey(node.getId());
     }
 
     public void setProxyServerUsing(Node node, boolean use) {
-        if (!nodes.contains(node))
+        if (!servers.containsKey(node.getId()))
             throw new IllegalArgumentException(String.format("Server Node %s:%d not exists", node.getHost(), node.getPort()));
-        if (node.isUse() == use)
+        if (node.isUse() == use) {
             return;
+        }
         node.setUse(use);
         configManager.updateConfig(this);
     }
 
     public void setProxyServerUsing(Map<Node, Boolean> map) {
         map.forEach((node, using) -> {
-            if (!nodes.contains(node)) {
+            if (!this.servers.containsKey(node.getId())) {
                 throw new IllegalArgumentException(String.format("Server Node %s:%d not exists", node.getHost(), node.getPort()));
             }
 
@@ -180,7 +231,7 @@ public class ProxyServerConfig extends AbstractConfig {
 
 
     public void removeProxyServerNode(Node node) {
-        nodes.remove(node);
+        this.servers.remove(node.getId());
         configManager.updateConfig(this);
     }
 
@@ -196,6 +247,7 @@ public class ProxyServerConfig extends AbstractConfig {
 
 
     public static final class Node {
+        private String id;
         private String host;
         private int port;
         private int certPort;
@@ -208,8 +260,9 @@ public class ProxyServerConfig extends AbstractConfig {
         public Node() {
         }
 
-        public Node(String host, int port, int certPort, AuthType authType, EncryptType type,
+        public Node(String id, String host, int port, int certPort, AuthType authType, EncryptType type,
                     Map<String, String> authArgument, boolean use) {
+            this.id = id;
             this.host = host;
             this.port = port;
             this.certPort = certPort;
@@ -217,6 +270,14 @@ public class ProxyServerConfig extends AbstractConfig {
             this.authArgument = authArgument;
             this.use = use;
             this.encryptType = type;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
         }
 
         public String getHost() {
@@ -283,6 +344,45 @@ public class ProxyServerConfig extends AbstractConfig {
 
         public void setEncryptType(EncryptType encryptType) {
             this.encryptType = encryptType;
+        }
+    }
+
+
+    public static final class Group {
+        private String id;
+        private String name;
+        private final List<Node> nodes = new CopyOnWriteArrayList<>();
+
+        public Group() {
+        }
+
+        public Group(String id, String name) {
+            this.id = id;
+            this.name = name;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public List<Node> getNodes() {
+            return Collections.unmodifiableList(nodes);
+        }
+
+        public void addNodes(Collection<Node> nodes) {
+            this.nodes.addAll(nodes);
         }
     }
 }
