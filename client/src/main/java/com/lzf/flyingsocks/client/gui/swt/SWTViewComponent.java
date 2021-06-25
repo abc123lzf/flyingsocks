@@ -33,12 +33,12 @@ import java.util.Objects;
  * @since 2019.8.13 9:40
  * SWT GUI组件
  */
-public class SWTViewComponent extends AbstractComponent<Client> {
+public class SwtViewComponent extends AbstractComponent<Client> {
 
     private final Display display;
 
-    public SWTViewComponent(Client parent) {
-        super("SWTViewComponent", Objects.requireNonNull(parent));
+    public SwtViewComponent(Client parent) {
+        super("SwtViewComponent", Objects.requireNonNull(parent));
 
         ConfigManager<?> configManager = getConfigManager();
         if (configManager.isMacOS()) {
@@ -93,19 +93,23 @@ public class SWTViewComponent extends AbstractComponent<Client> {
     }
 
     void openSocksSettingUI() {
-        getModuleByName(SocksSettingModule.NAME, SocksSettingModule.class).setVisiable(true);
+        Class<SocksSettingModule> klass = SocksSettingModule.class;
+        getModuleByName(SwtModule.getModuleName(klass), klass).setVisiable(true);
     }
 
     void openServerSettingUI() {
-        getModuleByName(ServerSettingModule.NAME, ServerSettingModule.class).setVisiable(true);
+        Class<ServerSettingModule> klass = ServerSettingModule.class;
+        getModuleByName(SwtModule.getModuleName(klass), klass).setVisiable(true);
     }
 
     void openMainScreenUI() {
-        getModuleByName(MainScreenModule.NAME, MainScreenModule.class).setVisiable(true);
+        Class<MainScreenModule> klass = MainScreenModule.class;
+        getModuleByName(SwtModule.getModuleName(klass), klass).setVisiable(true);
     }
 
     void openHttpProxySettingUI() {
-        getModuleByName(HttpProxySettingModule.NAME, HttpProxySettingModule.class).setVisiable(true);
+        Class<HttpProxySettingModule> klass = HttpProxySettingModule.class;
+        getModuleByName(SwtModule.getModuleName(klass), klass).setVisiable(true);
     }
 
     @Override
