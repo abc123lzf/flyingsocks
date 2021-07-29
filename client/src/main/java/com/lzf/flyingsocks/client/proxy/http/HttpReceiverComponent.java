@@ -305,7 +305,7 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
      * 实现HTTP隧道代理
      * 主要用于HTTPS协议的网站
      */
-    private static final class TunnelProxyHandler extends ChannelInboundHandlerAdapter {
+    private final class TunnelProxyHandler extends ChannelInboundHandlerAdapter {
 
         private final ProxyRequest proxyRequest;
 
@@ -342,9 +342,12 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
                 proxyRequest.close();
                 ctx.close();
                 return;
+            } else if (cause instanceof IOException) {
+                ctx.close();
+            } else {
+                log.error("An error occur in PlaintextProxyHandler", cause);
+                ctx.close();
             }
-
-            ctx.fireExceptionCaught(cause);
         }
 
         @Override
@@ -453,12 +456,14 @@ public class HttpReceiverComponent extends AbstractComponent<ProxyComponent> {
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             if (cause instanceof MalformedURLException) {
-                log.info("Illegal URI field.", cause);
+                log.info("Illegal URI: {}", cause.getMessage());
                 ctx.close();
-                return;
+            } else if (cause instanceof IOException) {
+                ctx.close();
+            } else {
+                log.error("An error occur in PlaintextProxyHandler", cause);
+                ctx.close();
             }
-
-            log.error("An error occur in PlaintextProxyHandler", cause);
         }
 
         @Override
