@@ -19,33 +19,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.lzf.flyingsocks.client.gui.swt;
+package com.lzf.flyingsocks.client.gui.swing;
 
-import org.eclipse.swt.widgets.Shell;
+import com.bulenkov.darcula.DarculaLaf;
+import com.lzf.flyingsocks.client.gui.ResourceManager;
 
-import java.util.Objects;
+import javax.imageio.ImageIO;
+import javax.swing.*;
+import java.awt.*;
+
 
 /**
- * 服务器组设置
- *
  * @author lzf abc123lzf@126.com
- * @since 2021/6/19 7:27 下午
+ * @since 2021/8/21 9:50 下午
  */
-final class ServerGroupSettingModule extends SwtModule {
+public class SystemTrayModule {
 
-    ServerGroupSettingModule(SwtViewComponent component) {
-        super(Objects.requireNonNull(component));
-    }
+    public static void main(String[] args) throws Exception {
+        UIManager.setLookAndFeel(new DarculaLaf());
+        SystemTray tray = SystemTray.getSystemTray();
+        TrayIcon trayIcon = new TrayIcon(ImageIO.read(ResourceManager.openIconImageStream()));
+        tray.add(trayIcon);
 
-
-    @Override
-    protected Shell buildShell() {
-        return null;
-    }
-
-
-    @Override
-    protected void initial() {
-
+        PopupMenu menu = new PopupMenu();
+        menu.add(new MenuItem("哈哈"));
+        menu.add(new MenuItem("卧槽"));
+        trayIcon.setPopupMenu(menu);
     }
 }
