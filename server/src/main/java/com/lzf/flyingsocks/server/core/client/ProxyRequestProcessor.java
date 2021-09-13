@@ -202,6 +202,7 @@ class ProxyRequestProcessor extends AbstractComponent<ClientProcessor> {
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
+
             ConnectionContext.clientSession(ctx.channel()).updateLastActiveTime();
             ctx.fireChannelRead(msg);
         }

@@ -184,7 +184,7 @@ public class DispatchProceessor extends AbstractComponent<ProxyProcessor> {
 
         private final Map<ClientSession, ReturnableSet<ActiveConnection>> activeConnectionMap = new LinkedHashMap<>(64);
 
-        private final BlockingQueue<ProxyTask> taskQueue = new ArrayBlockingQueue<>(256);
+        private final BlockingQueue<ProxyTask> taskQueue = new ArrayBlockingQueue<>(1024);
 
         private DispatcherTask() {
             parent.registerSubscriber(this);
