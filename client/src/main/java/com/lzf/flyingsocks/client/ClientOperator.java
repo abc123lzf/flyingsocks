@@ -24,11 +24,13 @@ package com.lzf.flyingsocks.client;
 import com.lzf.flyingsocks.ConfigEventListener;
 import com.lzf.flyingsocks.client.proxy.http.HttpProxyConfig;
 import com.lzf.flyingsocks.client.proxy.server.ConnectionStateListener;
+import com.lzf.flyingsocks.client.proxy.server.ProxyServerConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
 
 import java.util.Map;
 
 import static com.lzf.flyingsocks.client.proxy.server.ProxyServerConfig.Node;
+import static com.lzf.flyingsocks.client.proxy.server.ProxyServerConfig.Group;
 
 /**
  * GUI操作接口
@@ -118,6 +120,12 @@ public interface ClientOperator {
      * @return 服务器配置
      */
     Node[] getServerNodes();
+
+    /**
+     * @return 服务器组配置
+     */
+    Group[] getServerGroup();
+
 
     /**
      * @return 获取本地Socks代理包装对象

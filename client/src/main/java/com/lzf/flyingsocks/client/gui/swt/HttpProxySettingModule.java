@@ -21,32 +21,24 @@
  */
 package com.lzf.flyingsocks.client.gui.swt;
 
-import com.lzf.flyingsocks.AbstractModule;
 import com.lzf.flyingsocks.Config;
-import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.GlobalConfig;
-import com.lzf.flyingsocks.client.gui.ResourceManager;
 import com.lzf.flyingsocks.client.proxy.http.HttpProxyConfig;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import static com.lzf.flyingsocks.client.gui.swt.Utils.adaptDPI;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.addButtonSelectionListener;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createButton;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createLabel;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createRadio;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.createShell;
-import static com.lzf.flyingsocks.client.gui.swt.Utils.loadImage;
 import static com.lzf.flyingsocks.client.gui.swt.Utils.showMessageBox;
 
 /**

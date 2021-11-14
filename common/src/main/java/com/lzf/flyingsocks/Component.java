@@ -86,11 +86,13 @@ public interface Component<T extends Component<?>> extends Lifecycle, Named {
     @SuppressWarnings("unchecked")
     default <V extends Module<?>> V getModuleByName(String moduleName, boolean searchAtParent, Class<V> requireType) {
         Module<?> m = getModuleByName(moduleName, searchAtParent);
-        if (m == null)
+        if (m == null) {
             return null;
+        }
 
-        if (requireType.isInstance(m))
+        if (requireType.isInstance(m)) {
             return (V) m;
+        }
 
         throw new ComponentException(new ClassCastException(String.format("Module [%s] is not type of %s.", getName(), requireType.getName())));
     }

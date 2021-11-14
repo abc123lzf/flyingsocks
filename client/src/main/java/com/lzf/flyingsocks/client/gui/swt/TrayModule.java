@@ -21,15 +21,12 @@
  */
 package com.lzf.flyingsocks.client.gui.swt;
 
-import com.lzf.flyingsocks.AbstractModule;
-import com.lzf.flyingsocks.client.ClientOperator;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
 
 import com.lzf.flyingsocks.client.proxy.http.HttpProxyConfig;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;

@@ -282,7 +282,7 @@ public class HttpProxyConfig extends AbstractConfig {
 
         @Override
         public HttpProxyConfig configFacade() {
-            throw new UnsupportedOperationException();
+            return this;
         }
     }
 

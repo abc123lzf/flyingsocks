@@ -72,7 +72,7 @@
         <dependency>
             <groupId>org.jfree</groupId>
             <artifactId>jfreechart</artifactId>
-            <version>1.0.19</version>
+            <version>1.5.3</version>
         </dependency>
 
         <dependency>
@@ -128,8 +128,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.1</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>11</source>
+                    <target>11</target>
                 </configuration>
             </plugin>
 
@@ -156,28 +156,6 @@
                     </execution>
                 </executions>
             </plugin>
-
-            <!--<plugin>
-                <groupId>org.graalvm.nativeimage</groupId>
-                <artifactId>native-image-maven-plugin</artifactId>
-                <version>${graalvm.version}</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>native-image</goal>
-                        </goals>
-                        <phase>install</phase>
-                    </execution>
-                </executions>
-                <configuration>
-                    <skip>true</skip>
-                    <imageName>flyingsocks</imageName>
-                    <mainClass>${main.class}</mainClass>
-                    <buildArgs>
-                        &#45;&#45;no-fallback
-                    </buildArgs>
-                </configuration>
-            </plugin>-->
 
         </plugins>
     </build>

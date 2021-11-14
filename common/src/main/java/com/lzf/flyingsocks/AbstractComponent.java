@@ -285,7 +285,7 @@ public abstract class AbstractComponent<T extends Component<?>> extends Lifecycl
     /**
      * @return 配置管理器
      */
-    protected ConfigManager<?> getConfigManager() {
+    public ConfigManager<?> getConfigManager() {
         Module<?> module = getModuleByName(DefaultConfigManager.NAME, true);
         if (module instanceof ConfigManager) {
             return (ConfigManager<?>) module;

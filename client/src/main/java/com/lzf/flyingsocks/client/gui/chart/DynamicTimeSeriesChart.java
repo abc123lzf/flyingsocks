@@ -23,23 +23,25 @@ package com.lzf.flyingsocks.client.gui.chart;
 
 import org.apache.commons.lang3.time.DateUtils;
 import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYAreaRenderer;
 import org.jfree.chart.title.TextTitle;
+import org.jfree.chart.ui.RectangleInsets;
 import org.jfree.data.RangeType;
 import org.jfree.data.time.DynamicTimeSeriesCollection;
 import org.jfree.data.time.Second;
-import org.jfree.graphics2d.svg.SVGGraphics2D;
-import org.jfree.ui.RectangleInsets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.swing.JPanel;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Paint;
-import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -50,6 +52,7 @@ import java.util.Date;
  */
 public final class DynamicTimeSeriesChart {
 
+    private static final Logger log = LoggerFactory.getLogger(DynamicTimeSeriesChart.class);
     /**
      * 蓝色主题
      */
@@ -131,12 +134,11 @@ public final class DynamicTimeSeriesChart {
         plot.setOutlinePaint(outline);
 
         XYAreaRenderer renderer = new XYAreaRenderer(XYAreaRenderer.AREA);
-        renderer.setOutline(true);
-
-        renderer.setBaseOutlinePaint(fill);
-        renderer.setSeriesFillPaint(0, fill);
+        renderer.setDefaultFillPaint(line);
+        renderer.setDefaultOutlinePaint(fill);
         renderer.setSeriesPaint(0, line);
-
+        renderer.setUseFillPaint(true);
+        renderer.setOutline(true);
         plot.setRenderer(renderer);
 
         DateAxis axis = (DateAxis) plot.getDomainAxis();
@@ -161,12 +163,13 @@ public final class DynamicTimeSeriesChart {
     }
 
 
-    public BufferedImage parseImage(int width, int height) {
-        SVGGraphics2D gc = new SVGGraphics2D(width, height);
-        chart.draw(gc, new Rectangle2D.Double(0, 0, width, height));
-        gc.dispose();
+    public JPanel buildPanel() {
+        return new ChartPanel(chart);
+    }
 
-        return chart.createBufferedImage(width, height);
+
+    public BufferedImage parseImage(int width, int height) {
+        return null;
     }
 
 }

@@ -21,6 +21,7 @@
  */
 package com.lzf.flyingsocks.client.gui.swt;
 
+import com.lzf.flyingsocks.client.gui.Internationalization;
 import io.netty.util.internal.PlatformDependent;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.swt.SWT;
@@ -46,7 +47,6 @@ import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.text.MessageFormat;
-import java.util.Locale;
 import java.util.ResourceBundle;
 
 /**
@@ -91,8 +91,7 @@ abstract class Utils {
         }
 
         DPI_SCALE = result;
-        Locale locale = Locale.getDefault();
-        RESOURCE_BUNDLE = ResourceBundle.getBundle("META-INF/i18n/swtui", locale);
+        RESOURCE_BUNDLE = Internationalization.getResourceBundle();
     }
 
     /**

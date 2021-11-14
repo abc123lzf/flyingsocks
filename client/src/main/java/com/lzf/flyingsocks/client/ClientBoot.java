@@ -69,8 +69,6 @@ public abstract class ClientBoot {
                 }
                 LockSupport.unpark(mainThread);
             }, "Thread-ShutdownHook"));
-
-            LockSupport.park();
             log.info("Shutdown client at {}", LocalDateTime.now());
         }
     }

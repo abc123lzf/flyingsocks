@@ -47,6 +47,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 public class ProxyServerConfig extends AbstractConfig {
 
@@ -173,7 +174,15 @@ public class ProxyServerConfig extends AbstractConfig {
         object.put("servers", servers);
 
         JSONArray groups = new JSONArray(this.groups.size());
-        
+        for (Group group : this.groups.values()) {
+            JSONObject o = new JSONObject();
+            o.put("name", group.name);
+            o.put("id", group.id);
+            o.put("nodes", group.nodes.stream().map(Node::getId).collect(Collectors.toList()));
+            groups.add(o);
+        }
+
+        object.put("groups", groups);
 
         try (FileWriter writer = new FileWriter(p.toFile())) {
             writer.write(object.toString(SerializerFeature.PrettyFormat));
@@ -182,6 +191,10 @@ public class ProxyServerConfig extends AbstractConfig {
 
     public Node[] getProxyServerConfig() {
         return this.servers.values().toArray(new Node[0]);
+    }
+
+    public Group[] getProxyServerGroupConfig() {
+        return this.groups.values().toArray(new Group[0]);
     }
 
 

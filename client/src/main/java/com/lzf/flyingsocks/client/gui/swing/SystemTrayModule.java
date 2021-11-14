@@ -21,29 +21,95 @@
  */
 package com.lzf.flyingsocks.client.gui.swing;
 
-import com.bulenkov.darcula.DarculaLaf;
 import com.lzf.flyingsocks.client.gui.ResourceManager;
 
 import javax.imageio.ImageIO;
-import javax.swing.*;
-import java.awt.*;
-
+import javax.swing.JMenu;
+import javax.swing.JPopupMenu;
+import java.awt.SystemTray;
+import java.awt.TrayIcon;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.Objects;
 
 /**
  * @author lzf abc123lzf@126.com
  * @since 2021/8/21 9:50 下午
  */
-public class SystemTrayModule {
+final class SystemTrayModule extends SwingModule {
 
-    public static void main(String[] args) throws Exception {
-        UIManager.setLookAndFeel(new DarculaLaf());
+    private static final String GITHUB_PAGE = "https://github.com/abc123lzf/flyingsocks";
+
+    private static final String ISSUE_PAGE = "https://github.com/abc123lzf/flyingsocks/issues";
+
+    public SystemTrayModule(SwingViewComponent component) {
+        super(Objects.requireNonNull(component));
+    }
+
+    @Override
+    protected void initial() throws Exception {
+        if (!SystemTray.isSupported()) {
+            throw new Error("SystemTray not support!");
+        }
+
         SystemTray tray = SystemTray.getSystemTray();
-        TrayIcon trayIcon = new TrayIcon(ImageIO.read(ResourceManager.openIconImageStream()));
-        tray.add(trayIcon);
+        TrayIcon icon = new TrayIcon(ImageIO.read(ResourceManager.openSystemTrayImageStream()), "flyingsocks");
 
-        PopupMenu menu = new PopupMenu();
-        menu.add(new MenuItem("哈哈"));
-        menu.add(new MenuItem("卧槽"));
-        trayIcon.setPopupMenu(menu);
+        JPopupMenu menu = new JPopupMenu();
+        createMenuItem(menu, "打开主界面", null);
+        initialPacMenu(menu);
+        createMenuItem(menu, "服务器配置", () -> belongComponent.getModuleByName(
+                "ServerConfigureModule", SwingModule.class).setVisiable(true));
+        menu.addSeparator();
+        createMenuItem(menu, "本地代理设置", () -> belongComponent.getModuleByName(
+                "LocalProxyConfigureModule", SwingModule.class).setVisiable(true));
+        menu.addSeparator();
+        initialAboutMenu(menu);
+        createMenuItem(menu, "退出", () -> belongComponent.getParentComponent().stop());
+
+
+        icon.addMouseListener(new MouseAdapter() {
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    menu.setLocation(e.getLocationOnScreen());
+                    menu.setInvoker(menu);
+                    menu.setVisible(true);
+                }
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    menu.setLocation(e.getLocationOnScreen());
+                    menu.setInvoker(menu);
+                    menu.setVisible(true);
+                }
+            }
+        });
+
+        tray.add(icon);
+    }
+
+    @Override
+    public void setVisiable(boolean visiable) {
+        // NOOP
+    }
+
+
+    private void initialAboutMenu(JPopupMenu parent) {
+        JMenu menu = createCascadeMenu(parent, "帮助/关于");
+        createMenuItem(menu, "打开配置文件目录", clientOperator::openConfigDirectory);
+        createMenuItem(menu, "打开GitHub页面", () -> clientOperator.openBrowser(GITHUB_PAGE));
+        createMenuItem(menu, "问题反馈", () -> clientOperator.openBrowser(ISSUE_PAGE));
+    }
+
+    private void initialPacMenu(JPopupMenu parent) {
+        JMenu menu = createCascadeMenu(parent, "PAC模式");
+        createCheckboxMenuItem(menu, "不代理", null);
+        createCheckboxMenuItem(menu, "GFW List", null);
+        createCheckboxMenuItem(menu, "全局模式", null);
+        createCheckboxMenuItem(menu, "IP白名单", null);
     }
 }
