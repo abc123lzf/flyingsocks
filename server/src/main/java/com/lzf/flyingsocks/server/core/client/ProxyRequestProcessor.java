@@ -108,7 +108,7 @@ class ProxyRequestProcessor extends AbstractComponent<ClientProcessor> {
         EventLoopGroup bossGroup = parent.getParentComponent().getBossWorker();
         // 初始化域名解析服务
         DnsNameResolverBuilder nameResolverBuilder = new DnsNameResolverBuilder(bossGroup.next());
-        nameResolverBuilder.channelType(NioDatagramChannel.class)
+        nameResolverBuilder.channelType(parent.getParentComponent().getDatagramChannelClass())
                 .resolveCache(new DefaultDnsCache())
                 .resolvedAddressTypes(ResolvedAddressTypes.IPV4_PREFERRED)
                 .authoritativeDnsServerCache(new DefaultAuthoritativeDnsServerCache())
