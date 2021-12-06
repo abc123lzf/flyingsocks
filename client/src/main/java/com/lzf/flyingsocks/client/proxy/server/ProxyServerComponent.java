@@ -779,6 +779,7 @@ public class ProxyServerComponent extends AbstractComponent<ProxyComponent> impl
                     if (!response.isSuccess()) {
                         log.trace("Auth failure, from server {}:{}", config.getHost(), config.getPort());
                         updateConnectionState(ConnectionState.PROXY_CONNECT_AUTH_FAILURE);
+                        return;
                     }
 
                     log.trace("Auth success");
