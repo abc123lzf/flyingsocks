@@ -23,18 +23,20 @@ package com.lzf.flyingsocks.client.gui.chart;
 
 import org.apache.commons.lang3.time.DateUtils;
 import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYAreaRenderer;
 import org.jfree.chart.title.TextTitle;
+import org.jfree.chart.ui.RectangleInsets;
 import org.jfree.data.RangeType;
 import org.jfree.data.time.DynamicTimeSeriesCollection;
 import org.jfree.data.time.Second;
 import org.jfree.graphics2d.svg.SVGGraphics2D;
-import org.jfree.ui.RectangleInsets;
 
+import javax.swing.JPanel;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
@@ -82,7 +84,7 @@ public final class DynamicTimeSeriesChart {
         dataset.addSeries(new float[0], 0, "");
 
         JFreeChart chart = ChartFactory.createTimeSeriesChart("", xAxisName, yAxisName, dataset, false, false, false);
-        chart.setTitle(new TextTitle(title, new Font("黑体", Font.PLAIN, 18)));
+        chart.setTitle(new TextTitle(title, new Font(Font.SANS_SERIF, Font.PLAIN, 18)));
         if (style == STYLE_BLUE) {
             initialChartStyle(chart, Color.white, new Color(17, 125, 187),
                     new Color(217, 234, 244),
@@ -131,12 +133,11 @@ public final class DynamicTimeSeriesChart {
         plot.setOutlinePaint(outline);
 
         XYAreaRenderer renderer = new XYAreaRenderer(XYAreaRenderer.AREA);
-        renderer.setOutline(true);
-
-        renderer.setBaseOutlinePaint(fill);
-        renderer.setSeriesFillPaint(0, fill);
+        renderer.setDefaultFillPaint(line);
+        renderer.setDefaultOutlinePaint(fill);
         renderer.setSeriesPaint(0, line);
-
+        renderer.setUseFillPaint(true);
+        renderer.setOutline(true);
         plot.setRenderer(renderer);
 
         DateAxis axis = (DateAxis) plot.getDomainAxis();
@@ -167,6 +168,10 @@ public final class DynamicTimeSeriesChart {
         gc.dispose();
 
         return chart.createBufferedImage(width, height);
+    }
+
+    public JPanel buildPanel() {
+        return new ChartPanel(chart);
     }
 
 }

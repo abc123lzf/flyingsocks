@@ -20,5 +20,5 @@ echo "Java version: " $JAVA_VERSION
 if [ "$1" == "-daemon" ]; then
     nohup java -Xbootclasspath/a:../conf -jar ../lib/flyingsocks-cli-2.0.jar >/dev/null  &
 else
-    javaw -Xbootclasspath/a:../conf -jar ../lib/flyingsocks-cli-2.0.jar
+    java -Xbootclasspath/a:../conf -jar ../lib/flyingsocks-cli-2.0.jar
 fi
