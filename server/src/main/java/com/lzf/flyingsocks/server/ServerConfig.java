@@ -50,7 +50,6 @@ import java.util.Objects;
 import java.util.UUID;
 
 public class ServerConfig extends AbstractConfig implements Config {
-
     private static final Logger log = LoggerFactory.getLogger(ServerConfig.class);
 
     private static final String SERVER_CONFIG_NAME = "server.json";

@@ -90,6 +90,11 @@
                     <groupId>org.jfree</groupId>
                     <artifactId>jfreechart</artifactId>
                 </exclusion>
+                <!-- 在win下打包时该依赖会引入macos的swt包,会造成找不到Display类的错,去除即正常-->
+                <exclusion>
+                    <groupId>org.eclipse.swt</groupId>
+                    <artifactId>org.eclipse.swt.cocoa.macosx.x86_64</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
 
@@ -130,6 +135,7 @@
                 <configuration>
                     <source>11</source>
                     <target>11</target>
+                    <encoding>UTF-8</encoding>
                 </configuration>
             </plugin>
 
@@ -142,17 +148,24 @@
                             <mainClass>${main.class}</mainClass>
                         </manifest>
                     </archive>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
+                    <descriptors>
+                        <descriptor>release.xml</descriptor>
+                    </descriptors>
                 </configuration>
                 <executions>
                     <execution>
-                        <id>make-assembly</id> <!-- this is used for inheritance merges -->
-                        <phase>package</phase> <!-- 指定在打包节点执行jar包合并操作 -->
+                        <id>make-assembly</id>
+                        <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
+                        <configuration>
+                            <finalName>${project.artifactId}-${project.version}</finalName>
+                            <descriptors>
+                                <descriptor>release.xml</descriptor>
+                            </descriptors>
+                            <outputDirectory>./target</outputDirectory>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

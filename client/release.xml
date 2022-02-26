@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <assembly>
-    <id>bin</id>
+    <id>all</id>
     <formats>
         <format>zip</format>
     </formats>
@@ -15,6 +15,11 @@
 
     <fileSets>
         <fileSet>
+            <includes>
+                <include>bin/*</include>
+            </includes>
+        </fileSet>
+        <fileSet>
             <outputDirectory>/</outputDirectory>
             <includes>
                 <include>README.md</include>
@@ -28,28 +33,10 @@
             </includes>
         </fileSet>
 
-        <!-- 打包启停脚本到bin下 -->
+        <!-- 打包配置文件到conf下 -->
         <fileSet>
-            <directory>src/main/shell</directory>
-            <outputDirectory>/bin</outputDirectory>
-            <includes>
-                <include>*</include>
-            </includes>
-        </fileSet>
-
-        <!-- 打包启停脚本到bin下 -->
-        <fileSet>
-            <directory>src/main/batch</directory>
-            <outputDirectory>/bin</outputDirectory>
-            <includes>
-                <include>*</include>
-            </includes>
-        </fileSet>
-
-        <!-- 打包配置文件到config下 -->
-        <fileSet>
-            <directory>src/main/resources</directory>
-            <outputDirectory>/config</outputDirectory>
+            <directory>src/main/resources/META-INF/pac-template</directory>
+            <outputDirectory>/conf</outputDirectory>
             <includes>
                 <include>*</include>
                 <include>*/*</include>

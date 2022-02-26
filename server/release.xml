@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<assembly>
+    <id>all</id>
+    <formats>
+        <format>zip</format>
+    </formats>
+    <dependencySets>
+
+        <!--依赖包打包到lib下,false lib下不包含本工程包, true:包含-->
+        <dependencySet>
+            <useProjectArtifact>true</useProjectArtifact>
+            <outputDirectory>lib</outputDirectory>
+        </dependencySet>
+    </dependencySets>
+
+    <fileSets>
+        <fileSet>
+            <includes>
+                <include>bin/*</include>
+            </includes>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>/</outputDirectory>
+            <includes>
+                <include>README.md</include>
+            </includes>
+        </fileSet>
+
+        <fileSet>
+            <outputDirectory>/</outputDirectory>
+            <includes>
+                <include>LICENSE</include>
+            </includes>
+        </fileSet>
+
+        <!-- 打包配置文件到conf下 -->
+        <fileSet>
+            <directory>src/main/resources</directory>
+            <outputDirectory>/conf</outputDirectory>
+            <includes>
+                <include>*</include>
+                <include>*/*</include>
+            </includes>
+        </fileSet>
+    </fileSets>
+</assembly>
