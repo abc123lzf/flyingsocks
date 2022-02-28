@@ -42,6 +42,7 @@ import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksReceiverComponent;
 import com.lzf.flyingsocks.client.proxy.transparent.LinuxTransparentProxyComponent;
 import com.lzf.flyingsocks.client.proxy.transparent.TransparentProxyConfig;
+import com.lzf.flyingsocks.misc.FSThreadFactory;
 import io.netty.channel.nio.NioEventLoopGroup;
 
 import java.util.ArrayList;
@@ -90,7 +91,7 @@ public class ProxyComponent extends AbstractComponent<Client> implements ProxyRe
     /**
      * IO线程池
      */
-    private final ExecutorService ioExectuorService;
+    private final ExecutorService ioExecutorService;
 
 
     public ProxyComponent(Client client) {
@@ -98,13 +99,13 @@ public class ProxyComponent extends AbstractComponent<Client> implements ProxyRe
 
         int cpus = getParentComponent().availableProcessors();
 
-        ioExectuorService = new ThreadPoolExecutor(Math.max(cpus * 2, 8), Math.max(cpus * 4, 48), 15L, TimeUnit.MINUTES, new SynchronousQueue<>(),
-                (r, executor) -> {
+        ioExecutorService = new ThreadPoolExecutor(Math.max(cpus * 2, 8), Math.max(cpus * 4, 48), 15L, TimeUnit.MINUTES, new SynchronousQueue<>(),
+                new FSThreadFactory().setNamePrefix("ioThread-"), (r, executor) -> {
                     log.error("Can not execture more IO Task");
                     throw new RejectedExecutionException("Can not execture more IO Task");
                 });
         ThreadPoolExecutor asyncTaskExecutorService = new ThreadPoolExecutor(4, 4,
-                2, TimeUnit.MINUTES, new ArrayBlockingQueue<>(128));
+                2, TimeUnit.MINUTES, new ArrayBlockingQueue<>(128), new FSThreadFactory().setNamePrefix("taskThread-"));
         asyncTaskExecutorService.allowCoreThreadTimeOut(true);
         this.asyncTaskExecutorService = asyncTaskExecutorService;
     }
@@ -164,7 +165,7 @@ public class ProxyComponent extends AbstractComponent<Client> implements ProxyRe
     protected void stopInternal() {
         asyncTaskExecutorService.shutdownNow();
         super.stopInternal();
-        ioExectuorService.shutdownNow();
+        ioExecutorService.shutdownNow();
     }
 
     @Override
@@ -176,7 +177,7 @@ public class ProxyComponent extends AbstractComponent<Client> implements ProxyRe
      * 构造EventLoopGroup
      */
     public NioEventLoopGroup createNioEventLoopGroup(int threads) {
-        return new NioEventLoopGroup(threads, ioExectuorService);
+        return new NioEventLoopGroup(threads, ioExecutorService);
     }
 
 
