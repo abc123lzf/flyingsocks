@@ -27,11 +27,10 @@ import com.lzf.flyingsocks.ConfigEvent;
 import com.lzf.flyingsocks.ConfigEventListener;
 import com.lzf.flyingsocks.ConfigManager;
 import com.lzf.flyingsocks.client.gui.swing.SwingViewComponent;
-import com.lzf.flyingsocks.client.gui.swt.SWTViewComponent;
-import com.lzf.flyingsocks.client.proxy.http.HttpProxyConfig;
-import com.lzf.flyingsocks.client.proxy.server.ConnectionStateListener;
 import com.lzf.flyingsocks.client.proxy.ProxyAutoConfig;
 import com.lzf.flyingsocks.client.proxy.ProxyComponent;
+import com.lzf.flyingsocks.client.proxy.http.HttpProxyConfig;
+import com.lzf.flyingsocks.client.proxy.server.ConnectionStateListener;
 import com.lzf.flyingsocks.client.proxy.server.ProxyServerConfig;
 import com.lzf.flyingsocks.client.proxy.socks.SocksConfig;
 

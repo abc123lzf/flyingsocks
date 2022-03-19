@@ -49,7 +49,7 @@
                 <version>3.3.0</version>
                 <configuration>
                     <descriptors>
-                        <descriptor>src/main/assembly/assembly.xml</descriptor>
+                        <descriptor>release.xml</descriptor>
                     </descriptors>
                     <archive>
                         <manifest>
@@ -65,9 +65,9 @@
                             <goal>single</goal>
                         </goals>
                         <configuration>
-                            <finalName>${project.artifactId}</finalName>
+                            <finalName>${project.artifactId}-${project.version}</finalName>
                             <descriptors>
-                                <descriptor>src/main/assembly/assembly.xml</descriptor>
+                                <descriptor>release.xml</descriptor>
                             </descriptors>
                             <outputDirectory>./target</outputDirectory>
                         </configuration>
